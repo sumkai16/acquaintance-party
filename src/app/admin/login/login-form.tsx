@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { browserClient } from "@/lib/supabase/browser";
 
+const inputClass =
+  "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
+  "outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200";
+
 export function LoginForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -31,39 +35,45 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex w-full max-w-sm flex-col gap-4">
+    <form
+      onSubmit={onSubmit}
+      className="flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+    >
       {error ? (
         <p
           role="alert"
-          className="rounded border border-accent/30 bg-accent/10 px-4 py-3 text-accent"
+          className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
         >
           {error}
         </p>
       ) : null}
+
       <label className="flex flex-col gap-1.5">
-        <span className="font-semibold">Email</span>
+        <span className="text-sm font-medium text-slate-700">Email</span>
         <input
           name="email"
           type="email"
           required
           autoComplete="email"
-          className="rounded border border-ink/25 bg-white px-3 py-2.5"
+          className={inputClass}
         />
       </label>
+
       <label className="flex flex-col gap-1.5">
-        <span className="font-semibold">Password</span>
+        <span className="text-sm font-medium text-slate-700">Password</span>
         <input
           name="password"
           type="password"
           required
           autoComplete="current-password"
-          className="rounded border border-ink/25 bg-white px-3 py-2.5"
+          className={inputClass}
         />
       </label>
+
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-accent px-6 py-3 font-semibold text-ground disabled:opacity-60"
+        className="mt-2 rounded-md bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>

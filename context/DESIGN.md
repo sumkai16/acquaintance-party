@@ -50,8 +50,15 @@ textured grounds, and the door is the worst possible place to discover that.
 The themed ticket header stops at the edge of the white card
 (`src/app/ticket/[id]/page.tsx` → `ApprovedTicket`) — never theme that block.
 
-## 5. Scanner and admin — semantic color, not accent (plan 2/plan 3 build)
-When the scanner is built, its three states use **green / red / amber only**:
+## 5. Admin and scanner — neutral shell, semantic color, not accent
+**Implemented:** `src/app/admin/layout.tsx` wraps every `/admin/*` route in a
+`bg-slate-100 text-slate-900` shell — Tailwind's neutral palette, not the
+theme tokens. No `font-display`, no `--color-accent` on admin surfaces. Any
+new admin page inherits this from the layout automatically; don't re-theme
+one on purpose.
+
+When the scanner is built (plan 2), its three states use **green / red /
+amber only**:
 - Green — valid, let them in, name + section shown so a volunteer can
   spot-check against a student ID
 - Red — duplicate or invalid, with the specific reason and a next action
@@ -68,7 +75,8 @@ When the scanner is built, its three states use **green / red / amber only**:
   `focus:outline-accent` pattern in `checkout-form.tsx`).
 
 ## 7. What's actually built vs. planned
-Landing (plain, not yet polished), checkout, and the ticket page exist and
-follow this system. The scanner, admin review UI, admin search, and raffle
+Landing (plain, not yet polished), checkout, and admin login + review queue
+exist and follow this system. The ticket page (QR generation is done; the
+page that renders it is not), admin search, the scanner, and the raffle
 projector are specced here but not yet built — see
 `docs/superpowers/plans/2026-08-30-sell-and-verify.md` for what's done.
