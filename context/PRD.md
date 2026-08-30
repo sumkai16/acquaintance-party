@@ -30,19 +30,23 @@ admin approval**, not a compromise but the only option that ships in time.
       upload
 - [x] Duplicate-reference detection (unique index) + orphaned-upload cleanup
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
-- [ ] Admin review queue — approve/reject with reason
-- [ ] Ticket page with QR (code generation done; page not yet built)
-- [ ] Honeypot + submission throttle
-- [ ] Admin search (find a lost ticket by name/email)
+- [x] Admin review queue — approve/reject with reason
+- [x] Ticket page with QR
+- [x] Honeypot + submission throttle
+- [x] Admin search (find a lost ticket by name/email)
 - [ ] Door scanner — offline-tolerant, multi-device
 - [ ] Attendance dashboard + `.xlsx` export
 - [ ] Google Sheets live sync
 - [ ] Landing page visual polish
 - [ ] Two-stage raffle wheel (shortlist → spin), server-side draw
 
-Status as of this file's writing: **plan 1 of 3 ("sell and verify"), 7 of 11
-tasks complete.** See `docs/superpowers/plans/` for the authoritative task
-list and what each plan covers.
+Status as of this file's writing: **plan 1 of 3 ("sell and verify") is
+code-complete, 11 of 11 tasks.** Every task was verified with automated
+tests and scripted checks against the live database, but **no task has yet
+been clicked through by hand in a browser** — that pass, including scanning
+a real approved ticket's QR with an actual phone camera, is still
+outstanding before plan 1 can be called done. See `docs/superpowers/plans/`
+for the authoritative task list and what each plan covers.
 
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
