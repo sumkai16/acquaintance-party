@@ -34,9 +34,13 @@ export function Scanner() {
   const [manifestAt, setManifestAt] = useState<string | null>(null);
 
   // The label identifies this phone in the scan record, so a double-scan alert
-  // on the dashboard can name which two doors saw the same ticket.
+  // on the dashboard can name which two doors saw the same ticket. Read after
+  // mount, not as a lazy useState initializer, because localStorage doesn't
+  // exist during the server render and reading it there would desync from
+  // the client's first paint.
   useEffect(() => {
     const saved = localStorage.getItem("scanner-device-label");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setDeviceLabel(saved);
   }, []);
 
