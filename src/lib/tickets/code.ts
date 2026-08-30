@@ -41,3 +41,14 @@ export function generateTicketCode(): string {
 export function formatTicketCode(code: string): string {
   return code.match(/.{1,4}/g)?.join("-") ?? code;
 }
+
+/**
+ * Canonicalizes a code read from a camera or typed by a volunteer.
+ *
+ * The QR encodes the bare 12-character code, but the ticket page *displays*
+ * the dashed form, so a fallback "type it in" path will see dashes. Casing is
+ * normalized because a phone keyboard will happily send lowercase.
+ */
+export function normalizeScannedCode(input: string): string {
+  return input.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");
+}

@@ -4,6 +4,7 @@ import {
   TICKET_CODE_LENGTH,
   formatTicketCode,
   generateTicketCode,
+  normalizeScannedCode,
 } from "./code";
 
 describe("generateTicketCode", () => {
@@ -56,5 +57,24 @@ describe("formatTicketCode", () => {
   it("round-trips with a generated code", () => {
     const code = generateTicketCode();
     expect(formatTicketCode(code).replace(/-/g, "")).toBe(code);
+  });
+});
+
+describe("normalizeScannedCode", () => {
+  it("strips the display dashes", () => {
+    expect(normalizeScannedCode("K4M9-2XQP-7BTR")).toBe("K4M92XQP7BTR");
+  });
+
+  it("uppercases a typed code", () => {
+    expect(normalizeScannedCode("k4m92xqp7btr")).toBe("K4M92XQP7BTR");
+  });
+
+  it("round-trips a formatted generated code", () => {
+    const code = generateTicketCode();
+    expect(normalizeScannedCode(formatTicketCode(code))).toBe(code);
+  });
+
+  it("reduces junk to something that simply will not match", () => {
+    expect(normalizeScannedCode("https://example.com")).toBe("HTTPSEXAMPLECOM");
   });
 });
