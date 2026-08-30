@@ -1,6 +1,7 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import type { Manifest } from "./manifest";
+import type { ScanRecord } from "./report";
 import type { ScanResult } from "@/lib/supabase/types";
 
 export type ScanRow = {
@@ -70,4 +71,41 @@ export async function recordScans(
   }
 
   return { ok: true, accepted: rows.length };
+}
+
+/** Every scan with the student's name joined in, newest first. */
+export async function allScans(): Promise<ScanRecord[]> {
+  const { data, error } = await adminClient()
+    .from("scans")
+    .select(
+      "code_scanned, scanned_at, device_label, result, registration_id, registrations(full_name)",
+    )
+    .order("scanned_at", { ascending: false });
+
+  if (error) {
+    console.error("allScans failed", error);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    registrationId: row.registration_id as string | null,
+    // registrations is a to-one embed at runtime (registration_id is a single
+    // FK), but without generated DB types the client infers it as an array —
+    // hence the trip through `unknown` rather than a direct cast.
+    fullName:
+      (row.registrations as unknown as { full_name: string } | null)
+        ?.full_name ?? null,
+    codeScanned: row.code_scanned as string,
+    scannedAt: row.scanned_at as string,
+    deviceLabel: row.device_label as string,
+    result: row.result as ScanRecord["result"],
+  }));
+}
+
+export async function approvedCount(): Promise<number> {
+  const { count } = await adminClient()
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "approved");
+  return count ?? 0;
 }
