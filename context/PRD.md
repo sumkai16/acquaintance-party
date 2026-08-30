@@ -8,8 +8,11 @@ summary, not the source of truth.
 ## 1. Problem
 A school acquaintance party needs to sell tickets to 600+ students, verify
 GCash payments, issue QR tickets, scan them at the door on unreliable venue
-wifi, record attendance for a raffle, and run the raffle draw itself. The
-event is under two weeks out from 2026-08-30.
+wifi, record attendance for a raffle, and run the raffle draw itself.
+
+**Event date confirmed 2026-08-31: Monday, 2026-10-05, 4–8 PM, SCC Annex
+Building.** The project was originally scoped assuming under two weeks of
+runway from 2026-08-30 — the actual gap turned out to be about five weeks.
 
 ## 2. Target users
 - **Student** — buys a ticket, pays via GCash, uploads a receipt, gets a QR.
@@ -20,8 +23,17 @@ event is under two weeks out from 2026-08-30.
 ## 3. Why not a payment gateway
 GCash has no self-serve checkout API. A real gateway (PayMongo/Xendit/Maya)
 needs merchant onboarding with business documents, approved in days to
-weeks — not viable in two weeks. So payment is **proof of payment + manual
-admin approval**, not a compromise but the only option that ships in time.
+weeks. This ruled out a gateway outright under the original under-two-weeks
+assumption.
+
+**Revisited 2026-08-31**, once the real date (five weeks out) was confirmed:
+kept proof-of-payment anyway, by deliberate choice, not because it no longer
+fit. The flow was already built, tested, and working end to end — checkout,
+review queue, QR tickets, Discord notifications. Switching to a gateway
+trades that for new scope (a merchant account application with uncertain
+approval timing, plus real API integration) to remove manual review, which
+saves admin time rather than solving any real blocker. Revisit only if
+manual review at 600 tickets turns out to be a genuine bottleneck.
 
 ## 4. Scope — MVP module set
 - [x] Event/theme config (`src/lib/config/event.ts`, `theme.ts`)
@@ -54,8 +66,11 @@ group purchasing, discount codes, a native mobile app. All addable later
 without a schema rewrite, none needed for this event.
 
 ## 6. Key constraints that shape every decision
-- **600+ attendees, <2 weeks runway** — cuts land on the last build items
-  (raffle, Sheets sync, landing polish), never on checkout/review/scanner.
+- **600+ attendees, ~5 weeks runway to 2026-10-05** (revised 2026-08-31 from
+  an original under-two-weeks assumption — see §3). The build order still
+  lands cuts on the last items (raffle, Sheets sync, landing polish) rather
+  than checkout/review/scanner, since that priority never depended on the
+  timeline being tight, only on which pieces are load-bearing at the door.
 - **No Docker, no local Supabase** — migrations are pasted by hand into the
   hosted project (`docs/setup/supabase.md`), not pushed via CLI.
 - **Unreliable venue wifi** — the scanner must work offline and sync later,

@@ -12,9 +12,8 @@ export const EVENT = {
   /** The theme is not finalised. Replace this once the committee decides. */
   tagline: "Theme to be announced",
   host: "BSIT Department",
-  /** DATE IS STILL A PLACEHOLDER — only the time (4–8 PM) has been confirmed. */
-  startsAt: new Date("2026-09-12T16:00:00+08:00"),
-  endsAt: new Date("2026-09-12T20:00:00+08:00"),
+  startsAt: new Date("2026-10-05T16:00:00+08:00"),
+  endsAt: new Date("2026-10-05T20:00:00+08:00"),
   venue: "SCC Annex Building",
   ticketPriceCentavos: 49_500,
   capacity: 700,

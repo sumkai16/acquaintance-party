@@ -20,10 +20,13 @@ or when you need the *why*, not just the *what*.
 
 ## Event runway
 
-Under two weeks from the design spec's date (2026-08-30) to the event. Every
-design and scope decision in this repo already optimizes for that — see
-`docs/superpowers/specs/2026-08-30-acquaintance-party-ticketing-design.md`
-§Constraints. Don't propose scope that assumes more time than that.
+The event is confirmed for 2026-10-05 — about five weeks from the design
+spec's date (2026-08-30), not the under-two-weeks the spec originally
+assumed. That original assumption is why proof-of-payment was chosen over a
+real payment gateway; see `context/PRD.md` §3 — revisited once the real
+date landed, and kept anyway by deliberate choice. Don't silently assume the
+original two-week framing still holds; check `context/PRD.md` for current
+constraints before proposing scope.
 
 ## Surface priority
 
