@@ -65,6 +65,24 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
+## 7. Discord notifications (optional)
+
+Without this, an admin only finds out about a new registration by opening
+`/admin/review` and looking — nobody should keep that tab open for two
+weeks. This pings a Discord channel the instant someone submits.
+
+1. In Discord: the target channel's settings → **Integrations → Webhooks →
+   New Webhook** → copy the **Webhook URL**.
+2. Paste it into `.env.local` as `DISCORD_WEBHOOK_URL`. Also add it to the
+   Vercel project's environment variables before deploying — see the deploy
+   checkpoint at the end of the plan.
+3. Optionally set `NEXT_PUBLIC_SITE_URL` to the deployed site's URL (e.g.
+   `https://your-app.vercel.app`, no trailing slash) so the Discord message
+   includes a clickable link straight to the review queue.
+
+Leaving `DISCORD_WEBHOOK_URL` unset is fine — checkout works normally, the
+notification is just silently skipped, not an error.
+
 ## Before launch
 
 Placeholder values that must be replaced before real money moves:

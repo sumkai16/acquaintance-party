@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
 import { checkoutSchema } from "@/lib/registrations/schema";
 import {
@@ -15,6 +16,7 @@ import {
   createRegistration,
 } from "@/lib/registrations/queries";
 import { adminClient } from "@/lib/supabase/admin";
+import { notifyNewRegistration } from "@/lib/notify/discord";
 
 export type SubmittedValues = {
   fullName: string;
@@ -175,6 +177,19 @@ export async function submitRegistration(
       attempt,
     };
   }
+
+  // Scheduled with after(), not awaited directly: redirect() below ends the
+  // response, and a plain fire-and-forget fetch can be killed mid-flight on
+  // Vercel's serverless runtime once the response is sent. after() runs it
+  // once the response has gone out and is guaranteed to complete.
+  after(() =>
+    notifyNewRegistration({
+      fullName: parsed.data.fullName,
+      yearLevel: parsed.data.yearLevel,
+      section: parsed.data.section,
+      amountCentavos: EVENT.ticketPriceCentavos,
+    }),
+  );
 
   redirect(`/ticket/${created.id}`);
 }
