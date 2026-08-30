@@ -86,7 +86,7 @@ src/
 │   │   └── qr.ts                  # ticketQrDataUrl
 │   ├── registrations/
 │   │   ├── schema.ts              # checkoutSchema (Zod)
-│   │   ├── abuse.ts               # honeypot + submission throttle
+│   │   ├── abuse.ts               # submission throttle (no honeypot — see RULES.md)
 │   │   └── queries.ts             # all DB reads/writes
 │   ├── notify/
 │   │   ├── discord-message.ts     # pure formatting, no server-only import

@@ -1,17 +1,16 @@
 /**
  * Cheap defences against someone flooding the review queue.
  *
- * Neither of these stops a determined attacker. They stop a script and a
- * bored student, which is the realistic threat for a school event, and they
- * cost one hidden input and one indexed query.
+ * A hidden-field honeypot used to sit here too, but browser and extension
+ * autofill silently fills off-screen fields regardless of visibility —
+ * confirmed live (2026-08-30) when a real student's submission was rejected
+ * with the hidden field carrying an autofilled name, "Judah Ruiz", with no
+ * error shown. For a small, one-off student event, blocking a real paying
+ * student's first attempt is a worse outcome than the bot traffic the
+ * honeypot was guarding against, which the unique GCash reference index and
+ * the throttle below already cover. Removed rather than patched — fighting
+ * browser autofill heuristics is not a fight worth having here.
  */
-
-/**
- * A field no human sees. Bots fill every input they find, so any value here
- * means the submission was not typed by a person. Named "nickname" rather
- * than "honeypot" so it is not obvious from the page source.
- */
-export const HONEYPOT_FIELD = "nickname";
 
 export const THROTTLE_WINDOW_MINUTES = 15;
 
@@ -21,12 +20,6 @@ export const THROTTLE_WINDOW_MINUTES = 15;
  * sit above normal frustration, not at it.
  */
 export const THROTTLE_MAX_SUBMISSIONS = 3;
-
-export function isHoneypotTripped(value: unknown): boolean {
-  if (value === null || value === undefined) return false;
-  if (typeof value !== "string") return true;
-  return value.trim().length > 0;
-}
 
 /** The earliest timestamp still inside the throttle window. */
 export function throttleWindowStart(now: Date): string {

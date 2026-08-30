@@ -5,12 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
 import { checkoutSchema } from "@/lib/registrations/schema";
-import {
-  HONEYPOT_FIELD,
-  isHoneypotTripped,
-  isThrottled,
-  throttleWindowStart,
-} from "@/lib/registrations/abuse";
+import { isThrottled, throttleWindowStart } from "@/lib/registrations/abuse";
 import {
   countRecentByEmail,
   createRegistration,
@@ -79,20 +74,6 @@ export async function submitRegistration(
       values,
       attempt,
     };
-  }
-
-  // TEMPORARY diagnostic — investigating a report that first submissions
-  // silently fail. Remove once confirmed. Logs to the server console only.
-  console.log(
-    "[checkout] honeypot raw value:",
-    JSON.stringify(formData.get(HONEYPOT_FIELD)),
-  );
-
-  // A bot filled the hidden field. Report success so it does not learn why,
-  // but write nothing. Values are still echoed back in case a real person's
-  // browser extension tripped this by mistake.
-  if (isHoneypotTripped(formData.get(HONEYPOT_FIELD))) {
-    return { status: "idle", values, attempt };
   }
 
   const recent = await countRecentByEmail(

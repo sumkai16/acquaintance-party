@@ -32,7 +32,7 @@ admin approval**, not a compromise but the only option that ships in time.
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
 - [x] Admin review queue — approve/reject with reason
 - [x] Ticket page with QR
-- [x] Honeypot + submission throttle
+- [x] Submission throttle (honeypot tried and removed — see §6)
 - [x] Admin search (find a lost ticket by name/email)
 - [ ] Door scanner — offline-tolerant, multi-device
 - [ ] Attendance dashboard + `.xlsx` export
@@ -63,6 +63,12 @@ without a schema rewrite, none needed for this event.
   Accepted tradeoff — see the spec's §Scanner.
 - **HTTPS required** — browser camera access for the scanner is blocked on
   insecure origins. Deploy to Vercel before starting plan 2.
+- **No hidden-field honeypot on checkout.** One was built and removed the
+  same day: browser/extension autofill silently filled the off-screen field
+  with a real name on a real student's first submission, killing it with no
+  error shown — confirmed live, not theoretical. The unique GCash reference
+  index and the submission throttle are the actual anti-abuse layers; don't
+  re-add a honeypot to this form without solving the autofill problem first.
 
 ## 7. Success criteria (plan 1)
 A student can pay, submit details + receipt, land on a permanent ticket

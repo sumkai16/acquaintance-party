@@ -65,6 +65,14 @@ a sign the design is wrong — route it through a server action instead.
   `receipts` bucket. `src/app/checkout/actions.ts` removes it on every
   failure path. Any new code that uploads-then-inserts needs the same
   cleanup — verified end to end in the checkout task, not assumed.
+- **No hidden-field honeypot on checkout, deliberately.** One existed
+  briefly; browser/extension autofill filled the off-screen field with a
+  real name on a real submission, silently killing it with no error shown —
+  confirmed live via a server-side log, not assumed. For a small one-off
+  event, blocking a real paying student is worse than the bot traffic a
+  honeypot guards against, and the unique reference index already covers the
+  realistic threat. If abuse becomes a real problem, reach for the throttle
+  window or a timing-based check before a value-based hidden field.
 - The `ticket_code_matches_status` and `rejection_has_reason` check
   constraints on `registrations` are backstops, not decoration. Don't work
   around them from application code (e.g. setting `ticket_code` outside

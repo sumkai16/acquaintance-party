@@ -2,30 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   THROTTLE_MAX_SUBMISSIONS,
   THROTTLE_WINDOW_MINUTES,
-  isHoneypotTripped,
   isThrottled,
   throttleWindowStart,
 } from "./abuse";
-
-describe("isHoneypotTripped", () => {
-  it("passes when a real person leaves the hidden field alone", () => {
-    expect(isHoneypotTripped("")).toBe(false);
-    expect(isHoneypotTripped(null)).toBe(false);
-    expect(isHoneypotTripped(undefined)).toBe(false);
-  });
-
-  it("passes when the field is whitespace a browser autofilled", () => {
-    expect(isHoneypotTripped("   ")).toBe(false);
-  });
-
-  it("trips when a bot fills the hidden field", () => {
-    expect(isHoneypotTripped("Juan")).toBe(true);
-  });
-
-  it("trips on a non-string value rather than ignoring it", () => {
-    expect(isHoneypotTripped(42)).toBe(true);
-  });
-});
 
 describe("throttleWindowStart", () => {
   it("looks back exactly the configured window", () => {
