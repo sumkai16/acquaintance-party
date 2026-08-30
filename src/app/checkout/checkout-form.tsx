@@ -5,7 +5,7 @@ import { HONEYPOT_FIELD } from "@/lib/registrations/abuse";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { submitRegistration, type FormState } from "./actions";
 
-const initial: FormState = { status: "idle" };
+const initial: FormState = { status: "idle", attempt: 0 };
 
 const inputClass =
   "w-full rounded border border-ink/25 bg-white px-3 py-2.5 " +
@@ -14,6 +14,13 @@ const inputClass =
 export function CheckoutForm() {
   const [state, action, pending] = useActionState(submitRegistration, initial);
   const errors = state.fieldErrors ?? {};
+  const values = state.values;
+
+  // React resets every uncontrolled field once the action finishes without
+  // redirecting — see the comment on FormState.values in actions.ts. Keying
+  // each input on the attempt number forces it to remount with the value
+  // the student actually typed, instead of going blank on any error.
+  const keyed = (name: string) => `${name}-${state.attempt}`;
 
   return (
     <form action={action} className="relative flex flex-col gap-5">
@@ -37,20 +44,23 @@ export function CheckoutForm() {
 
       <Field label="Full name" name="fullName" error={errors.fullName}>
         <input
+          key={keyed("fullName")}
           id="fullName"
           name="fullName"
           required
           autoComplete="name"
+          defaultValue={values?.fullName ?? ""}
           className={inputClass}
         />
       </Field>
 
       <Field label="Year level" name="yearLevel" error={errors.yearLevel}>
         <select
+          key={keyed("yearLevel")}
           id="yearLevel"
           name="yearLevel"
           required
-          defaultValue=""
+          defaultValue={values?.yearLevel ?? ""}
           className={inputClass}
         >
           <option value="" disabled>
@@ -65,7 +75,14 @@ export function CheckoutForm() {
       </Field>
 
       <Field label="Section" name="section" error={errors.section}>
-        <input id="section" name="section" required className={inputClass} />
+        <input
+          key={keyed("section")}
+          id="section"
+          name="section"
+          required
+          defaultValue={values?.section ?? ""}
+          className={inputClass}
+        />
       </Field>
 
       <Field
@@ -75,11 +92,13 @@ export function CheckoutForm() {
         error={errors.email}
       >
         <input
+          key={keyed("email")}
           id="email"
           name="email"
           type="email"
           required
           autoComplete="email"
+          defaultValue={values?.email ?? ""}
           className={inputClass}
         />
       </Field>
@@ -91,10 +110,12 @@ export function CheckoutForm() {
         error={errors.gcashReference}
       >
         <input
+          key={keyed("gcashReference")}
           id="gcashReference"
           name="gcashReference"
           required
           inputMode="numeric"
+          defaultValue={values?.gcashReference ?? ""}
           className={`${inputClass} font-mono`}
         />
       </Field>
@@ -120,7 +141,7 @@ export function CheckoutForm() {
         disabled={pending}
         className="rounded bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Submitting…" : "Submit for review"}
+        {pending ? "Submitting…" : "Submit"}
       </button>
 
       <p className="text-sm text-ink/65">

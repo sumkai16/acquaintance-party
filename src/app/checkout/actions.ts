@@ -16,26 +16,53 @@ import {
 } from "@/lib/registrations/queries";
 import { adminClient } from "@/lib/supabase/admin";
 
+export type SubmittedValues = {
+  fullName: string;
+  yearLevel: string;
+  section: string;
+  email: string;
+  gcashReference: string;
+};
+
 export type FormState = {
   status: "idle" | "error";
   message?: string;
   fieldErrors?: Record<string, string>;
+  /**
+   * What the student typed, echoed back on every non-redirect return.
+   *
+   * React resets every uncontrolled field in a <form action={fn}> once the
+   * action finishes without navigating away — not just the field that was
+   * wrong. Without this, a duplicate reference or a throttle hit wipes the
+   * name/email/section the student already got right, and it looks like the
+   * form silently ate their submission. `attempt` forces the inputs to
+   * remount with these values via `key` — see checkout-form.tsx.
+   */
+  values?: SubmittedValues;
+  attempt: number;
 };
 
 const MAX_RECEIPT_BYTES = 5 * 1024 * 1024;
 const ALLOWED_RECEIPT_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+function readValues(formData: FormData): SubmittedValues {
+  return {
+    fullName: String(formData.get("fullName") ?? ""),
+    yearLevel: String(formData.get("yearLevel") ?? ""),
+    section: String(formData.get("section") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    gcashReference: String(formData.get("gcashReference") ?? ""),
+  };
+}
+
 export async function submitRegistration(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const parsed = checkoutSchema.safeParse({
-    fullName: formData.get("fullName"),
-    yearLevel: formData.get("yearLevel"),
-    section: formData.get("section"),
-    email: formData.get("email"),
-    gcashReference: formData.get("gcashReference"),
-  });
+  const values = readValues(formData);
+  const attempt = _prev.attempt + 1;
+
+  const parsed = checkoutSchema.safeParse(values);
 
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -47,13 +74,16 @@ export async function submitRegistration(
       status: "error",
       message: "Check the highlighted fields.",
       fieldErrors,
+      values,
+      attempt,
     };
   }
 
   // A bot filled the hidden field. Report success so it does not learn why,
-  // but write nothing.
+  // but write nothing. Values are still echoed back in case a real person's
+  // browser extension tripped this by mistake.
   if (isHoneypotTripped(formData.get(HONEYPOT_FIELD))) {
-    return { status: "idle" };
+    return { status: "idle", values, attempt };
   }
 
   const recent = await countRecentByEmail(
@@ -66,6 +96,8 @@ export async function submitRegistration(
       message:
         "You have submitted several times in the last few minutes. " +
         "Wait a moment before trying again, or message an organiser for help.",
+      values,
+      attempt,
     };
   }
 
@@ -75,6 +107,8 @@ export async function submitRegistration(
       status: "error",
       message: "Attach a screenshot of your GCash receipt.",
       fieldErrors: { receipt: "Attach your receipt screenshot." },
+      values,
+      attempt,
     };
   }
   if (receipt.size > MAX_RECEIPT_BYTES) {
@@ -82,6 +116,8 @@ export async function submitRegistration(
       status: "error",
       message: "That image is over 5 MB. Try a screenshot instead of a photo.",
       fieldErrors: { receipt: "Keep the image under 5 MB." },
+      values,
+      attempt,
     };
   }
   if (!ALLOWED_RECEIPT_TYPES.includes(receipt.type)) {
@@ -89,6 +125,8 @@ export async function submitRegistration(
       status: "error",
       message: "Upload a JPG, PNG, or WebP image.",
       fieldErrors: { receipt: "Use a JPG, PNG, or WebP image." },
+      values,
+      attempt,
     };
   }
 
@@ -104,6 +142,8 @@ export async function submitRegistration(
     return {
       status: "error",
       message: "We could not save your receipt. Try again in a moment.",
+      values,
+      attempt,
     };
   }
 
@@ -124,11 +164,15 @@ export async function submitRegistration(
           "That GCash reference number has already been used for another " +
           "ticket. Check that you copied the number from your own receipt.",
         fieldErrors: { gcashReference: "Already used for another ticket." },
+        values,
+        attempt,
       };
     }
     return {
       status: "error",
       message: "Something went wrong saving your ticket. Try again in a moment.",
+      values,
+      attempt,
     };
   }
 
