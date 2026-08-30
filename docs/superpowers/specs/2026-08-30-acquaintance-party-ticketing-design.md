@@ -301,6 +301,85 @@ become beautiful in the final days without blocking anything upstream. The
 raffle is last because a manual draw from the exported sheet is a workable
 fallback, whereas manual check-in of 600 people is not.
 
+## Visual design
+
+**The party theme is not finalized.** The current working theme is Coachella,
+and the default visual direction is "Desert Sundown," but this may change.
+
+Because of that, the visual identity is **tokenized, not hardcoded**. A theme
+change late in a two-week build is a schedule risk only if the palette is spread
+across every component. Confined to one file, it is a fifteen-minute edit. This
+costs almost nothing to design in now and is expensive to retrofit.
+
+### Theme tokens
+
+A single source of truth — six colors and two typefaces — exposed as CSS custom
+properties on `:root` and imported from one config module.
+
+| Token | Default (Desert Sundown) | Role |
+| --- | --- | --- |
+| `--accent` | `#C2481F` burnt clay | Primary actions, headlines |
+| `--accent-2` | `#E39824` sun gold | Highlights, poster title |
+| `--accent-3` | `#7E8B5F` cactus sage | Tertiary, chart and badge fills |
+| `--deep` | `#3B2136` dusk plum | Hero ground, inverted sections |
+| `--ground` | `#F2E3CB` sand | Page background |
+| `--ink` | `#2E1D16` | Body text |
+
+Typography: **Anton** (display) and **DM Sans** (body), loaded from Google Fonts.
+Both are named in the same config module.
+
+### What a theme change actually costs
+
+**Cheap** — palette, typefaces, event copy, hero background treatment. Config
+edit plus a font link.
+
+**Not cheap** — a hero built around a theme-specific conceit. The Coachella
+lineup-poster device (centered stacked caps, tiny bulleted activity list) is
+specific to this theme and would not survive a switch to, say, a masquerade or
+Y2K theme.
+
+Mitigation: **the hero's structure stays theme-neutral** — eyebrow, display
+title, date line, feature row, call to action. The festival reading comes from
+the type and color choices filling that structure, not from the structure
+itself. Any theme can inhabit it without a rebuild.
+
+### Rules that hold regardless of theme
+
+These are not style preferences and must not be overridden by a theme change.
+
+- **The QR always sits on a plain white card** with a clear quiet zone. Phone
+  cameras reject codes rendered on warm, textured, or low-contrast grounds. The
+  theme lives in the ticket header and stops at the white card.
+- **The scanner uses semantic color only** — green, red, amber — never the theme
+  accent. It is read at arm's length, in the dark, by a volunteer under time
+  pressure. One state fills the screen at a time, and every state names a next
+  action, including the failure case (`search by name instead`). A dead end at
+  the door with 600 people queued is not a survivable outcome.
+- **The admin review queue stays neutral and dense.** Someone is working through
+  600 receipts; decoration slows them down.
+- **The raffle projector carries its own dark palette** regardless of the public
+  theme. Light grounds glare in a dark room. Default is an indigo and magenta
+  set ("Night Set"), which also gives the draw a deliberate shift in energy.
+- **Contrast targets:** 4.5:1 for body text, 3:1 for large display type. Accent
+  on ground passes for headlines only — body copy always uses `--ink`.
+
+### Surface treatment summary
+
+| Surface | Treatment |
+| --- | --- |
+| Landing, checkout | Full theme |
+| Ticket page | Themed header, white QR card |
+| Raffle projector | Full theme, own dark palette |
+| Door scanner | Semantic color only, function first |
+| Admin review, dashboard | Neutral, dense |
+
+### Deferred
+
+Event name, tagline, date, venue, ticket price, and any existing org branding
+(logo, department colors, an already-designed poster) are unknown. All live in
+the config file. **Existing org material, if it surfaces, wins over anything
+specified here.**
+
 ## Out of scope
 
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
