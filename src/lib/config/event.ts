@@ -8,12 +8,13 @@
  * block in src/app/globals.css.
  */
 export const EVENT = {
-  name: "Desert Bloom",
-  tagline: "An acquaintance party",
+  name: "Acquaintance Party",
+  /** The theme is not finalised. Replace this once the committee decides. */
+  tagline: "Theme to be announced",
   host: "BSIT Department",
   startsAt: new Date("2026-09-12T18:00:00+08:00"),
   venue: "University Gymnasium",
-  ticketPriceCentavos: 35_000,
+  ticketPriceCentavos: 50_000,
   capacity: 700,
 
   /** The GCash account students send payment to. */

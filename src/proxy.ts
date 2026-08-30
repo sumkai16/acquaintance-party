@@ -1,8 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/** Refreshes the admin's Supabase session cookie on every /admin request. */
-export async function middleware(request: NextRequest) {
+/**
+ * Refreshes the admin's Supabase session cookie on every /admin request.
+ *
+ * This is the Next 16 "proxy" convention — the rename of what used to be
+ * `middleware.ts`.
+ */
+export default async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
