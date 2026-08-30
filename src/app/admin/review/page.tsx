@@ -32,12 +32,26 @@ export default async function ReviewPage() {
               : `${pending.length} waiting for review.`}
           </p>
         </div>
-        <Link
-          href="/admin/registrations"
-          className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
-        >
-          Find a registration
-        </Link>
+        <div className="flex flex-wrap gap-4">
+          <Link
+            href="/admin/registrations"
+            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
+          >
+            Find a registration
+          </Link>
+          <Link
+            href="/admin/scan"
+            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
+          >
+            Door scanner
+          </Link>
+          <Link
+            href="/admin/dashboard"
+            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
+          >
+            Attendance
+          </Link>
+        </div>
       </header>
 
       {cards.map((card) => (
