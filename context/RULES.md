@@ -13,6 +13,16 @@
   way — write the failing test, watch it fail, implement, watch it pass.
   There is no browser test runner in this project; UI is verified by hand
   against `npm run dev` (see the plan's per-task "Verify by hand" steps).
+- **Never put pure logic in the same file as a `server-only` import.** The
+  `server-only` package throws unconditionally when imported outside Next's
+  build system — including from Vitest — so a file that imports it cannot be
+  unit tested at all, not even the parts of it that don't touch I/O. Hit this
+  building `src/lib/notify/`: the Discord message text and the fetch call
+  were one file, and the test suite couldn't even load it. Fixed by splitting
+  into `discord-message.ts` (pure, tested) and `discord.ts` (`server-only`,
+  the network call). Follow that split for anything similar — plan 2's scan
+  resolution and plan 3's raffle draw both mix privileged reads with logic
+  worth testing in isolation.
 
 ## Plan before implementing
 No feature or non-trivial modification starts with an edit. Investigate the
