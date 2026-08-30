@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EVENT, formatPeso } from "@/lib/config/event";
+import { EVENT, formatPeso, formatTimeRange } from "@/lib/config/event";
 
 // Deliberately plain. The designed landing page is the last build step, so
 // that polish never blocks checkout, review, or the door scanner.
@@ -10,10 +10,7 @@ export default function HomePage() {
     month: "long",
     year: "numeric",
   });
-  const time = EVENT.startsAt.toLocaleTimeString("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  const time = formatTimeRange(EVENT.startsAt, EVENT.endsAt);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col justify-center gap-7 px-5 py-20">

@@ -12,9 +12,11 @@ export const EVENT = {
   /** The theme is not finalised. Replace this once the committee decides. */
   tagline: "Theme to be announced",
   host: "BSIT Department",
-  startsAt: new Date("2026-09-12T18:00:00+08:00"),
-  venue: "University Gymnasium",
-  ticketPriceCentavos: 50_000,
+  /** DATE IS STILL A PLACEHOLDER — only the time (4–8 PM) has been confirmed. */
+  startsAt: new Date("2026-09-12T16:00:00+08:00"),
+  endsAt: new Date("2026-09-12T20:00:00+08:00"),
+  venue: "SCC Annex Building",
+  ticketPriceCentavos: 49_500,
   capacity: 700,
 
   /** The GCash account students send payment to. */
@@ -40,6 +42,14 @@ const wholePesos = new Intl.NumberFormat("en-PH", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
+
+/** Renders a start/end pair as "4:00 PM – 8:00 PM". */
+export function formatTimeRange(start: Date, end: Date): string {
+  const time = (date: Date) =>
+    date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+
+  return `${time(start)} – ${time(end)}`;
+}
 
 /**
  * Formats centavos for display. Drops the decimals when they are zero.
