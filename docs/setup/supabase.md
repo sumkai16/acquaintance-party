@@ -93,3 +93,6 @@ Placeholder values that must be replaced before real money moves:
       real payable QR
 - [ ] Confirm the GCash account's wallet and monthly receiving limits can
       handle the expected sales volume before tickets go on sale
+- [ ] `public/icon-192.png` and `public/icon-512.png` — solid black
+      placeholders for the scanner's home-screen icon (plan 2), not an org
+      logo

@@ -22,6 +22,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: EVENT.name,
   description: `${EVENT.tagline} · ${EVENT.host}`,
+  manifest: "/manifest.webmanifest",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
