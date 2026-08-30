@@ -3,7 +3,10 @@
 An e-commerce-style ticketing system: landing page → checkout with GCash proof
 of payment → admin approval → QR ticket → door scanner → raffle.
 
-Design and build docs live under `docs/superpowers/`:
+Start with `CLAUDE.md` — it points at `context/` (fast-reference rules,
+architecture, design tokens, schema, scope) and `docs/superpowers/` (the full
+reasoning behind each decision):
+- `context/` — RULES.md, ARCHITECTURE.md, DESIGN.md, PRD.md, SCHEMA.md
 - `docs/superpowers/specs/2026-08-30-acquaintance-party-ticketing-design.md` — the full design
 - `docs/superpowers/plans/2026-08-30-sell-and-verify.md` — the current implementation plan
 - `docs/setup/supabase.md` — hosted Supabase project setup (dashboard clicks, not code)
