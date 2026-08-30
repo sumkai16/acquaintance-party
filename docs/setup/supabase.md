@@ -1,0 +1,77 @@
+# Supabase project setup
+
+Manual dashboard steps — invisible in git, so recorded here for whoever
+redoes this next year.
+
+## 1. Create the project
+
+1. https://supabase.com/dashboard → New project.
+2. Region: **Southeast Asia (Singapore)**.
+3. Set a database password and save it somewhere durable — shown once.
+
+## 2. Copy the API keys into `.env.local`
+
+**Project Settings → API Keys.** Copy from `.env.local.example` to
+`.env.local` and fill in:
+
+- `NEXT_PUBLIC_SUPABASE_URL` — the project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — the `anon public` key (safe to ship to
+  browsers; RLS protects it)
+- `SUPABASE_SERVICE_ROLE_KEY` — the `service_role`/secret key. **Bypasses
+  every RLS policy.** Never paste it into chat, a ticket, or a screenshot —
+  rotate it (Roll/Revoke in the same panel) if it ever leaks.
+
+## 3. Lock down auth
+
+**Authentication → Sign In / Providers:**
+- **Email provider: ON.** Without this, no one — including admins — can sign
+  in with a password.
+- **User Signups → "Allow new users to sign up": OFF.** Without this, anyone
+  who finds `/admin/login` can register themselves as an admin.
+
+These look contradictory but aren't: email login works, self-registration
+doesn't. Admin accounts are created by hand instead — see step 5.
+
+## 4. Create the private receipts bucket
+
+**Storage → New bucket** → name exactly `receipts` → **Public: OFF** →
+create. If it shows a "Public" badge, payment screenshots are readable by
+anyone with the URL — fix this before any real submission.
+
+## 5. Creating an admin account
+
+**Authentication → Users → Add user** → email + password → tick **Auto
+Confirm User**. Repeat for each admin/volunteer who needs to review receipts
+or run the scanner.
+
+## 6. Apply the schema
+
+There is no Docker and no linked Supabase CLI on the dev machine, so
+migrations are pasted by hand rather than run via `supabase db push`:
+
+1. Open **SQL Editor** in the dashboard.
+2. Paste the contents of `supabase/migrations/0001_init.sql`, run it.
+3. Verify the core anti-fraud constraint is live — this should **fail**:
+   ```sql
+   insert into registrations (full_name, year_level, section, email,
+     gcash_reference, receipt_path, amount, status, ticket_code)
+   values ('Test Student', '3rd year', 'B', 't@example.com',
+     '1234567890123', 'x.jpg', 35000, 'approved', null);
+   ```
+   Expected: `violates check constraint "ticket_code_matches_status"`. That
+   error is correct — it proves an approved ticket can't exist without a
+   scannable code.
+
+Any future migration file added under `supabase/migrations/` gets applied
+the same way: paste, run.
+
+## Before launch
+
+Placeholder values that must be replaced before real money moves:
+
+- [ ] Everything in `src/lib/config/event.ts` — name, date, venue, price,
+      the GCash payee name and number
+- [ ] `public/gcash-qr.png` — currently encodes a placeholder message, not a
+      real payable QR
+- [ ] Confirm the GCash account's wallet and monthly receiving limits can
+      handle the expected sales volume before tickets go on sale
