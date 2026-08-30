@@ -81,6 +81,13 @@ export async function submitRegistration(
     };
   }
 
+  // TEMPORARY diagnostic — investigating a report that first submissions
+  // silently fail. Remove once confirmed. Logs to the server console only.
+  console.log(
+    "[checkout] honeypot raw value:",
+    JSON.stringify(formData.get(HONEYPOT_FIELD)),
+  );
+
   // A bot filled the hidden field. Report success so it does not learn why,
   // but write nothing. Values are still echoed back in case a real person's
   // browser extension tripped this by mistake.

@@ -14,7 +14,7 @@ type DiscordEmbed = {
   title: string;
   url?: string;
   color: number;
-  fields: { name: string; value: string; inline?: boolean }[];
+  fields: { name: string; value: string }[];
   footer: { text: string };
   timestamp: string;
 };
@@ -34,6 +34,12 @@ export function hexToDiscordColor(hex: string): number {
  * A rich embed reads far better than a plain-text ping on a phone
  * notification — structured fields, a colored bar matching the event
  * theme, and a clickable title straight to the review queue.
+ *
+ * Fields are stacked (no `inline`), not side by side: Discord's inline
+ * layout wraps unpredictably once a name or section is long — three fields
+ * fit on one row only as long as none of them are, which real data won't
+ * guarantee. A single column stays legible regardless of content length,
+ * and reads better on the phone-sized Discord client this is mostly seen on.
  */
 export function buildRegistrationPayload(
   input: RegistrationSummary,
@@ -42,13 +48,12 @@ export function buildRegistrationPayload(
     title: "New registration waiting for review",
     color: hexToDiscordColor(THEME.colors.accent),
     fields: [
-      { name: "Student", value: input.fullName, inline: true },
+      { name: "Student", value: input.fullName },
       {
         name: "Year & Section",
         value: `${input.yearLevel} · Section ${input.section}`,
-        inline: true,
       },
-      { name: "Amount", value: formatPeso(input.amountCentavos), inline: true },
+      { name: "Amount", value: formatPeso(input.amountCentavos) },
       { name: "GCash reference", value: `\`${input.gcashReference}\`` },
     ],
     footer: { text: EVENT.name },
