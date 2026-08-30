@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/* Keep in sync with src/lib/config/theme.ts.
+   Tailwind v4 needs these at build time, so the values live in both places.
+
+   Single-theme by choice: the sand ground and clay accent are the event's
+   identity, so there is no dark-mode variant to drift out of sync. */
+@theme inline {
+  --color-accent: #c2481f;
+  --color-accent-2: #e39824;
+  --color-accent-3: #7e8b5f;
+  --color-deep: #3b2136;
+  --color-ground: #f2e3cb;
+  --color-ink: #2e1d16;
+
+  /* The --font-anton and --font-dm-sans variables come from next/font,
+     wired up in src/app/layout.tsx. */
+  --font-display: var(--font-anton), "Archivo Black", sans-serif;
+  --font-body: var(--font-dm-sans), "Segoe UI", sans-serif;
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
