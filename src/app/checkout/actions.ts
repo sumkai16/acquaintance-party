@@ -4,7 +4,16 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { EVENT } from "@/lib/config/event";
 import { checkoutSchema } from "@/lib/registrations/schema";
-import { createRegistration } from "@/lib/registrations/queries";
+import {
+  HONEYPOT_FIELD,
+  isHoneypotTripped,
+  isThrottled,
+  throttleWindowStart,
+} from "@/lib/registrations/abuse";
+import {
+  countRecentByEmail,
+  createRegistration,
+} from "@/lib/registrations/queries";
 import { adminClient } from "@/lib/supabase/admin";
 
 export type FormState = {
@@ -38,6 +47,25 @@ export async function submitRegistration(
       status: "error",
       message: "Check the highlighted fields.",
       fieldErrors,
+    };
+  }
+
+  // A bot filled the hidden field. Report success so it does not learn why,
+  // but write nothing.
+  if (isHoneypotTripped(formData.get(HONEYPOT_FIELD))) {
+    return { status: "idle" };
+  }
+
+  const recent = await countRecentByEmail(
+    parsed.data.email,
+    throttleWindowStart(new Date()),
+  );
+  if (isThrottled(recent)) {
+    return {
+      status: "error",
+      message:
+        "You have submitted several times in the last few minutes. " +
+        "Wait a moment before trying again, or message an organiser for help.",
     };
   }
 

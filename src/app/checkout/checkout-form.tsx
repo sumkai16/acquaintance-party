@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { HONEYPOT_FIELD } from "@/lib/registrations/abuse";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { submitRegistration, type FormState } from "./actions";
 
@@ -15,7 +16,16 @@ export function CheckoutForm() {
   const errors = state.fieldErrors ?? {};
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form action={action} className="relative flex flex-col gap-5">
+      {/* Hidden from people, irresistible to bots. Not display:none — some
+          bots skip those. Off-screen, no tab stop, no visible label. */}
+      <div
+        aria-hidden="true"
+        className="absolute left-[-9999px] top-0 h-0 overflow-hidden"
+      >
+        <input type="text" name={HONEYPOT_FIELD} tabIndex={-1} autoComplete="off" />
+      </div>
+
       {state.message ? (
         <p
           role="alert"

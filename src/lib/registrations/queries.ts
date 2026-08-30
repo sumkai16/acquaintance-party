@@ -71,6 +71,44 @@ export async function findByReference(
   return (data as Registration[]) ?? [];
 }
 
+/** How many times this email has submitted since `sinceIso`. */
+export async function countRecentByEmail(
+  email: string,
+  sinceIso: string,
+): Promise<number> {
+  const { count } = await adminClient()
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email)
+    .gte("created_at", sinceIso);
+
+  return count ?? 0;
+}
+
+/**
+ * Finds registrations by partial name or email, for a student at the door
+ * who has lost their ticket link. Capped at 50 so a one-letter search cannot
+ * drag the whole table down mid-event.
+ */
+export async function searchRegistrations(query: string): Promise<Registration[]> {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) return [];
+
+  // Escape PostgREST's pattern wildcards and its comma/parenthesis
+  // separators so a search for "a,b" cannot break out of the filter.
+  const safe = trimmed.replace(/[%_,()\\]/g, "");
+  if (!safe) return [];
+
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  return (data as Registration[]) ?? [];
+}
+
 /**
  * A short-lived URL for a receipt image. The bucket is private, so this is the
  * only way an admin sees the file, and the link dies in ten minutes.
