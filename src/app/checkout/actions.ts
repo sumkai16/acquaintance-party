@@ -188,6 +188,7 @@ export async function submitRegistration(
       yearLevel: parsed.data.yearLevel,
       section: parsed.data.section,
       amountCentavos: EVENT.ticketPriceCentavos,
+      gcashReference: parsed.data.gcashReference,
     }),
   );
 

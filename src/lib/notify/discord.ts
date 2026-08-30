@@ -1,5 +1,5 @@
 import "server-only";
-import { buildRegistrationMessage, type RegistrationSummary } from "./discord-message";
+import { buildRegistrationPayload, type RegistrationSummary } from "./discord-message";
 
 /**
  * Best-effort Discord ping when a new registration needs review.
@@ -22,9 +22,7 @@ export async function notifyNewRegistration(
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        content: buildRegistrationMessage({ ...registration, reviewUrl }),
-      }),
+      body: JSON.stringify(buildRegistrationPayload({ ...registration, reviewUrl })),
     });
     if (!response.ok) {
       console.error("Discord webhook responded with", response.status);
