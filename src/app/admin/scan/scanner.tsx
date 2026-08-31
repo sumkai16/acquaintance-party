@@ -35,6 +35,7 @@ export function Scanner() {
   // Field-debugging aid: confirms the decode loop is actually running and
   // which engine is in use, from a screenshot, without needing device access.
   const [diag, setDiag] = useState<DecoderDiagnostics | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // The label identifies this phone in the scan record, so a double-scan alert
   // on the dashboard can name which two doors saw the same ticket. Read after
@@ -215,10 +216,23 @@ export function Scanner() {
       <div className="absolute inset-x-0 top-0 flex flex-col gap-1 bg-black/60 p-3 text-sm text-white">
         <div className="flex justify-between gap-2">
           <span>{deviceLabel}</span>
-          <span>
-            {queued > 0 ? `${queued} waiting to sync` : "All scans synced"}
-            {manifestAt ? "" : " · no manifest yet"}
-          </span>
+          <div className="flex items-center gap-3">
+            <span>
+              {queued > 0 ? `${queued} waiting to sync` : "All scans synced"}
+              {manifestAt ? "" : " · no manifest yet"}
+            </span>
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={() => {
+                setRefreshing(true);
+                void refreshManifest().finally(() => setRefreshing(false));
+              }}
+              className="rounded border border-white/40 px-2 py-1 text-xs disabled:opacity-50"
+            >
+              {refreshing ? "Refreshing…" : "Refresh tickets"}
+            </button>
+          </div>
         </div>
         {diag ? (
           <div className="text-xs text-white/70">
