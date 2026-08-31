@@ -13,27 +13,51 @@ export type ScanRow = {
   result: ScanResult;
 };
 
-/** Every approved ticket, in the minimal shape the scanner caches. */
+/**
+ * Every approved ticket, in the minimal shape the scanner caches, with the
+ * earliest known "ok" scan time per ticket so a second device can recognize a
+ * ticket another device already admitted — as long as both are online.
+ */
 export async function approvedManifest(): Promise<Manifest> {
-  const { data, error } = await adminClient()
-    .from("registrations")
-    .select("id, ticket_code, full_name, year_level, section")
-    .eq("status", "approved")
-    .not("ticket_code", "is", null);
+  const [registrations, checkIns] = await Promise.all([
+    adminClient()
+      .from("registrations")
+      .select("id, ticket_code, full_name, year_level, section")
+      .eq("status", "approved")
+      .not("ticket_code", "is", null),
+    adminClient()
+      .from("scans")
+      .select("registration_id, scanned_at")
+      .eq("result", "ok")
+      .not("registration_id", "is", null),
+  ]);
 
-  if (error) {
-    console.error("approvedManifest failed", error);
+  if (registrations.error) {
+    console.error("approvedManifest failed", registrations.error);
     throw new Error("Could not load the ticket manifest.");
+  }
+  if (checkIns.error) {
+    console.error("approvedManifest check-in lookup failed", checkIns.error);
+    throw new Error("Could not load the ticket manifest.");
+  }
+
+  const earliestCheckIn = new Map<string, string>();
+  for (const row of checkIns.data ?? []) {
+    const id = row.registration_id as string;
+    const at = row.scanned_at as string;
+    const existing = earliestCheckIn.get(id);
+    if (!existing || at < existing) earliestCheckIn.set(id, at);
   }
 
   return {
     generatedAt: new Date().toISOString(),
-    entries: (data ?? []).map((row) => ({
+    entries: (registrations.data ?? []).map((row) => ({
       code: row.ticket_code as string,
       registrationId: row.id as string,
       fullName: row.full_name as string,
       yearLevel: row.year_level as string,
       section: row.section as string,
+      checkedInAt: earliestCheckIn.get(row.id as string) ?? null,
     })),
   };
 }

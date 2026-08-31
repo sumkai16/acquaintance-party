@@ -10,6 +10,7 @@ const manifest: Manifest = {
       fullName: "Maria Clara Santos",
       yearLevel: "3rd year",
       section: "BSIT-3B",
+      checkedInAt: null,
     },
     {
       code: "V0GW3DP59EZF",
@@ -17,6 +18,7 @@ const manifest: Manifest = {
       fullName: "Juan Dela Cruz",
       yearLevel: "2nd year",
       section: "BSIT-2A",
+      checkedInAt: null,
     },
   ],
 };

@@ -47,6 +47,21 @@ export function Scanner() {
     if (saved) setDeviceLabel(saved);
   }, []);
 
+  // Learns about admissions from OTHER devices, as long as this one is
+  // online. This is what makes a second device recognize a ticket a first
+  // device already let through within the same manifest-refresh window -
+  // without it, cross-device duplicate detection would never work at all,
+  // not even with a perfect connection.
+  const absorbCheckIns = useCallback(async (manifest: Manifest) => {
+    for (const entry of manifest.entries) {
+      if (!entry.checkedInAt) continue;
+      const existing = scannedRef.current.get(entry.code);
+      if (existing && existing <= entry.checkedInAt) continue;
+      scannedRef.current.set(entry.code, entry.checkedInAt);
+      await markScanned(entry.code, entry.checkedInAt);
+    }
+  }, []);
+
   const refreshManifest = useCallback(async () => {
     try {
       const response = await fetch("/api/scan/manifest");
@@ -54,11 +69,12 @@ export function Scanner() {
       const manifest: Manifest = await response.json();
       await saveManifest(manifest);
       indexRef.current = buildIndex(manifest);
+      await absorbCheckIns(manifest);
       setManifestAt(manifest.generatedAt);
     } catch {
       // Offline. The cached manifest loaded at startup is still authoritative.
     }
-  }, []);
+  }, [absorbCheckIns]);
 
   const flushQueue = useCallback(async () => {
     const batch = await pendingScans();
@@ -83,17 +99,18 @@ export function Scanner() {
   useEffect(() => {
     void (async () => {
       const cached = await loadManifest();
+      scannedRef.current = await loadScannedCodes();
       if (cached) {
         indexRef.current = buildIndex(cached);
         setManifestAt(cached.generatedAt);
+        await absorbCheckIns(cached);
       }
-      scannedRef.current = await loadScannedCodes();
       setQueued(await pendingCount());
       setReady(true);
       void refreshManifest();
       void flushQueue();
     })();
-  }, [refreshManifest, flushQueue]);
+  }, [refreshManifest, flushQueue, absorbCheckIns]);
 
   useEffect(() => {
     const manifestTimer = setInterval(refreshManifest, MANIFEST_REFRESH_MS);
