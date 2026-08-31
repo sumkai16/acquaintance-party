@@ -213,6 +213,8 @@ export function Scanner() {
         )}
       </div>
 
+      {!result && !cameraError ? <GuideFrame /> : null}
+
       {cameraError ? (
         <p
           role="alert"
@@ -224,6 +226,26 @@ export function Scanner() {
 
       {result ? <ResultPanel resolution={result} /> : null}
     </main>
+  );
+}
+
+/**
+ * A fixed "aim here" box — not tied to the detector's actual read position.
+ * Mapping the detector's video-pixel coordinates onto the rendered
+ * `object-cover` video element correctly is easy to get subtly wrong, and a
+ * static target does what a volunteer needs: know where to point the phone.
+ */
+function GuideFrame() {
+  const corner = "absolute h-8 w-8 border-white";
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      <div className="relative h-64 w-64">
+        <div className={`${corner} top-0 left-0 border-t-4 border-l-4`} />
+        <div className={`${corner} top-0 right-0 border-t-4 border-r-4`} />
+        <div className={`${corner} bottom-0 left-0 border-b-4 border-l-4`} />
+        <div className={`${corner} bottom-0 right-0 border-b-4 border-r-4`} />
+      </div>
+    </div>
   );
 }
 
