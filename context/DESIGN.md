@@ -39,7 +39,7 @@ what each screen is for:
 | Landing, checkout | Full theme | The marketing surface — this is where the visual direction does its work |
 | Ticket page | Themed header, **plain white QR card** | See §4 |
 | Raffle projector (plan 3) | Full theme, own dark palette | Runs after dark in a dim room — a sand ground glares; needs a deliberate dark variant, not the public palette |
-| Door scanner (plan 2) | Semantic color only, no theme accent | Read at arm's length, in the dark, by a volunteer under time pressure |
+| Door scanner | Semantic color only, no theme accent | Read at arm's length, in the dark, by a volunteer under time pressure |
 | Admin review, search, dashboard | Neutral, dense | Someone is working through hundreds of records — decoration slows that down |
 
 ## 4. The QR rule — camera constraint, not style
@@ -57,15 +57,21 @@ theme tokens. No `font-display`, no `--color-accent` on admin surfaces. Any
 new admin page inherits this from the layout automatically; don't re-theme
 one on purpose.
 
-When the scanner is built (plan 2), its three states use **green / red /
-amber only**:
+**Implemented:** `src/app/admin/scan/scanner.tsx` fills the whole screen with
+one of three states, semantic color only, **green / red / amber**:
 - Green — valid, let them in, name + section shown so a volunteer can
   spot-check against a student ID
 - Red — duplicate or invalid, with the specific reason and a next action
   ("already scanned at 8:14 PM", "search by name instead")
+- Amber — a camera or permission failure, not a scan result
 - Never the theme's `--color-accent` for these states — semantic color must
   stay legible and unambiguous independent of whatever the public theme ends
   up being.
+
+A static white corner-bracket guide frame overlays the camera view — not
+tied to the detector's actual read position, since mapping the detector's
+video-pixel coordinates onto the rendered `object-cover` video element is
+easy to get subtly wrong. It just tells the volunteer where to aim.
 
 ## 6. Accessibility targets
 - Contrast: 4.5:1 for body text, 3:1 for large display type.
@@ -75,8 +81,8 @@ amber only**:
   `focus:outline-accent` pattern in `checkout-form.tsx`).
 
 ## 7. What's actually built vs. planned
-Landing (plain, not yet polished), checkout, and admin login + review queue
-exist and follow this system. The ticket page (QR generation is done; the
-page that renders it is not), admin search, the scanner, and the raffle
-projector are specced here but not yet built — see
-`docs/superpowers/plans/2026-08-30-sell-and-verify.md` for what's done.
+Landing (plain, not yet polished), checkout, ticket page, admin login,
+review queue, admin search, the door scanner, and the attendance dashboard
+all exist and follow this system — plans 1 and 2 are both done and verified
+by hand. Only the raffle projector remains specced but not built — see
+`docs/superpowers/plans/` for what's done.

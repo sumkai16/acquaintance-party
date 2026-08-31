@@ -20,9 +20,11 @@
   building `src/lib/notify/`: the Discord message text and the fetch call
   were one file, and the test suite couldn't even load it. Fixed by splitting
   into `discord-message.ts` (pure, tested) and `discord.ts` (`server-only`,
-  the network call). Follow that split for anything similar — plan 2's scan
-  resolution and plan 3's raffle draw both mix privileged reads with logic
-  worth testing in isolation.
+  the network call). Followed the same split building plan 2:
+  `src/lib/scans/resolve.ts` and `report.ts` are pure and tested, while
+  `queries.ts` (`server-only`) is the only file touching Supabase. Plan 3's
+  raffle draw will mix privileged reads with logic worth testing the same
+  way.
 
 ## Plan before implementing
 No feature or non-trivial modification starts with an edit. Investigate the

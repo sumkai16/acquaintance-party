@@ -8,7 +8,9 @@
 - Auth: Supabase Auth, email/password, admin-only (public signup disabled)
 - Testing: Vitest, unit tests on pure logic only — no browser test runner
 - Hosting: Vercel (required for HTTPS — the door scanner needs camera access,
-  which browsers block on insecure origins)
+  which browsers block on insecure origins). Production is
+  `https://it2026.vercel.app` (renamed from `acquaintance-party.vercel.app`,
+  which no longer resolves).
 
 ## 2. High-level overview
 Server-rendered Next.js App Router. Every public write (checkout, receipt
@@ -41,13 +43,16 @@ Thin routes, fat `src/lib/`:
 | Client | File | Key | Used from |
 |---|---|---|---|
 | Service role | `src/lib/supabase/admin.ts` | `SUPABASE_SERVICE_ROLE_KEY`, bypasses RLS | Server actions, `src/lib/registrations/queries.ts` only |
-| Session-aware | `src/lib/supabase/server.ts` | anon key + admin's session cookie | Admin Server Components, admin server actions that need `auth.getUser()` |
+| Session-aware | `src/lib/supabase/server.ts` | anon key + admin's session cookie | Admin Server Components, admin server actions, and the `/api/scan/*` route handlers, all calling `auth.getUser()` to gate access |
 | Browser (anon) | `src/lib/supabase/browser.ts` | anon key, no elevated access | `/admin/login` only |
 
 `src/proxy.ts` (Next 16's rename of `middleware.ts`) refreshes the admin
-session cookie on every `/admin/*` request and sets `x-pathname`, which
-`src/app/admin/layout.tsx` reads to let `/admin/login` through its own auth
-gate without a redirect loop.
+session cookie on every `/admin/*` and `/api/scan/*` request and sets
+`x-pathname`, which `src/app/admin/layout.tsx` reads to let `/admin/login`
+through its own auth gate without a redirect loop. The proxy only keeps the
+cookie fresh — `/api/scan/manifest` and `/api/scan/sync` verify the session
+themselves (`serverClient().auth.getUser()`) rather than trusting it, since
+route handlers don't go through `admin/layout.tsx`'s gate.
 
 ## 5. Why no local Supabase / no CLI-driven migrations
 No Docker on this machine, so `supabase start` / `db reset` are unavailable.
@@ -74,30 +79,47 @@ src/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
 │   │   ├── login/
 │   │   ├── review/               # approve/reject queue
-│   │   └── registrations/        # search, for lost ticket links
+│   │   ├── registrations/        # search, for lost ticket links
+│   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
+│   │   └── dashboard/            # attendance + double-scan alerts
+│   │       └── export/route.ts   # GET, streams .xlsx
+│   ├── api/scan/
+│   │   ├── manifest/route.ts     # GET, authenticated — approved tickets + check-in state
+│   │   └── sync/route.ts         # POST, authenticated, idempotent on client-generated id
 │   └── globals.css               # @theme tokens — see context/DESIGN.md
 ├── lib/
 │   ├── config/
 │   │   ├── event.ts               # event details — the only file to edit
 │   │   └── theme.ts               # colors/fonts — the only file to edit
 │   ├── tickets/
-│   │   ├── code.ts                # generateTicketCode, formatTicketCode
+│   │   ├── code.ts                # generateTicketCode, formatTicketCode, normalizeScannedCode
 │   │   ├── reference.ts           # GCash reference normalize/validate
 │   │   └── qr.ts                  # ticketQrDataUrl
 │   ├── registrations/
 │   │   ├── schema.ts              # checkoutSchema (Zod)
 │   │   ├── abuse.ts               # submission throttle (no honeypot — see RULES.md)
 │   │   └── queries.ts             # all DB reads/writes
+│   ├── scans/
+│   │   ├── manifest.ts            # Manifest / ManifestEntry types
+│   │   ├── resolve.ts             # pure: ok/duplicate/invalid against a manifest
+│   │   ├── report.ts              # pure: attendance summary, cross-device double-scan detection
+│   │   ├── queries.ts             # server-only: manifest read, scan upsert, dashboard reads
+│   │   ├── store.ts               # client-only: IndexedDB manifest cache + sync queue
+│   │   └── camera.ts              # client-only: BarcodeDetector, @zxing/browser fallback
 │   ├── notify/
 │   │   ├── discord-message.ts     # pure formatting, no server-only import
 │   │   └── discord.ts             # notifyNewRegistration, server-only
 │   └── supabase/
 │       ├── admin.ts | server.ts | browser.ts
 │       └── types.ts
-└── proxy.ts                       # Next 16 middleware rename
+└── proxy.ts                       # Next 16 middleware rename; matches /admin/* and /api/scan/*
 supabase/migrations/                # applied by hand, see docs/setup/supabase.md
 ```
 
 ## 7. Scheduled/background work
-None yet. Plan 2 (door scanner, offline sync) and plan 3 (Google Sheets sync,
-raffle) are not yet built — see `docs/superpowers/plans/`.
+Still no server-side cron or queue. The scanner's "background work" is
+entirely client-side: `src/app/admin/scan/scanner.tsx` runs two
+`setInterval` loops (manifest refresh every 60s, sync-queue retry every 15s)
+plus a manual refresh button, all just repeated `fetch` calls against
+`/api/scan/*` — nothing scheduled on the server. Plan 3 (Google Sheets sync,
+raffle) is not yet built — see `docs/superpowers/plans/`.

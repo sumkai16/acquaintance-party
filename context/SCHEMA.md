@@ -48,8 +48,8 @@ purchasing means there's no separate orders table.
 ## scans
 
 Append-only log, deliberately separate from a boolean on `registrations` —
-offline scanners (plan 2) sync late, and reconciling what actually happened
-at the door needs the full history, not a single flag that the last sync
+offline scanners sync late, and reconciling what actually happened at the
+door needs the full history, not a single flag that the last sync
 overwrites.
 
 | Column | Type | Constraints | Notes |
@@ -62,8 +62,18 @@ overwrites.
 | device_label | text | NOT NULL | Per-scanner identifier, e.g. `door-1` |
 | result | `scan_result` enum | NOT NULL | `ok` \| `duplicate` \| `invalid` |
 
-Not yet written to by any code — `scans` exists in the schema ahead of the
-scanner build (plan 2) so the table shape is settled before that work starts.
+Written by `recordScans()` in `src/lib/scans/queries.ts`, called from
+`POST /api/scan/sync`. The client generates each row's `id` (a UUID), and the
+insert is an `upsert(..., { onConflict: "id", ignoreDuplicates: true })` —
+the scanner retries a queued batch blindly on a 15s interval, so a re-sync
+must be a no-op, not a duplicate row or an error.
+
+`approvedManifest()` also *reads* this table — for every approved
+registration it finds the earliest `scanned_at` among rows with
+`result = 'ok'` and attaches it to that ticket's manifest entry as
+`checkedInAt`. This is what lets a second device recognize a ticket another
+device already admitted, as long as both are online; a real signal blackout
+is the one case it can't cover.
 
 ## Row-level security
 

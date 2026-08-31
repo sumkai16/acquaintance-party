@@ -46,19 +46,29 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Ticket page with QR
 - [x] Submission throttle (honeypot tried and removed — see §6)
 - [x] Admin search (find a lost ticket by name/email)
-- [ ] Door scanner — offline-tolerant, multi-device
-- [ ] Attendance dashboard + `.xlsx` export
+- [x] Door scanner — offline-tolerant, multi-device
+- [x] Attendance dashboard + `.xlsx` export
 - [ ] Google Sheets live sync
 - [ ] Landing page visual polish
 - [ ] Two-stage raffle wheel (shortlist → spin), server-side draw
 
-Status as of this file's writing: **plan 1 of 3 ("sell and verify") is
-code-complete, 11 of 11 tasks.** Every task was verified with automated
-tests and scripted checks against the live database, but **no task has yet
-been clicked through by hand in a browser** — that pass, including scanning
-a real approved ticket's QR with an actual phone camera, is still
-outstanding before plan 1 can be called done. See `docs/superpowers/plans/`
-for the authoritative task list and what each plan covers.
+Status as of this file's writing: **plan 1 and plan 2 of 3 are both done and
+verified** — plan 1 ("sell and verify") by hand-clicking checkout → review →
+ticket → QR with a real phone camera; plan 2 ("door operations") by a
+two-phone rehearsal against the live production deployment, not just
+localhost. See `docs/superpowers/plans/` for the authoritative task lists.
+
+Plan 2's rehearsal caught two real bugs that automated tests and a
+single-device test couldn't have: the manifest only ever carried ticket
+data, never telling a device what *other* devices had already scanned — so
+cross-device duplicate detection silently never worked, not even with a
+perfect connection. Fixed by having the manifest also carry each ticket's
+earliest known check-in time, which the scanner absorbs into its local
+duplicate-check state on every refresh. Second, a ticket approved after a
+scanner's last manifest fetch read as "not a valid ticket" until the next
+60-second refresh — fixed with a manual "Refresh tickets" button, since
+admins approving stragglers while people queue at the door is a real event
+scenario, not just a test artifact.
 
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
@@ -73,11 +83,16 @@ without a schema rewrite, none needed for this event.
   timeline being tight, only on which pieces are load-bearing at the door.
 - **No Docker, no local Supabase** — migrations are pasted by hand into the
   hosted project (`docs/setup/supabase.md`), not pushed via CLI.
-- **Unreliable venue wifi** — the scanner must work offline and sync later,
-  which means cross-device duplicate prevention isn't perfect in a blackout.
-  Accepted tradeoff — see the spec's §Scanner.
+- **Unreliable venue wifi** — the scanner must work offline and sync later.
+  Cross-device duplicate detection works as long as both devices have
+  signal (a device learns what others scanned via its manifest refresh, or
+  immediately via the manual refresh button) — it only fails during an
+  actual signal blackout, which is the genuinely accepted tradeoff. See the
+  spec's §Scanner and §6 in `docs/superpowers/plans/2026-08-31-door-operations.md`.
 - **HTTPS required** — browser camera access for the scanner is blocked on
-  insecure origins. Deploy to Vercel before starting plan 2.
+  insecure origins. Production is on Vercel at `https://it2026.vercel.app`
+  (renamed from `acquaintance-party.vercel.app`, which no longer resolves —
+  update any shared links).
 - **No hidden-field honeypot on checkout.** One was built and removed the
   same day: browser/extension autofill silently filled the off-screen field
   with a real name on a real student's first submission, killing it with no
@@ -90,3 +105,12 @@ A student can pay, submit details + receipt, land on a permanent ticket
 link. A reused GCash reference is rejected with no orphaned file left
 behind. An admin can review, approve, or reject with a reason. An approved
 student's QR decodes on a real phone camera to their bare ticket code.
+
+## 8. Success criteria (plan 2)
+Two phones, both signed in and running the scanner, can admit and reject
+tickets with no network at all. Putting both phones offline and scanning the
+same ticket on each is expected to double-admit — that is the accepted
+tradeoff — and the dashboard's double-scan panel names the ticket and both
+doors afterward. With both phones online, scanning the same ticket twice
+across devices is caught as a duplicate. An admin can download a `.xlsx`
+covering every scan from every device.
