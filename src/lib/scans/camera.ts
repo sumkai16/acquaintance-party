@@ -1,3 +1,9 @@
+export type DecoderDiagnostics = {
+  engine: "barcode-detector" | "zxing";
+  framesTried: number;
+  lastError: string | null;
+};
+
 /**
  * Starts decoding QR codes from a live camera stream and returns a stop
  * function.
@@ -5,10 +11,14 @@
  * Native `BarcodeDetector` where it exists (Android Chrome) — it is faster and
  * costs no bundle weight. `@zxing/browser` everywhere else, which in practice
  * means every iPhone, since Safari has never shipped BarcodeDetector.
+ *
+ * `onDiag` is optional and exists to answer "is the camera loop even running"
+ * from a screenshot during field testing, without needing device access.
  */
 export async function startDecoder(
   video: HTMLVideoElement,
   onCode: (code: string) => void,
+  onDiag?: (diag: DecoderDiagnostics) => void,
 ): Promise<() => void> {
   const stream = await navigator.mediaDevices.getUserMedia({
     // The back camera. Without this a laptop or a front-facing phone opens the
@@ -34,15 +44,22 @@ export async function startDecoder(
   if (Detector) {
     const detector = new Detector({ formats: ["qr_code"] });
     let running = true;
+    let framesTried = 0;
 
     const tick = async () => {
       if (!running) return;
       try {
         const [first] = await detector.detect(video);
+        framesTried++;
+        onDiag?.({ engine: "barcode-detector", framesTried, lastError: null });
         if (first?.rawValue) onCode(first.rawValue);
-      } catch {
-        // A dropped frame is not an error worth surfacing; the next one lands
-        // ~100ms later. Anything fatal shows up as the stream ending instead.
+      } catch (err) {
+        framesTried++;
+        onDiag?.({
+          engine: "barcode-detector",
+          framesTried,
+          lastError: err instanceof Error ? err.message : String(err),
+        });
       }
       if (running) setTimeout(tick, 100);
     };
@@ -55,9 +72,16 @@ export async function startDecoder(
   }
 
   const { BrowserQRCodeReader } = await import("@zxing/browser");
+  let framesTried = 0;
   const controls = await new BrowserQRCodeReader().decodeFromVideoElement(
     video,
-    (result) => {
+    (result, err) => {
+      framesTried++;
+      onDiag?.({
+        engine: "zxing",
+        framesTried,
+        lastError: result ? null : (err?.message ?? null),
+      });
       if (result) onCode(result.getText());
     },
   );

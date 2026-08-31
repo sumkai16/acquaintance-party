@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { buildIndex, resolveScan, type Resolution } from "@/lib/scans/resolve";
 import type { Manifest, ManifestEntry } from "@/lib/scans/manifest";
-import { startDecoder } from "@/lib/scans/camera";
+import { startDecoder, type DecoderDiagnostics } from "@/lib/scans/camera";
 import {
   clearScans,
   loadManifest,
@@ -32,6 +32,9 @@ export function Scanner() {
   const [result, setResult] = useState<Resolution | null>(null);
   const [queued, setQueued] = useState(0);
   const [manifestAt, setManifestAt] = useState<string | null>(null);
+  // Field-debugging aid: confirms the decode loop is actually running and
+  // which engine is in use, from a screenshot, without needing device access.
+  const [diag, setDiag] = useState<DecoderDiagnostics | null>(null);
 
   // The label identifies this phone in the scan record, so a double-scan alert
   // on the dashboard can name which two doors saw the same ticket. Read after
@@ -143,7 +146,7 @@ export function Scanner() {
     if (!ready || !deviceLabel || !videoRef.current) return;
     let stop: (() => void) | undefined;
 
-    startDecoder(videoRef.current, (code) => void handleCode(code))
+    startDecoder(videoRef.current, (code) => void handleCode(code), setDiag)
       .then((s) => (stop = s))
       .catch(() =>
         setCameraError(
@@ -192,12 +195,22 @@ export function Scanner() {
     <main className="relative min-h-screen bg-black">
       <video ref={videoRef} muted className="h-screen w-full object-cover" />
 
-      <div className="absolute inset-x-0 top-0 flex justify-between gap-2 bg-black/60 p-3 text-sm text-white">
-        <span>{deviceLabel}</span>
-        <span>
-          {queued > 0 ? `${queued} waiting to sync` : "All scans synced"}
-          {manifestAt ? "" : " · no manifest yet"}
-        </span>
+      <div className="absolute inset-x-0 top-0 flex flex-col gap-1 bg-black/60 p-3 text-sm text-white">
+        <div className="flex justify-between gap-2">
+          <span>{deviceLabel}</span>
+          <span>
+            {queued > 0 ? `${queued} waiting to sync` : "All scans synced"}
+            {manifestAt ? "" : " · no manifest yet"}
+          </span>
+        </div>
+        {diag ? (
+          <div className="text-xs text-white/70">
+            {diag.engine} · {diag.framesTried} frames tried
+            {diag.lastError ? ` · last error: ${diag.lastError}` : ""}
+          </div>
+        ) : (
+          <div className="text-xs text-white/70">decoder not started yet</div>
+        )}
       </div>
 
       {cameraError ? (
