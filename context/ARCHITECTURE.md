@@ -81,6 +81,7 @@ src/
 │   │   ├── review/               # approve/reject queue
 │   │   ├── registrations/        # search, for lost ticket links
 │   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
+│   │   ├── raffle/               # projector: page.tsx + actions.ts + client stages
 │   │   └── dashboard/            # attendance + double-scan alerts
 │   │       └── export/route.ts   # GET, streams .xlsx
 │   ├── api/scan/
@@ -106,6 +107,13 @@ src/
 │   │   ├── queries.ts             # server-only: manifest read, scan upsert, dashboard reads
 │   │   ├── store.ts               # client-only: IndexedDB manifest cache + sync queue
 │   │   └── camera.ts              # client-only: BarcodeDetector, @zxing/browser fallback
+│   ├── raffle/
+│   │   ├── types.ts               # RaffleEntrant / RaffleDrawRow
+│   │   ├── draw.ts                # pure: crypto shortlist + winner, exclusions
+│   │   └── queries.ts             # server-only: eligible pool, record/read draws
+│   ├── sheets/
+│   │   ├── row.ts                 # pure: one scan as a row of cells
+│   │   └── sheets.ts              # publishScans, server-only
 │   ├── notify/
 │   │   ├── discord-message.ts     # pure formatting, no server-only import
 │   │   └── discord.ts             # notifyNewRegistration, server-only
@@ -121,5 +129,11 @@ Still no server-side cron or queue. The scanner's "background work" is
 entirely client-side: `src/app/admin/scan/scanner.tsx` runs two
 `setInterval` loops (manifest refresh every 60s, sync-queue retry every 15s)
 plus a manual refresh button, all just repeated `fetch` calls against
-`/api/scan/*` — nothing scheduled on the server. Plan 3 (Google Sheets sync,
-raffle) is not yet built — see `docs/superpowers/plans/`.
+`/api/scan/*` — nothing scheduled on the server.
+
+The one piece of server-side background work is the Google Sheets append:
+`POST /api/scan/sync` calls `publishScans` inside Next's `after()`, so it
+runs after the response is already sent and the scanner never waits on
+Google. `after()` specifically, not a bare unawaited promise, which Vercel's
+runtime can kill once the response is flushed. It is best-effort by design —
+see `docs/setup/google-sheets.md`.

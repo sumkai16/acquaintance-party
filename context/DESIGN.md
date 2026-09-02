@@ -23,6 +23,18 @@ Full rationale and the three directions considered:
 | `--color-ground` | `#F2E3CB` | Page background (sand) |
 | `--color-ink` | `#2E1D16` | Body text |
 
+**The Night Set** is a second token group for the raffle projector only, in
+the same two files. It is not a dark mode — no public surface uses it.
+
+| Token | Hex | Role |
+|---|---|---|
+| `--color-night-ground` | `#120B22` | Projector background |
+| `--color-night-deep` | `#1E1240` | Panels, wheel hub |
+| `--color-night-accent` | `#7C3AED` | Wheel slices, rules — clears 3:1 only, so large type only |
+| `--color-night-accent-2` | `#E0339A` | The winner reveal |
+| `--color-night-accent-3` | `#38BDF8` | Third slice tone, so adjacent slices stay distinguishable |
+| `--color-night-ink` | `#F5F3FF` | Body text |
+
 ## 2. Type
 - Display: **Anton** (`--font-display`), self-hosted via `next/font/google`
   in `src/app/layout.tsx`. Used uppercase, for headlines and the event name.
@@ -38,7 +50,7 @@ what each screen is for:
 |---|---|---|
 | Landing, checkout | Full theme | The marketing surface — this is where the visual direction does its work |
 | Ticket page | Themed header, **plain white QR card** | See §4 |
-| Raffle projector (plan 3) | Full theme, own dark palette | Runs after dark in a dim room — a sand ground glares; needs a deliberate dark variant, not the public palette |
+| Raffle projector | Full theme, own dark palette (the Night Set, §1) | Runs after dark in a dim room — a sand ground glares; needs a deliberate dark variant, not the public palette |
 | Door scanner | Semantic color only, no theme accent | Read at arm's length, in the dark, by a volunteer under time pressure |
 | Admin review, search, dashboard | Neutral, dense | Someone is working through hundreds of records — decoration slows that down |
 
@@ -81,8 +93,10 @@ easy to get subtly wrong. It just tells the volunteer where to aim.
   `focus:outline-accent` pattern in `checkout-form.tsx`).
 
 ## 7. What's actually built vs. planned
-Landing (plain, not yet polished), checkout, ticket page, admin login,
-review queue, admin search, the door scanner, and the attendance dashboard
-all exist and follow this system — plans 1 and 2 are both done and verified
-by hand. Only the raffle projector remains specced but not built — see
-`docs/superpowers/plans/` for what's done.
+Every surface in the table above now exists and follows this system: landing
+(polished), checkout, ticket page, admin login, review queue, admin search,
+the door scanner, the attendance dashboard, and the raffle projector.
+
+Plans 1 and 2 are verified by hand. The raffle projector is built but not yet
+rehearsed on a real projector — check its legibility from the back of a room
+before the night, not on a laptop at arm's length.

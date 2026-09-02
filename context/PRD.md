@@ -48,15 +48,27 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Admin search (find a lost ticket by name/email)
 - [x] Door scanner — offline-tolerant, multi-device
 - [x] Attendance dashboard + `.xlsx` export
-- [ ] Google Sheets live sync
-- [ ] Landing page visual polish
-- [ ] Two-stage raffle wheel (shortlist → spin), server-side draw
+- [x] Landing page visual polish
+- [x] Two-stage raffle wheel (shortlist → spin), server-side draw
+- [x] Google Sheets live sync
 
-Status as of this file's writing: **plan 1 and plan 2 of 3 are both done and
-verified** — plan 1 ("sell and verify") by hand-clicking checkout → review →
+Status as of 2026-09-02: **all three plans are written and implemented.**
+Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →
 ticket → QR with a real phone camera; plan 2 ("door operations") by a
 two-phone rehearsal against the live production deployment, not just
-localhost. See `docs/superpowers/plans/` for the authoritative task lists.
+localhost. Plan 3's code is committed but **not yet hand-verified end to
+end** — `0002_raffle.sql` still has to be pasted into the hosted project
+before `/admin/raffle` runs at all, and the raffle wants one rehearsal with
+real checked-in rows on the actual projector. See
+`docs/superpowers/plans/` for the authoritative task lists.
+
+**Plan 3 was built in a different order than the spec's** (landing → raffle
+→ Sheets, not Sheets → landing → raffle). The spec's order was set assuming
+under two weeks of runway, where the last item was the cut candidate. With
+five weeks and ticket sales about to open, the landing page was the only
+item affecting anyone before event day, and the raffle is the largest piece
+and wanted the most testing buffer. Sheets sync went last because it is the
+one item whose loss costs nothing but convenience.
 
 Plan 2's rehearsal caught two real bugs that automated tests and a
 single-device test couldn't have: the manifest only ever carried ticket
