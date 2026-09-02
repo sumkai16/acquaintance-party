@@ -3,7 +3,7 @@ import {
   listPending,
   signedReceiptUrl,
 } from "@/lib/registrations/queries";
-import { ReviewCard } from "./review-card";
+import { ReviewTable } from "./review-table";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Review queue" };
@@ -11,7 +11,7 @@ export const metadata = { title: "Review queue" };
 export default async function ReviewPage() {
   const pending = await listPending();
 
-  const cards = await Promise.all(
+  const rows = await Promise.all(
     pending.map(async (registration) => ({
       registration,
       receiptUrl: await signedReceiptUrl(registration.receipt_path),
@@ -21,7 +21,7 @@ export default async function ReviewPage() {
   );
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-5 px-5 py-10">
+    <main className="mx-auto flex max-w-5xl flex-col gap-5 px-5 py-10">
       <header>
         <h1 className="text-2xl font-semibold">Review queue</h1>
         <p className="text-slate-500">
@@ -31,9 +31,7 @@ export default async function ReviewPage() {
         </p>
       </header>
 
-      {cards.map((card) => (
-        <ReviewCard key={card.registration.id} {...card} />
-      ))}
+      <ReviewTable rows={rows} />
     </main>
   );
 }
