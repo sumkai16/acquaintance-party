@@ -129,12 +129,12 @@ export function CheckoutForm() {
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="rounded bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {pending ? "Submitting…" : "Submit"}
       </button>
 
-      <p className="text-sm text-ink/65">
+      <p className="text-sm text-ink/70">
         We check every payment by hand. Your QR ticket appears on the next page
         once an organiser approves it.
       </p>
@@ -160,7 +160,7 @@ function Field({
       <label htmlFor={name} className="font-semibold">
         {label}
       </label>
-      {hint ? <p className="text-sm text-ink/65">{hint}</p> : null}
+      {hint ? <p className="text-sm text-ink/70">{hint}</p> : null}
       {children}
       {error ? <p className="text-sm font-medium text-accent">{error}</p> : null}
     </div>

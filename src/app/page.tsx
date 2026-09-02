@@ -48,7 +48,7 @@ export default function HomePage() {
 
           <Link
             href="/checkout"
-            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start"
+            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start"
           >
             Get your ticket{" "}
             {/* Its own element so a narrow phone drops the price onto a
@@ -59,7 +59,7 @@ export default function HomePage() {
       </section>
 
       <section className="mx-auto w-full max-w-5xl px-5 py-16">
-        <p className="text-sm uppercase tracking-[0.2em] text-ink/60">
+        <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
           What you get
         </p>
         <h2 className="mt-2 font-display text-4xl uppercase md:text-5xl">
@@ -81,7 +81,7 @@ export default function HomePage() {
 
       <section className="bg-accent-3/15">
         <div className="mx-auto w-full max-w-5xl px-5 py-16">
-          <p className="text-sm uppercase tracking-[0.2em] text-ink/60">
+          <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
             How it works
           </p>
           <h2 className="mt-2 font-display text-4xl uppercase md:text-5xl">
@@ -159,7 +159,7 @@ export default function HomePage() {
 
           <Link
             href="/checkout"
-            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
+            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
           >
             Get your ticket{" "}
             {/* Its own element so a narrow phone drops the price onto a
@@ -169,7 +169,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="mx-auto w-full max-w-5xl px-5 py-8 text-sm text-ink/60">
+      <footer className="mx-auto w-full max-w-5xl px-5 py-8 text-sm text-ink/70">
         <p>Something wrong with your ticket? {EVENT.contact}</p>
       </footer>
     </main>

@@ -26,6 +26,14 @@ export const EVENT = {
     number: "09171234567",
     /** Path under /public to the payee's GCash QR screenshot. */
     qrImage: "/gcash-qr.png",
+    /**
+     * Shown next to the payee details. Deliberately doesn't name a specific
+     * verification channel (a group chat, a poster) that isn't confirmed to
+     * exist — stays true regardless of how the department actually shares
+     * the account.
+     */
+    verifyNote:
+      "Double-check this matches the account your organiser shared — never send payment to one you can't verify.",
   },
 
   /**
@@ -57,7 +65,7 @@ export const EVENT = {
     {
       question: "How long until my ticket is approved?",
       answer:
-        "Every receipt is checked by a person, so it is not instant. Your ticket link works straight away and shows “pending review” until an organiser gets to it — keep the link, it updates on its own.",
+        "We check every receipt by hand, in the order it arrives — the earlier you submit, the sooner you'll hear back. Your ticket link works straight away and shows “pending review” until then; keep the link, it updates on its own, and we'll also email you once it's approved.",
     },
     {
       question: "What if my receipt is rejected?",

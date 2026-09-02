@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { generateTicketCode } from "@/lib/tickets/code";
 import { adminClient } from "@/lib/supabase/admin";
 import { currentAdminId } from "@/lib/supabase/server";
+import { sendTicketApprovedEmail } from "@/lib/notify/email";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -16,7 +18,10 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
   // Retry on the vanishingly unlikely ticket-code collision rather than
   // failing the approval. The unique index is what makes this safe.
   for (let attempt = 0; attempt < 5; attempt++) {
-    const { error } = await adminClient()
+    // Array form, not .single(): a no-op (another admin already handled it)
+    // matches zero rows, which .single() treats as an error rather than the
+    // harmless race it actually is.
+    const { data, error } = await adminClient()
       .from("registrations")
       .update({
         status: "approved",
@@ -26,10 +31,23 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
         reviewed_by: adminId,
       })
       .eq("id", id)
-      .eq("status", "pending"); // no-op if another admin already handled it
+      .eq("status", "pending") // no-op if another admin already handled it
+      .select("email, full_name");
 
     if (!error) {
       revalidatePath("/admin/review");
+      // Only send the confirmation when this call actually approved the
+      // row — a no-op race must not fire a second email.
+      const approved = data?.[0];
+      if (approved) {
+        after(() =>
+          sendTicketApprovedEmail({
+            to: approved.email,
+            fullName: approved.full_name,
+            ticketId: id,
+          }),
+        );
+      }
       return { ok: true };
     }
     if (error.code !== UNIQUE_VIOLATION) {

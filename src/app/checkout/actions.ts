@@ -12,6 +12,7 @@ import {
 } from "@/lib/registrations/queries";
 import { adminClient } from "@/lib/supabase/admin";
 import { notifyNewRegistration } from "@/lib/notify/discord";
+import { sendTicketSubmittedEmail } from "@/lib/notify/email";
 
 export type SubmittedValues = {
   fullName: string;
@@ -171,13 +172,23 @@ export async function submitRegistration(
   // Vercel's serverless runtime once the response is sent. after() runs it
   // once the response has gone out and is guaranteed to complete.
   after(() =>
-    notifyNewRegistration({
-      fullName: parsed.data.fullName,
-      yearLevel: parsed.data.yearLevel,
-      section: parsed.data.section,
-      amountCentavos: EVENT.ticketPriceCentavos,
-      gcashReference: parsed.data.gcashReference,
-    }),
+    Promise.all([
+      notifyNewRegistration({
+        fullName: parsed.data.fullName,
+        yearLevel: parsed.data.yearLevel,
+        section: parsed.data.section,
+        amountCentavos: EVENT.ticketPriceCentavos,
+        gcashReference: parsed.data.gcashReference,
+      }),
+      // The email field's whole stated purpose is finding this ticket again
+      // if the link is lost — this is the only copy of it that reaches the
+      // student outside the tab they're sitting in right now.
+      sendTicketSubmittedEmail({
+        to: parsed.data.email,
+        fullName: parsed.data.fullName,
+        ticketId: created.id,
+      }),
+    ]),
   );
 
   redirect(`/ticket/${created.id}`);

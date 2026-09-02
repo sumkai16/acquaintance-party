@@ -119,7 +119,9 @@ src/
 │   │   └── sheets.ts              # publishScans, server-only
 │   ├── notify/
 │   │   ├── discord-message.ts     # pure formatting, no server-only import
-│   │   └── discord.ts             # notifyNewRegistration, server-only
+│   │   ├── discord.ts             # notifyNewRegistration, server-only
+│   │   ├── email-message.ts       # pure formatting, no server-only import
+│   │   └── email.ts               # sendTicketSubmittedEmail/Approved, server-only
 │   └── supabase/
 │       ├── admin.ts | server.ts | browser.ts
 │       └── types.ts

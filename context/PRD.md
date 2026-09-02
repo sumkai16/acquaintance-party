@@ -51,6 +51,7 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Landing page visual polish
 - [x] Raffle wheel, server-side draw
 - [x] Google Sheets live sync
+- [x] Confirmation emails (Resend) — see below
 
 Status as of 2026-09-02: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →
@@ -92,6 +93,34 @@ click now goes straight to the wheel.
 under the internal codename "Desert Sundown" needed no changes to fit it —
 `src/lib/config/theme.ts` and `context/DESIGN.md` §0 are updated, tokens
 untouched.
+
+**An Impeccable dual-agent critique of landing/checkout/ticket, run once the
+theme was confirmed, scored the flow 30/40 ("Good") and found five real
+issues** — full report at `.impeccable/critique/2026-09-02T17-09-07Z__public-checkout-flow-landing-checkout-ticket-page.md`.
+All five were fixed the same session, in the confirmed priority order:
+1. **Confirmation emails** (new — see `docs/setup/resend.md`). The email
+   field's stated purpose was "so we can find it if you lose the link," but
+   nothing was ever sent to it; only a Discord webhook fired, for admins. A
+   student is now emailed on submit and again on approval, with a working
+   ticket link, via Resend (`src/lib/notify/email*.ts`, mirroring the
+   `discord*.ts` pure/impure split). Optional — checkout and approval both
+   work the same without it configured.
+2. **Contrast fixes.** The CTA/Submit button labels (`text-ground` on
+   `bg-accent`) computed to 3.9:1 against the project's own documented 4.5:1
+   standard (`context/DESIGN.md` §6) — now `text-white`, 4.95:1. Muted text
+   (`text-ink/60`, ~4.0:1) is now `text-ink/70`, ~5.3:1, standardized across
+   landing, checkout, and the ticket page.
+3. **Mobile checkout QR.** The 240px QR image forced a long scroll past
+   content a phone mostly can't use (can't scan its own screen) before
+   reaching the form. Now behind a `<details>` disclosure on mobile only,
+   reusing the landing FAQ's exact pattern; desktop is unchanged.
+4. **Trust signal.** One line under the payee block — deliberately generic,
+   naming no unverified channel — since the account currently shown is still
+   the placeholder `JUAN D. CRUZ` / `09171234567` flagged elsewhere in this
+   file as needing to change before sales open.
+5. **Review-time copy.** Replaced vague "not instant" language with an
+   honest process explanation rather than a fabricated time bound — no past
+   event exists to source a real number from.
 
 **Plan 3 was built in a different order than the spec's** (landing → raffle
 → Sheets, not Sheets → landing → raffle). The spec's order was set assuming

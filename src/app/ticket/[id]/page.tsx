@@ -44,7 +44,7 @@ export default async function TicketPage({
 
         <div className="px-5 pb-5">
           <p className="text-lg font-bold">{registration.full_name}</p>
-          <p className="text-sm uppercase tracking-wide text-ink/60">
+          <p className="text-sm uppercase tracking-wide text-ink/70">
             {registration.year_level} · Section {registration.section}
           </p>
         </div>
@@ -80,8 +80,9 @@ function Pending() {
         Waiting for approval
       </p>
       <p className="mt-2 text-sm text-amber-900/80">
-        We are checking your payment by hand. Come back to this page later
-        and your QR code will be here.
+        We check every payment by hand, in the order it arrives. Come back to
+        this page any time — it updates on its own, and we&apos;ll also email
+        you once it&apos;s approved.
       </p>
     </div>
   );
