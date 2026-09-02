@@ -23,6 +23,7 @@ export type DrawActionResult =
 export async function drawPrize(input: {
   prizeKey: string;
   excludePreviousWinners: boolean;
+  onlyScannedTickets: boolean;
 }): Promise<DrawActionResult> {
   return runDraw({ ...input, supersedesDrawId: null });
 }
@@ -31,6 +32,7 @@ export async function redrawPrize(input: {
   prizeKey: string;
   supersedesDrawId: string;
   excludePreviousWinners: boolean;
+  onlyScannedTickets: boolean;
 }): Promise<DrawActionResult> {
   return runDraw(input);
 }
@@ -44,6 +46,7 @@ export async function redrawPrize(input: {
 async function runDraw(input: {
   prizeKey: string;
   excludePreviousWinners: boolean;
+  onlyScannedTickets: boolean;
   supersedesDrawId: string | null;
 }): Promise<DrawActionResult> {
   const adminId = await currentAdminId();
@@ -53,7 +56,13 @@ async function runDraw(input: {
   if (!prize) return { ok: false, error: "That prize is not in the prize list." };
 
   const isRedraw = input.supersedesDrawId !== null;
-  const [pool, draws] = await Promise.all([eligiblePool(), allDraws()]);
+  const [fullPool, draws] = await Promise.all([eligiblePool(), allDraws()]);
+  // Per-draw choice, not a global setting: the operator decides each time
+  // whether admin-added names are in the running, or this prize is strictly
+  // for people with a scanned ticket.
+  const pool = input.onlyScannedTickets
+    ? fullPool.filter((entrant) => entrant.source === "ticket")
+    : fullPool;
   const standing = latestDrawForPrize(draws, prize.id);
 
   let supersedes: string | null = null;
@@ -99,7 +108,9 @@ async function runDraw(input: {
       ok: false,
       error:
         pool.length === 0
-          ? "Nobody has been scanned in yet, so there is nobody to draw from."
+          ? input.onlyScannedTickets && fullPool.length > 0
+            ? "Nobody with a scanned ticket is eligible yet. Turn off “Only scanned tickets” to include added names, or wait for check-ins."
+            : "Nobody has been scanned in yet, so there is nobody to draw from."
           : "Everyone eligible has already won. Turn off “exclude previous winners” to draw again.",
     };
   }

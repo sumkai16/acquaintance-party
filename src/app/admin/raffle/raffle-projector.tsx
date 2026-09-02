@@ -34,6 +34,7 @@ export function RaffleProjector({
   const [pool, setPool] = useState(initialPool);
   const [selectedKey, setSelectedKey] = useState<string>(initialPrizes[0]?.id ?? "");
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
+  const [onlyScannedTickets, setOnlyScannedTickets] = useState(false);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -136,11 +137,15 @@ export function RaffleProjector({
           }}
           excludePreviousWinners={excludePreviousWinners}
           onToggleExclude={setExcludePreviousWinners}
+          onlyScannedTickets={onlyScannedTickets}
+          onToggleOnlyScannedTickets={setOnlyScannedTickets}
           ticketsSold={ticketsSold}
           pending={pending}
           error={error}
           onDraw={() =>
-            run(() => drawPrize({ prizeKey: selectedKey, excludePreviousWinners }))
+            run(() =>
+              drawPrize({ prizeKey: selectedKey, excludePreviousWinners, onlyScannedTickets }),
+            )
           }
           onRedraw={(supersedesDrawId) =>
             run(() =>
@@ -148,6 +153,7 @@ export function RaffleProjector({
                 prizeKey: selectedKey,
                 supersedesDrawId,
                 excludePreviousWinners,
+                onlyScannedTickets,
               }),
             )
           }
