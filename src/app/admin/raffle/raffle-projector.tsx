@@ -34,7 +34,7 @@ export function RaffleProjector({
   const [pool, setPool] = useState(initialPool);
   const [selectedKey, setSelectedKey] = useState<string>(initialPrizes[0]?.id ?? "");
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
-  const [onlyScannedTickets, setOnlyScannedTickets] = useState(false);
+  const [includeExtraEntrants, setIncludeExtraEntrants] = useState(false);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +82,8 @@ export function RaffleProjector({
           </p>
           <p className="max-w-prose text-night-ink/70">
             Pick a prize below and draw. Everyone scanned in at the door is in
-            the running, plus anyone added under Setup.
+            the running — turn on “Include added names” to pull in anyone
+            added under Setup too.
           </p>
         </div>
       ) : null}
@@ -137,14 +138,14 @@ export function RaffleProjector({
           }}
           excludePreviousWinners={excludePreviousWinners}
           onToggleExclude={setExcludePreviousWinners}
-          onlyScannedTickets={onlyScannedTickets}
-          onToggleOnlyScannedTickets={setOnlyScannedTickets}
+          includeExtraEntrants={includeExtraEntrants}
+          onToggleIncludeExtraEntrants={setIncludeExtraEntrants}
           ticketsSold={ticketsSold}
           pending={pending}
           error={error}
           onDraw={() =>
             run(() =>
-              drawPrize({ prizeKey: selectedKey, excludePreviousWinners, onlyScannedTickets }),
+              drawPrize({ prizeKey: selectedKey, excludePreviousWinners, includeExtraEntrants }),
             )
           }
           onRedraw={(supersedesDrawId) =>
@@ -153,7 +154,7 @@ export function RaffleProjector({
                 prizeKey: selectedKey,
                 supersedesDrawId,
                 excludePreviousWinners,
-                onlyScannedTickets,
+                includeExtraEntrants,
               }),
             )
           }

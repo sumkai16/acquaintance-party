@@ -20,8 +20,8 @@ export function OperatorControls({
   onSelect,
   excludePreviousWinners,
   onToggleExclude,
-  onlyScannedTickets,
-  onToggleOnlyScannedTickets,
+  includeExtraEntrants,
+  onToggleIncludeExtraEntrants,
   ticketsSold,
   pending,
   error,
@@ -37,8 +37,8 @@ export function OperatorControls({
   onSelect: (key: string) => void;
   excludePreviousWinners: boolean;
   onToggleExclude: (next: boolean) => void;
-  onlyScannedTickets: boolean;
-  onToggleOnlyScannedTickets: (next: boolean) => void;
+  includeExtraEntrants: boolean;
+  onToggleIncludeExtraEntrants: (next: boolean) => void;
   ticketsSold: number;
   pending: boolean;
   error: string | null;
@@ -48,12 +48,12 @@ export function OperatorControls({
   const [setupOpen, setSetupOpen] = useState(prizes.length === 0);
   const standing = latestDrawForPrize(draws, selectedKey);
   const extras = pool.filter((entrant) => entrant.source === "extra");
-  // The pool this draw would actually use — the toggle below is per-draw,
-  // so the count and the Draw button need to reflect it live, not the full
-  // pool including names that this draw won't touch.
-  const effectivePool = onlyScannedTickets
-    ? pool.filter((entrant) => entrant.source === "ticket")
-    : pool;
+  // The pool this draw would actually use. Scanned tickets are the default;
+  // extras only join when the toggle below opts them in for this draw — so
+  // the count and the Draw button need to reflect that live.
+  const effectivePool = includeExtraEntrants
+    ? pool
+    : pool.filter((entrant) => entrant.source === "ticket");
 
   return (
     <div className="border-t border-night-ink/15 bg-night-deep/60 px-6 py-5">
@@ -62,11 +62,11 @@ export function OperatorControls({
           <p>
             <span className="font-semibold text-night-ink">{effectivePool.length}</span>{" "}
             eligible of {ticketsSold} tickets sold
-            {onlyScannedTickets && extras.length > 0 ? (
+            {!includeExtraEntrants && extras.length > 0 ? (
               <span className="text-night-ink/50">
                 {" "}
-                ({extras.length} added name{extras.length === 1 ? "" : "s"} excluded
-                this draw)
+                ({extras.length} added name{extras.length === 1 ? "" : "s"} not
+                included this draw)
               </span>
             ) : null}
           </p>
@@ -95,9 +95,9 @@ export function OperatorControls({
           </div>
         ) : (
           <p className="text-night-ink/50">
-            Students scanned in at the door can win, plus any names added
-            under Setup — unless “Only scanned QR tickets” is on below. A
-            scanner that has not synced yet is missing from this count.
+            Students scanned in at the door can win — turn on “Include added
+            names” below to pull in anyone added under Setup for this draw.
+            A scanner that has not synced yet is missing from this count.
           </p>
         )}
 
@@ -176,11 +176,11 @@ export function OperatorControls({
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
-              checked={onlyScannedTickets}
-              onChange={(event) => onToggleOnlyScannedTickets(event.target.checked)}
+              checked={includeExtraEntrants}
+              onChange={(event) => onToggleIncludeExtraEntrants(event.target.checked)}
               className="h-4 w-4"
             />
-            Only scanned QR tickets
+            Include added names
           </label>
         </div>
 

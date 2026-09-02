@@ -23,7 +23,7 @@ export type DrawActionResult =
 export async function drawPrize(input: {
   prizeKey: string;
   excludePreviousWinners: boolean;
-  onlyScannedTickets: boolean;
+  includeExtraEntrants: boolean;
 }): Promise<DrawActionResult> {
   return runDraw({ ...input, supersedesDrawId: null });
 }
@@ -32,7 +32,7 @@ export async function redrawPrize(input: {
   prizeKey: string;
   supersedesDrawId: string;
   excludePreviousWinners: boolean;
-  onlyScannedTickets: boolean;
+  includeExtraEntrants: boolean;
 }): Promise<DrawActionResult> {
   return runDraw(input);
 }
@@ -46,7 +46,7 @@ export async function redrawPrize(input: {
 async function runDraw(input: {
   prizeKey: string;
   excludePreviousWinners: boolean;
-  onlyScannedTickets: boolean;
+  includeExtraEntrants: boolean;
   supersedesDrawId: string | null;
 }): Promise<DrawActionResult> {
   const adminId = await currentAdminId();
@@ -57,12 +57,12 @@ async function runDraw(input: {
 
   const isRedraw = input.supersedesDrawId !== null;
   const [fullPool, draws] = await Promise.all([eligiblePool(), allDraws()]);
-  // Per-draw choice, not a global setting: the operator decides each time
-  // whether admin-added names are in the running, or this prize is strictly
-  // for people with a scanned ticket.
-  const pool = input.onlyScannedTickets
-    ? fullPool.filter((entrant) => entrant.source === "ticket")
-    : fullPool;
+  // Scanned tickets are the pool by default. Extra entrants only join a
+  // specific draw when the operator opts them in for it — a per-draw
+  // choice, not a global setting.
+  const pool = input.includeExtraEntrants
+    ? fullPool
+    : fullPool.filter((entrant) => entrant.source === "ticket");
   const standing = latestDrawForPrize(draws, prize.id);
 
   let supersedes: string | null = null;
@@ -108,8 +108,8 @@ async function runDraw(input: {
       ok: false,
       error:
         pool.length === 0
-          ? input.onlyScannedTickets && fullPool.length > 0
-            ? "Nobody with a scanned ticket is eligible yet. Turn off “Only scanned tickets” to include added names, or wait for check-ins."
+          ? !input.includeExtraEntrants && fullPool.length > 0
+            ? "Nobody with a scanned ticket is eligible yet. Turn on “Include added names” to draw from Setup instead, or wait for check-ins."
             : "Nobody has been scanned in yet, so there is nobody to draw from."
           : "Everyone eligible has already won. Turn off “exclude previous winners” to draw again.",
     };

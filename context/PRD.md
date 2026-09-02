@@ -74,11 +74,12 @@ list from Excel — for someone the scanner missed. The scanned-in pool stays
 the default and the primary eligibility path; this is an escape hatch, not
 a second way in.
 
-Added names still sit outside a specific draw until the operator includes
-them — a per-draw **"Only scanned QR tickets"** toggle next to "exclude
-previous winners" lets a prize be run strictly against ticket-holders, with
-added names left out for that draw specifically. Setup stays a roster you
-manage; whether a name counts is decided draw by draw.
+Scanned tickets are the pool by default — added names sit outside a specific
+draw until the operator opts them in. A per-draw **"Include added names"**
+toggle next to "exclude previous winners" pulls in anyone added under Setup
+for that one draw; leave it off and a prize is run strictly against
+ticket-holders. Setup stays a roster you manage; whether a name actually
+counts is decided draw by draw.
 
 **The raffle's "600 names blur past" shortlist stage was cut, deliberately
 diverging from the spec.** It never actually scaled with participant count
