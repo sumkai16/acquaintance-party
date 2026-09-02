@@ -21,7 +21,9 @@ export default function HomePage() {
             {EVENT.host} presents
           </p>
 
-          <h1 className="font-display text-6xl uppercase leading-[0.85] text-accent-2 md:text-8xl">
+          {/* leading stays tight for the poster look, but not so tight that
+              the lines collide once the name wraps on a phone. */}
+          <h1 className="font-display text-5xl uppercase leading-[0.95] text-accent-2 sm:text-6xl md:text-8xl md:leading-[0.9]">
             {EVENT.name}
           </h1>
 
@@ -46,9 +48,12 @@ export default function HomePage() {
 
           <Link
             href="/checkout"
-            className="self-start rounded bg-accent px-8 py-4 text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start"
           >
-            Get your ticket — {price}
+            Get your ticket{" "}
+            {/* Its own element so a narrow phone drops the price onto a
+                second line cleanly, instead of stranding a dash. */}
+            <span className="whitespace-nowrap font-normal">{price}</span>
           </Link>
         </div>
       </section>
@@ -154,9 +159,12 @@ export default function HomePage() {
 
           <Link
             href="/checkout"
-            className="self-start rounded bg-accent px-8 py-4 text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 md:self-auto"
+            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
           >
-            Get your ticket — {price}
+            Get your ticket{" "}
+            {/* Its own element so a narrow phone drops the price onto a
+                second line cleanly, instead of stranding a dash. */}
+            <span className="whitespace-nowrap font-normal">{price}</span>
           </Link>
         </div>
       </section>
