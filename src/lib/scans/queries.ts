@@ -62,6 +62,16 @@ export async function approvedManifest(): Promise<Manifest> {
   };
 }
 
+/** A scan this call actually wrote — not one a retry re-sent. */
+export type InsertedScan = {
+  registrationId: string | null;
+  codeScanned: string;
+  scannedAt: string;
+  syncedAt: string;
+  deviceLabel: string;
+  result: ScanResult;
+};
+
 /**
  * Inserts a batch of queued scans.
  *
@@ -69,13 +79,21 @@ export async function approvedManifest(): Promise<Manifest> {
  * rows instead of double-counting attendance. `ignoreDuplicates` means a
  * re-sync is a no-op rather than an error — the scanner retries blindly on an
  * interval and must never be punished for it.
+ *
+ * `inserted` carries only the rows this call created, because `on conflict do
+ * nothing` returns nothing for rows it skipped. Anything downstream that must
+ * happen once per scan — the Sheets append — keys off that, not off `rows`,
+ * or a retry publishes the same student again.
  */
 export async function recordScans(
   rows: ScanRow[],
-): Promise<{ ok: true; accepted: number } | { ok: false; error: string }> {
-  if (rows.length === 0) return { ok: true, accepted: 0 };
+): Promise<
+  | { ok: true; accepted: number; inserted: InsertedScan[] }
+  | { ok: false; error: string }
+> {
+  if (rows.length === 0) return { ok: true, accepted: 0, inserted: [] };
 
-  const { error } = await adminClient()
+  const { data, error } = await adminClient()
     .from("scans")
     .upsert(
       rows.map((row) => ({
@@ -87,6 +105,9 @@ export async function recordScans(
         result: row.result,
       })),
       { onConflict: "id", ignoreDuplicates: true },
+    )
+    .select(
+      "registration_id, code_scanned, scanned_at, synced_at, device_label, result",
     );
 
   if (error) {
@@ -94,7 +115,18 @@ export async function recordScans(
     return { ok: false, error: "Could not save scans." };
   }
 
-  return { ok: true, accepted: rows.length };
+  return {
+    ok: true,
+    accepted: rows.length,
+    inserted: (data ?? []).map((row) => ({
+      registrationId: row.registration_id as string | null,
+      codeScanned: row.code_scanned as string,
+      scannedAt: row.scanned_at as string,
+      syncedAt: row.synced_at as string,
+      deviceLabel: row.device_label as string,
+      result: row.result as ScanResult,
+    })),
+  };
 }
 
 /** Every scan with the student's name joined in, newest first. */
