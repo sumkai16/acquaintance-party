@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Badge } from "../badge";
 import { formatPeso } from "@/lib/config/event";
 import { searchRegistrations } from "@/lib/registrations/queries";
 import { formatTicketCode } from "@/lib/tickets/code";
@@ -6,11 +7,7 @@ import { formatTicketCode } from "@/lib/tickets/code";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Find a registration" };
 
-const STATUS_STYLES: Record<string, string> = {
-  approved: "bg-green-100 text-green-900",
-  pending: "bg-amber-100 text-amber-900",
-  rejected: "bg-red-100 text-red-900",
-};
+const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
 
 export default async function RegistrationsPage({
   searchParams,
@@ -71,13 +68,9 @@ export default async function RegistrationsPage({
             </div>
 
             <div className="flex items-center gap-3">
-              <span
-                className={`rounded px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
-                  STATUS_STYLES[registration.status]
-                }`}
-              >
+              <Badge tone={STATUS_TONE[registration.status]}>
                 {registration.status}
-              </span>
+              </Badge>
               {registration.ticket_code ? (
                 <span className="font-mono text-sm">
                   {formatTicketCode(registration.ticket_code)}

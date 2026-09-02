@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findDoubleScans, summarize, type ScanRecord } from "./report";
+import { findDoubleScans, sortScans, summarize, type ScanRecord } from "./report";
 
 const row = (over: Partial<ScanRecord> = {}): ScanRecord => ({
   registrationId: "r1",
@@ -67,5 +67,62 @@ describe("findDoubleScans", () => {
 
   it("returns nothing for a clean night", () => {
     expect(findDoubleScans([row(), row({ registrationId: "r2" })])).toHaveLength(0);
+  });
+});
+
+describe("sortScans", () => {
+  const rows = [
+    row({ fullName: "Zeta Cruz", scannedAt: "2026-10-05T16:10:00+08:00", deviceLabel: "door-2", result: "ok" }),
+    row({ fullName: "Ana Reyes", scannedAt: "2026-10-05T16:05:00+08:00", deviceLabel: "door-1", result: "duplicate" }),
+    row({ fullName: "Miko Santos", scannedAt: "2026-10-05T16:15:00+08:00", deviceLabel: "door-1", result: "invalid" }),
+  ];
+
+  it("sorts by time, ascending and descending", () => {
+    expect(sortScans(rows, "time", "asc").map((r) => r.fullName)).toEqual([
+      "Ana Reyes",
+      "Zeta Cruz",
+      "Miko Santos",
+    ]);
+    expect(sortScans(rows, "time", "desc").map((r) => r.fullName)).toEqual([
+      "Miko Santos",
+      "Zeta Cruz",
+      "Ana Reyes",
+    ]);
+  });
+
+  it("sorts by name alphabetically", () => {
+    expect(sortScans(rows, "name", "asc").map((r) => r.fullName)).toEqual([
+      "Ana Reyes",
+      "Miko Santos",
+      "Zeta Cruz",
+    ]);
+  });
+
+  it("treats a missing name as sorting last, not crashing", () => {
+    const withMissing = [...rows, row({ fullName: null })];
+    const sorted = sortScans(withMissing, "name", "asc");
+    expect(sorted[sorted.length - 1].fullName).toBeNull();
+  });
+
+  it("sorts by result", () => {
+    expect(sortScans(rows, "result", "asc").map((r) => r.result)).toEqual([
+      "duplicate",
+      "invalid",
+      "ok",
+    ]);
+  });
+
+  it("sorts by door", () => {
+    expect(sortScans(rows, "door", "asc").map((r) => r.deviceLabel)).toEqual([
+      "door-1",
+      "door-1",
+      "door-2",
+    ]);
+  });
+
+  it("does not mutate the input array", () => {
+    const before = rows.map((r) => r.fullName);
+    sortScans(rows, "time", "asc");
+    expect(rows.map((r) => r.fullName)).toEqual(before);
   });
 });

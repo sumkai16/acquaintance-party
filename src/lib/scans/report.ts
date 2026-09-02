@@ -64,3 +64,33 @@ export function findDoubleScans(rows: ScanRecord[]): DoubleScan[] {
   }
   return found;
 }
+
+export type SortColumn = "time" | "name" | "result" | "door";
+
+function sortKey(row: ScanRecord, column: SortColumn): string {
+  switch (column) {
+    case "time":
+      return row.scannedAt;
+    case "name":
+      // A missing name sorts after every real one, in either direction —
+      // an unmatched scan is the exception, not something to bury real
+      // names under when sorting descending.
+      return row.fullName ?? "￿";
+    case "result":
+      return row.result;
+    case "door":
+      return row.deviceLabel;
+  }
+}
+
+/** Dashboard-table sort. Pure — the page just renders whatever order this returns. */
+export function sortScans(
+  rows: ScanRecord[],
+  column: SortColumn,
+  direction: "asc" | "desc",
+): ScanRecord[] {
+  const sorted = [...rows].sort((a, b) =>
+    sortKey(a, column).localeCompare(sortKey(b, column)),
+  );
+  return direction === "asc" ? sorted : sorted.reverse();
+}

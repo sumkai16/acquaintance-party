@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   findByReference,
   listPending,
@@ -23,35 +22,13 @@ export default async function ReviewPage() {
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-5 px-5 py-10">
-      <header className="flex items-baseline justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Review queue</h1>
-          <p className="text-slate-500">
-            {pending.length === 0
-              ? "Nothing waiting. Every payment has been reviewed."
-              : `${pending.length} waiting for review.`}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-4">
-          <Link
-            href="/admin/registrations"
-            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
-          >
-            Find a registration
-          </Link>
-          <Link
-            href="/admin/scan"
-            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
-          >
-            Door scanner
-          </Link>
-          <Link
-            href="/admin/dashboard"
-            className="whitespace-nowrap text-sm font-semibold text-slate-700 underline"
-          >
-            Attendance
-          </Link>
-        </div>
+      <header>
+        <h1 className="text-2xl font-semibold">Review queue</h1>
+        <p className="text-slate-500">
+          {pending.length === 0
+            ? "Nothing waiting. Every payment has been reviewed."
+            : `${pending.length} waiting for review.`}
+        </p>
       </header>
 
       {cards.map((card) => (

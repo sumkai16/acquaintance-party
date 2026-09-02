@@ -9,7 +9,10 @@ export async function GET() {
     return Response.json({ error: "Sign in again." }, { status: 401 });
   }
 
-  const scans = await allScans();
+  // Duplicates and invalids matter live, on the dashboard, where an admin is
+  // watching for problems. In an exported attendance list they're just noise
+  // — this file answers "who actually got in," not "every scan attempted."
+  const scans = (await allScans()).filter((scan) => scan.result === "ok");
 
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Attendance");
