@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { EVENT, RAFFLE_PRIZES } from "@/lib/config/event";
+import { EVENT } from "@/lib/config/event";
 import { latestDrawForPrize } from "@/lib/raffle/draw";
-import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
+import type { RaffleDrawRow, RaffleEntrant, RafflePrize } from "@/lib/raffle/types";
 import { drawPrize, redrawPrize } from "./actions";
 import { FinalistBlur } from "./finalist-blur";
 import { OperatorControls } from "./operator-controls";
@@ -22,14 +22,18 @@ type Stage = "idle" | "shuffling" | "wheel" | "revealed";
 export function RaffleProjector({
   initialPool,
   initialDraws,
+  initialPrizes,
   ticketsSold,
 }: {
   initialPool: RaffleEntrant[];
   initialDraws: RaffleDrawRow[];
+  initialPrizes: RafflePrize[];
   ticketsSold: number;
 }) {
   const [draws, setDraws] = useState(initialDraws);
-  const [selectedKey, setSelectedKey] = useState<string>(RAFFLE_PRIZES[0].key);
+  const [prizes, setPrizes] = useState(initialPrizes);
+  const [pool, setPool] = useState(initialPool);
+  const [selectedKey, setSelectedKey] = useState<string>(initialPrizes[0]?.id ?? "");
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
@@ -76,14 +80,14 @@ export function RaffleProjector({
           </p>
           <p className="max-w-prose text-night-ink/70">
             Pick a prize below and draw. Everyone scanned in at the door is in
-            the running.
+            the running, plus anyone added under Setup.
           </p>
         </div>
       ) : null}
 
       {stage === "shuffling" && active ? (
         <FinalistBlur
-          pool={initialPool}
+          pool={pool}
           finalists={active.finalists}
           onDone={() => setStage("wheel")}
         />
@@ -117,6 +121,15 @@ export function RaffleProjector({
       {!animating ? (
         <OperatorControls
           draws={draws}
+          prizes={prizes}
+          onPrizesChange={(next) => {
+            setPrizes(next);
+            // A prize just added from empty — select it so Draw is usable
+            // without an extra click.
+            if (!selectedKey && next.length > 0) setSelectedKey(next[0].id);
+          }}
+          pool={pool}
+          onPoolChange={setPool}
           selectedKey={selectedKey}
           onSelect={(key) => {
             setSelectedKey(key);
@@ -130,7 +143,6 @@ export function RaffleProjector({
           }}
           excludePreviousWinners={excludePreviousWinners}
           onToggleExclude={setExcludePreviousWinners}
-          eligible={initialPool.length}
           ticketsSold={ticketsSold}
           pending={pending}
           error={error}

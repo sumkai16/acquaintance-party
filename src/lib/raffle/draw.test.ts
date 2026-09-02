@@ -13,6 +13,7 @@ function entrant(n: number): RaffleEntrant {
     fullName: `Student ${n}`,
     yearLevel: "3rd year",
     section: "BSIT-3B",
+    source: "ticket",
   };
 }
 

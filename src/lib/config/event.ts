@@ -78,26 +78,6 @@ export const EVENT = {
   ],
 } as const;
 
-/**
- * Raffle prizes, drawn in this order. Names are PLACEHOLDERS.
- *
- * `key` is written into `raffle_draws` and is effectively append-only once
- * the event starts — renaming or removing one orphans the draws already
- * recorded under it. Editing `name` is always safe: every draw snapshots the
- * name it was drawn for.
- */
-export const RAFFLE_PRIZES = [
-  { key: "third", name: "Third prize" },
-  { key: "second", name: "Second prize" },
-  { key: "grand", name: "Grand prize" },
-] as const;
-
-export type RafflePrize = (typeof RAFFLE_PRIZES)[number];
-
-export function findPrize(key: string): RafflePrize | null {
-  return RAFFLE_PRIZES.find((prize) => prize.key === key) ?? null;
-}
-
 const withDecimals = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",

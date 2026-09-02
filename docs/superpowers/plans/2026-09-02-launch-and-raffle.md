@@ -142,5 +142,47 @@ the same student once per retry. `recordScans` now returns only the rows
   nobody can defend.
 - **No seed-hash verifiability.** The spec lists it as optional and deferred;
   include it only if the org asks.
-- **No admin UI for prizes.** Config plus a redeploy, until that actually
-  hurts.
+- ~~No admin UI for prizes. Config plus a redeploy, until that actually
+  hurts.~~ It hurt sooner than expected — see the addendum below.
+
+## Addendum (2026-09-02): admin-managed prizes and an entrant supplement
+
+Testing the raffle live surfaced three problems, addressed without touching
+the draw logic itself:
+
+1. **Prizes moved from `RAFFLE_PRIZES` in config to `raffle_prizes`,
+   admin-managed from `/admin/raffle`'s new Setup panel** — add, rename,
+   reorder, delete, no code edit or redeploy. `supabase/migrations/
+   0003_raffle_prizes_and_entrants.sql` adds the table; `prize-actions.ts`
+   and `prize-manager.tsx` are the new files. `drawFromPool` in
+   `src/lib/raffle/draw.ts` was untouched — it only ever saw an opaque
+   `prizeKey` string, and still does.
+
+2. **The wheel's slice labels were unreadable from a projector** (`text-sm`,
+   truncated to 112px). `raffle-wheel.tsx` now sizes and wraps the label by
+   finalist count instead. Verified in a headless-Chrome screenshot at 12, 8,
+   and 4 finalists — every name fully readable at each size.
+
+3. **An explicit, admin-only supplement to the eligible pool**, for someone
+   the scanner missed or a name from outside the ticket system: add one by
+   hand, or import a short `.xlsx` list. `raffle_extra_entrants` (same
+   migration), `entrant-actions.ts`, `entrant-manager.tsx`. The scanned-in
+   pool stays the default and the primary eligibility path — this is a
+   visible addition, not a second way in, and a name that collides with an
+   existing entrant (accidentally added twice, or coincidentally shares a
+   name with someone already checked in) surfaces as a non-blocking warning
+   at the moment it's added, not discovered after the draw.
+
+`eligiblePool()` in `src/lib/raffle/queries.ts` now merges the auto pool with
+`raffle_extra_entrants`; `drawFromPool` needed no change to accept the wider
+pool, and the draw's original 15 tests pass unmodified — confirmation that
+where an entrant came from was never the draw logic's concern.
+
+`winner_registration_id`'s FK to `registrations` was dropped in the same
+migration (an extra entrant has no such row) — see `context/SCHEMA.md`
+`## raffle_draws` for why that's safe: `finalists` already snapshots the
+winner's display data directly.
+
+Not yet hand-verified end to end — needs `0003` pasted into the hosted
+project first. See `docs/setup/supabase.md` §6 for the paste step, including
+a verification query for the FK-drop's constraint name before running it.

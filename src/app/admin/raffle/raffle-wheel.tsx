@@ -67,6 +67,16 @@ export function RaffleWheel({
     })
     .join(", ");
 
+  // Fewer finalists means wider slices, so the label can afford to be
+  // bigger. Sized in tiers rather than continuously so it stays predictable
+  // to eyeball while tuning.
+  const labelSize =
+    finalists.length <= 6
+      ? "top-8 w-40 text-2xl"
+      : finalists.length <= 9
+        ? "top-7 w-36 text-xl"
+        : "top-6 w-32 text-base";
+
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6">
       <p className="text-sm uppercase tracking-[0.3em] text-night-ink/60">
@@ -94,7 +104,9 @@ export function RaffleWheel({
               className="absolute inset-0"
               style={{ transform: `rotate(${i * slice + slice / 2}deg)` }}
             >
-              <span className="absolute left-1/2 top-6 w-28 -translate-x-1/2 truncate text-center text-sm font-semibold text-night-ground">
+              <span
+                className={`absolute left-1/2 -translate-x-1/2 whitespace-normal text-center leading-tight font-semibold text-night-ground ${labelSize}`}
+              >
                 {entrant.fullName}
               </span>
             </div>

@@ -1,14 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { findPrize } from "@/lib/config/event";
 import {
   currentWinnerIds,
   drawFromPool,
   excludeEntrants,
   latestDrawForPrize,
 } from "@/lib/raffle/draw";
-import { allDraws, eligiblePool, recordDraw } from "@/lib/raffle/queries";
+import {
+  allDraws,
+  eligiblePool,
+  getPrizeById,
+  recordDraw,
+} from "@/lib/raffle/queries";
 import type { RaffleDrawRow } from "@/lib/raffle/types";
 import { currentAdminId } from "@/lib/supabase/server";
 
@@ -45,12 +49,12 @@ async function runDraw(input: {
   const adminId = await currentAdminId();
   if (!adminId) return { ok: false, error: "Sign in again." };
 
-  const prize = findPrize(input.prizeKey);
+  const prize = await getPrizeById(input.prizeKey);
   if (!prize) return { ok: false, error: "That prize is not in the prize list." };
 
   const isRedraw = input.supersedesDrawId !== null;
   const [pool, draws] = await Promise.all([eligiblePool(), allDraws()]);
-  const standing = latestDrawForPrize(draws, prize.key);
+  const standing = latestDrawForPrize(draws, prize.id);
 
   let supersedes: string | null = null;
   if (isRedraw) {
@@ -83,7 +87,7 @@ async function runDraw(input: {
     // A redraw replaces a no-show. Never hand the same prize straight back
     // to them, whatever the toggle says.
     for (const row of draws) {
-      if (row.prizeKey === prize.key) excluded.add(row.winner.registrationId);
+      if (row.prizeKey === prize.id) excluded.add(row.winner.registrationId);
     }
   }
 
@@ -101,7 +105,7 @@ async function runDraw(input: {
   }
 
   const recorded = await recordDraw({
-    prizeKey: prize.key,
+    prizeKey: prize.id,
     prizeName: prize.name,
     winner: outcome.winner,
     finalists: outcome.finalists,

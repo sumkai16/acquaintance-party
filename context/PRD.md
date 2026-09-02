@@ -57,10 +57,22 @@ Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →
 ticket → QR with a real phone camera; plan 2 ("door operations") by a
 two-phone rehearsal against the live production deployment, not just
 localhost. Plan 3's code is committed but **not yet hand-verified end to
-end** — `0002_raffle.sql` still has to be pasted into the hosted project
-before `/admin/raffle` runs at all, and the raffle wants one rehearsal with
-real checked-in rows on the actual projector. See
-`docs/superpowers/plans/` for the authoritative task lists.
+end** — `0002_raffle.sql` and `0003_raffle_prizes_and_entrants.sql` still
+have to be pasted into the hosted project before `/admin/raffle` runs at
+all, and the raffle wants one rehearsal with real checked-in rows on the
+actual projector. See `docs/superpowers/plans/` for the authoritative task
+lists.
+
+**Raffle prizes and the entrant list are admin-managed, not config.** An
+early version of the raffle hardcoded three prizes (Third/Second/Grand) in
+`src/lib/config/event.ts` — changing them needed a code edit and a redeploy.
+That didn't fit how the raffle is actually run: prizes and their count are
+decided at the podium, and they're now added, renamed, reordered, and
+removed from `/admin/raffle` itself. The eligible pool also gained an
+explicit, admin-only supplement — add a name by hand, or import a short
+list from Excel — for someone the scanner missed. The scanned-in pool stays
+the default and the primary eligibility path; this is an escape hatch, not
+a second way in.
 
 **Plan 3 was built in a different order than the spec's** (landing → raffle
 → Sheets, not Sheets → landing → raffle). The spec's order was set assuming

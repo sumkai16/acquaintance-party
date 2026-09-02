@@ -75,22 +75,53 @@ registration it finds the earliest `scanned_at` among rows with
 device already admitted, as long as both are online; a real signal blackout
 is the one case it can't cover.
 
-## raffle_draws
+## raffle_prizes
 
-One row per draw, including redraws. Added in `0002_raffle.sql`.
+Added in `0003_raffle_prizes_and_entrants.sql`. Admin-managed at
+`/admin/raffle` (add, rename, reorder, delete) — no code edit or redeploy to
+change a prize. Superseded the original plan of a `RAFFLE_PRIZES` config
+array, which itself had replaced the spec's original `prizes` table design.
 
-**There is no `prizes` table** — the spec described one, but prizes live in
-`RAFFLE_PRIZES` in `src/lib/config/event.ts` instead. A short list that
-changes twice does not need a schema and a CRUD screen. A draw references a
-prize by its config `key` and snapshots the name.
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | Written into `raffle_draws.prize_key` |
+| name | text | NOT NULL, 1–80 chars trimmed | |
+| sort_order | integer | NOT NULL | Draw order; swapped between two rows on reorder |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+No FK from `raffle_draws.prize_key` to this table, deliberately — deleting a
+prize must never be blocked by, or cascade into, its own past results.
+`prize_name` is already snapshotted on every draw for exactly that reason.
+
+## raffle_extra_entrants
+
+Added in the same migration. The escape hatch for someone the scanner missed
+or a name from outside the ticket system (a walk-in list, imported from
+Excel). The scanned-in pool built from `registrations`/`scans` stays the
+default and the primary eligibility path — this table only ever supplements
+it, via an explicit admin action at `/admin/raffle`.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | uuid | PK, default `gen_random_uuid()` | |
-| prize_key | text | NOT NULL, non-empty | Matches a `key` in `RAFFLE_PRIZES`. Effectively append-only once the event starts — renaming one orphans its draws |
-| prize_name | text | NOT NULL, non-empty | Snapshot, so editing the config never rewrites history |
-| winner_registration_id | uuid | NOT NULL, FK → `registrations(id)` | Always one of `finalists` |
-| finalists | jsonb | NOT NULL, array of 1–12 | Snapshots `{registrationId, fullName, yearLevel, section}` per finalist, not bare ids — see below |
+| full_name | text | NOT NULL, 2–120 chars trimmed | |
+| year_level | text | nullable | Optional — not every extra entrant has one on file |
+| section | text | nullable | Optional |
+| source | text | NOT NULL, `manual` \| `import` | How the row was added |
+| added_by | uuid | NOT NULL, FK → `auth.users(id)` | |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+## raffle_draws
+
+One row per draw, including redraws. Added in `0002_raffle.sql`.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| prize_key | text | NOT NULL, non-empty | A `raffle_prizes.id`. Effectively append-only once the event starts — deleting the prize row doesn't touch past draws, but the key itself is never reused |
+| prize_name | text | NOT NULL, non-empty | Snapshot, so renaming or deleting the prize never rewrites history |
+| winner_registration_id | uuid | NOT NULL, **no FK** | Either a `registrations.id` or a `raffle_extra_entrants.id` — see below |
+| finalists | jsonb | NOT NULL, array of 1–12 | Snapshots `{registrationId, fullName, yearLevel, section, source}` per finalist, not bare ids — see below |
 | pool_size | integer | NOT NULL, `> 0` | Eligible students actually drawn from, after exclusions |
 | drawn_at | timestamptz | NOT NULL, default `now()` | Server clock |
 | drawn_by | uuid | NOT NULL, FK → `auth.users(id)` | The admin who ran the draw |
@@ -118,6 +149,14 @@ the finalists it returns, and `recordDraw` writes both together. A row
 hand-written in the SQL editor could still break it; `allDraws()` logs and
 skips such a row rather than rendering an undefined name.
 
+**Why `winner_registration_id` has no FK:** it originally referenced
+`registrations(id)`. An extra entrant (`raffle_extra_entrants`) has no such
+row, so a winner drawn from one couldn't satisfy that FK — dropped in
+`0003_raffle_prizes_and_entrants.sql`, not widened, since a single FK column
+can't reference two tables. `finalists` already snapshots the winner's
+display data directly, so the FK was never load-bearing for anything the
+app reads.
+
 **Indexes:** `raffle_draws_prize_key_idx` on `(prize_key, drawn_at desc)`,
 `raffle_draws_winner_idx` on `winner_registration_id`, and a partial unique
 index on `supersedes` so one draw can be superseded at most once — the
@@ -137,6 +176,10 @@ create policy "admins update registrations" on registrations
 create policy "admins read scans" on scans
   for select to authenticated using (true);
 create policy "admins read raffle_draws" on raffle_draws
+  for select to authenticated using (true);
+create policy "admins read raffle_prizes" on raffle_prizes
+  for select to authenticated using (true);
+create policy "admins read raffle_extra_entrants" on raffle_extra_entrants
   for select to authenticated using (true);
 ```
 

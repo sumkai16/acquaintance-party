@@ -76,6 +76,27 @@ migrations are pasted by hand rather than run via `supabase db push`:
    error is correct — it proves a row that never came from a real draw can't
    be passed off as one.
 
+5. Paste the contents of
+   `supabase/migrations/0003_raffle_prizes_and_entrants.sql`, run it. This
+   adds `raffle_prizes` (admin-managed, replaces the old config-file prize
+   list) and `raffle_extra_entrants` (the manual/import supplement to the
+   eligible pool), and drops the FK from `raffle_draws.winner_registration_id`
+   to `registrations` — an extra entrant has no registration row, so a
+   winner drawn from one couldn't satisfy it otherwise.
+
+   **Before running the last statement in that file** (the `drop
+   constraint`), confirm the actual constraint name rather than trusting the
+   migration's comment:
+   ```sql
+   select conname from pg_constraint where conrelid = 'raffle_draws'::regclass;
+   ```
+   It should be `raffle_draws_winner_registration_id_fkey` — Postgres names
+   an inline `references` this way by default. If it's different, edit the
+   `drop constraint` line to match before running it.
+
+   Once applied, `/admin/raffle` starts with no prizes — add at least one
+   from the page's Setup panel before the first draw.
+
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
