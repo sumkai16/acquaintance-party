@@ -30,6 +30,15 @@ not an error" contract.
   deliverability. Not required to launch — swap it in later without touching
   code, it's just an env var.
 
+**Either way, set a display name** so the inbox shows something better than
+the raw address (Gmail otherwise shows "onboarding," which reads as
+generic/unofficial). `RESEND_FROM_EMAIL` accepts the standard
+`"Name <email>"` format directly — no code change needed:
+```
+RESEND_FROM_EMAIL="Itech Society <onboarding@resend.dev>"
+```
+Quote it (the value contains spaces and angle brackets).
+
 ## 3. Set the environment variables
 
 Add to `.env.local` and, for production, Vercel's **Settings → Environment
