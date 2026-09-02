@@ -16,7 +16,7 @@ export default function HomePage() {
   return (
     <main className="flex-1">
       <section className="bg-deep text-ground">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-5 py-20 md:py-28">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-5 py-14 sm:py-20 md:py-28">
           <p className="text-sm uppercase tracking-[0.2em] text-ground/70">
             {EVENT.host} presents
           </p>
