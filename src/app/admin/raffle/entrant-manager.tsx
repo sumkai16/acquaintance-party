@@ -121,40 +121,47 @@ export function EntrantManager({
         ))}
       </ul>
 
-      <div className="grid gap-2 sm:grid-cols-3">
-        <input
-          value={fullName}
-          onChange={(e) => setFullName(e.target.value)}
-          placeholder="Full name"
-          className="rounded border border-night-ink/25 bg-night-ground px-3 py-2 focus:border-night-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3 sm:col-span-1"
-        />
-        <select
-          value={yearLevel}
-          onChange={(e) => setYearLevel(e.target.value)}
-          className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
-        >
-          <option value="">Year level (optional)</option>
-          {YEAR_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-        <input
-          value={section}
-          onChange={(e) => setSection(e.target.value)}
-          placeholder="Section (optional)"
-          className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
-        />
-      </div>
-      <button
-        type="button"
-        disabled={pending || fullName.trim().length < 2}
-        onClick={handleAdd}
-        className="self-start rounded bg-night-accent px-4 py-2 font-semibold text-night-ground disabled:opacity-50"
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAdd();
+        }}
+        className="flex flex-col gap-2"
       >
-        {pending ? "Adding…" : "Add name"}
-      </button>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <input
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Full name"
+            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2 focus:border-night-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3 sm:col-span-1"
+          />
+          <select
+            value={yearLevel}
+            onChange={(e) => setYearLevel(e.target.value)}
+            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
+          >
+            <option value="">Year level (optional)</option>
+            {YEAR_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+          <input
+            value={section}
+            onChange={(e) => setSection(e.target.value)}
+            placeholder="Section (optional)"
+            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={pending || fullName.trim().length < 2}
+          className="self-start rounded bg-night-accent px-4 py-2 font-semibold text-night-ground disabled:opacity-50"
+        >
+          {pending ? "Adding…" : "Add name"}
+        </button>
+      </form>
 
       <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-night-ink/15 pt-3">
         <input
