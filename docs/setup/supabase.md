@@ -62,6 +62,20 @@ migrations are pasted by hand rather than run via `supabase db push`:
    error is correct — it proves an approved ticket can't exist without a
    scannable code.
 
+4. Paste the contents of `supabase/migrations/0002_raffle.sql`, run it. This
+   adds `raffle_draws` — the raffle page at `/admin/raffle` errors until it
+   exists. Verify a draw with no shortlist can't be recorded — this should
+   **fail**:
+   ```sql
+   insert into raffle_draws (prize_key, prize_name, winner_registration_id,
+     finalists, pool_size, drawn_by)
+   values ('grand', 'Grand prize', gen_random_uuid(), '[]'::jsonb, 1,
+     gen_random_uuid());
+   ```
+   Expected: `violates check constraint "finalists_is_small_array"`. That
+   error is correct — it proves a row that never came from a real draw can't
+   be passed off as one.
+
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 

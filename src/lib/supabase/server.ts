@@ -1,6 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/** The signed-in admin's id, or null. Every admin write gates on this. */
+export async function currentAdminId(): Promise<string | null> {
+  const { data } = await (await serverClient()).auth.getUser();
+  return data.user?.id ?? null;
+}
+
 /** Request-scoped client carrying the signed-in admin's session. */
 export async function serverClient() {
   const cookieStore = await cookies();

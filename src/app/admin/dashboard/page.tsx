@@ -23,6 +23,9 @@ export default async function DashboardPage() {
           <Link href="/admin/review" className="underline">
             Review queue
           </Link>
+          <Link href="/admin/raffle" className="underline">
+            Raffle
+          </Link>
           <a href="/admin/dashboard/export" className="underline">
             Download .xlsx
           </a>

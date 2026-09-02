@@ -1,8 +1,8 @@
 # SCHEMA.md — Database Schema
 
-Source of truth: `supabase/migrations/0001_init.sql`. This file is a fast
-reference — if the two disagree, the migration file is right and this needs
-updating.
+Source of truth: the migration files under `supabase/migrations/`
+(`0001_init.sql`, `0002_raffle.sql`). This file is a fast reference — if the
+two disagree, the migration files are right and this needs updating.
 
 Applied by hand into the hosted Supabase project (no CLI/Docker on this
 machine) — see `docs/setup/supabase.md` §6 for the exact steps, and follow
@@ -75,6 +75,54 @@ registration it finds the earliest `scanned_at` among rows with
 device already admitted, as long as both are online; a real signal blackout
 is the one case it can't cover.
 
+## raffle_draws
+
+One row per draw, including redraws. Added in `0002_raffle.sql`.
+
+**There is no `prizes` table** — the spec described one, but prizes live in
+`RAFFLE_PRIZES` in `src/lib/config/event.ts` instead. A short list that
+changes twice does not need a schema and a CRUD screen. A draw references a
+prize by its config `key` and snapshots the name.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| prize_key | text | NOT NULL, non-empty | Matches a `key` in `RAFFLE_PRIZES`. Effectively append-only once the event starts — renaming one orphans its draws |
+| prize_name | text | NOT NULL, non-empty | Snapshot, so editing the config never rewrites history |
+| winner_registration_id | uuid | NOT NULL, FK → `registrations(id)` | Always one of `finalists` |
+| finalists | jsonb | NOT NULL, array of 1–12 | Snapshots `{registrationId, fullName, yearLevel, section}` per finalist, not bare ids — see below |
+| pool_size | integer | NOT NULL, `> 0` | Eligible students actually drawn from, after exclusions |
+| drawn_at | timestamptz | NOT NULL, default `now()` | Server clock |
+| drawn_by | uuid | NOT NULL, FK → `auth.users(id)` | The admin who ran the draw |
+| is_redraw | boolean | NOT NULL, default false | |
+| supersedes | uuid | FK → `raffle_draws(id)`, nullable, UNIQUE where set | The draw this replaced |
+
+**Why `finalists` snapshots rather than storing ids:** this row records what
+was announced on stage, not a live view. A past draw redisplays with no join
+— which is what lets the projector survive a connection drop — and a later
+name correction never silently changes what the emcee said. The winner's
+display data is read out of this snapshot by matching
+`winner_registration_id`.
+
+**Check constraints:**
+- `finalists_is_small_array` — `finalists` must be a JSON array of 1 to 12
+  entries. A row with no shortlist did not come from a draw.
+- `redraw_has_supersedes` — `is_redraw` is true exactly when `supersedes` is
+  set. A redraw must say what it replaced; a fresh draw must not point
+  anywhere.
+
+**One invariant the database cannot enforce:** "the winner is one of the
+finalists" needs a subquery, which Postgres forbids in `CHECK`. It holds
+because `drawFromPool` in `src/lib/raffle/draw.ts` picks the winner out of
+the finalists it returns, and `recordDraw` writes both together. A row
+hand-written in the SQL editor could still break it; `allDraws()` logs and
+skips such a row rather than rendering an undefined name.
+
+**Indexes:** `raffle_draws_prize_key_idx` on `(prize_key, drawn_at desc)`,
+`raffle_draws_winner_idx` on `winner_registration_id`, and a partial unique
+index on `supersedes` so one draw can be superseded at most once — the
+history stays a chain, not a tree nobody can read back.
+
 ## Row-level security
 
 RLS is **on** for both tables. Every policy targets `authenticated` (i.e.
@@ -88,9 +136,11 @@ create policy "admins update registrations" on registrations
   for update to authenticated using (true) with check (true);
 create policy "admins read scans" on scans
   for select to authenticated using (true);
+create policy "admins read raffle_draws" on raffle_draws
+  for select to authenticated using (true);
 ```
 
-No `insert` policy exists for either table on any role — all inserts go
+No `insert` policy exists for any of these tables on any role — all inserts go
 through the service-role client from server actions, which bypasses RLS
 entirely. This is deliberate: see `context/RULES.md` §Security.
 

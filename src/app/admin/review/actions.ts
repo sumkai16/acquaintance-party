@@ -3,16 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { generateTicketCode } from "@/lib/tickets/code";
 import { adminClient } from "@/lib/supabase/admin";
-import { serverClient } from "@/lib/supabase/server";
+import { currentAdminId } from "@/lib/supabase/server";
 
 const UNIQUE_VIOLATION = "23505";
 
 export type ActionResult = { ok: boolean; error?: string };
-
-async function currentAdminId(): Promise<string | null> {
-  const { data } = await (await serverClient()).auth.getUser();
-  return data.user?.id ?? null;
-}
 
 export async function approveRegistration(id: string): Promise<ActionResult> {
   const adminId = await currentAdminId();

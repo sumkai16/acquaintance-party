@@ -3,8 +3,11 @@
 /* Keep in sync with src/lib/config/theme.ts.
    Tailwind v4 needs these at build time, so the values live in both places.
 
-   Single-theme by choice: the sand ground and clay accent are the event's
-   identity, so there is no dark-mode variant to drift out of sync. */
+   The public theme has no dark variant by choice: the sand ground and clay
+   accent are the event's identity everywhere a student sees them. The
+   --color-night-* set below is not a dark mode — it is the raffle
+   projector's own palette, used only by that surface. See
+   context/DESIGN.md §3. */
 @theme inline {
   --color-accent: #c2481f;
   --color-accent-2: #e39824;
@@ -12,6 +15,13 @@
   --color-deep: #3b2136;
   --color-ground: #f2e3cb;
   --color-ink: #2e1d16;
+
+  --color-night-ground: #120b22;
+  --color-night-deep: #1e1240;
+  --color-night-accent: #7c3aed;
+  --color-night-accent-2: #e0339a;
+  --color-night-accent-3: #38bdf8;
+  --color-night-ink: #f5f3ff;
 
   /* The --font-anton and --font-dm-sans variables come from next/font,
      wired up in src/app/layout.tsx. */
