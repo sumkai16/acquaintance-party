@@ -15,10 +15,26 @@ import {
   saveManifest,
 } from "@/lib/scans/store";
 
-const MANIFEST_REFRESH_MS = 60_000;
+const MANIFEST_REFRESH_MS = 20_000;
 const SYNC_RETRY_MS = 15_000;
 /** How long a result stays on screen before the scanner re-arms. */
 const RESULT_HOLD_MS = 2_500;
+/**
+ * How long the scanner waits for a fresh manifest before arming the camera
+ * anyway. Closes the window where a device scans in its first second on a
+ * stale cached manifest and misses a check-in another door just recorded —
+ * without this, a slow or absent connection would block the scanner
+ * indefinitely, which the door can never afford.
+ */
+const BOOT_REFRESH_TIMEOUT_MS = 3_000;
+
+/** Resolves with `value`, or `undefined` after `ms` — whichever is first. */
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined> {
+  return Promise.race([
+    promise,
+    new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), ms)),
+  ]);
+}
 
 export function Scanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -107,8 +123,12 @@ export function Scanner() {
         await absorbCheckIns(cached);
       }
       setQueued(await pendingCount());
+      // Wait briefly for a fresh manifest before arming the camera, so the
+      // very first scan of the session can't land on stale cached data and
+      // miss a check-in another door just recorded. Falls back to the cache
+      // if the network is slow or absent — never blocks the scanner for long.
+      await withTimeout(refreshManifest(), BOOT_REFRESH_TIMEOUT_MS);
       setReady(true);
-      void refreshManifest();
       void flushQueue();
     })();
   }, [refreshManifest, flushQueue, absorbCheckIns]);

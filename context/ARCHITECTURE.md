@@ -127,9 +127,12 @@ supabase/migrations/                # applied by hand, see docs/setup/supabase.m
 ## 7. Scheduled/background work
 Still no server-side cron or queue. The scanner's "background work" is
 entirely client-side: `src/app/admin/scan/scanner.tsx` runs two
-`setInterval` loops (manifest refresh every 60s, sync-queue retry every 15s)
+`setInterval` loops (manifest refresh every 20s, sync-queue retry every 15s)
 plus a manual refresh button, all just repeated `fetch` calls against
-`/api/scan/*` — nothing scheduled on the server.
+`/api/scan/*` — nothing scheduled on the server. Boot also waits up to 3s for
+one fresh manifest before arming the camera, so a scan in the first second
+can't land on stale cached data and miss a check-in another door just
+recorded — see `BOOT_REFRESH_TIMEOUT_MS` in `scanner.tsx`.
 
 The one piece of server-side background work is the Google Sheets append:
 `POST /api/scan/sync` calls `publishScans` inside Next's `after()`, so it
