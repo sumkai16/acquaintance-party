@@ -10,7 +10,7 @@
 export const EVENT = {
   name: "Acquaintance Party",
   tagline: "Sunset Soiree",
-  host: "BSIT Department",
+  host: "Itech Society",
   startsAt: new Date("2026-10-05T16:00:00+08:00"),
   endsAt: new Date("2026-10-05T20:00:00+08:00"),
   venue: "SCC Annex Building",
@@ -18,7 +18,7 @@ export const EVENT = {
   capacity: 700,
 
   /** Where a student goes when something goes wrong. PLACEHOLDER. */
-  contact: "Message the BSIT Department page on Facebook.",
+  contact: "Message the Itech Society page on Facebook.",
 
   /** The GCash account students send payment to. */
   gcash: {
