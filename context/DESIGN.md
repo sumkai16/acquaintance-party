@@ -1,11 +1,12 @@
 # DESIGN.md — Design System
 
-## 0. Theme status: not finalized
-The working theme is Coachella-inspired ("Desert Sundown" — burnt clay, sun
-gold, sand). **The committee has not confirmed this.** That's why every color
-and font is a token in exactly two places — `src/lib/config/theme.ts` and the
-`@theme` block in `src/app/globals.css` — and nowhere else. Swapping the
-theme should never touch a component file. If you find a hex value or a font
+## 0. Theme: Sunset Soiree (confirmed 2026-09-02)
+Coachella-inspired — burnt clay, sun gold, sand. Built under the internal
+codename "Desert Sundown"; the committee's confirmed name is "Sunset Soiree,"
+and the palette needed no changes to fit it. Every color and font is still a
+token in exactly two places — `src/lib/config/theme.ts` and the `@theme`
+block in `src/app/globals.css` — and nowhere else, so any *future* theme
+change stays a token edit, not a rebuild. If you find a hex value or a font
 name hardcoded in a component, that's a bug — replace it with the Tailwind
 utility that reads the token.
 

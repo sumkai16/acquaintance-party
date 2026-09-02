@@ -6,11 +6,10 @@ import { EVENT } from "@/lib/config/event";
 import { latestDrawForPrize } from "@/lib/raffle/draw";
 import type { RaffleDrawRow, RaffleEntrant, RafflePrize } from "@/lib/raffle/types";
 import { drawPrize, redrawPrize } from "./actions";
-import { FinalistBlur } from "./finalist-blur";
 import { OperatorControls } from "./operator-controls";
 import { RaffleWheel } from "./raffle-wheel";
 
-type Stage = "idle" | "shuffling" | "wheel" | "revealed";
+type Stage = "idle" | "wheel" | "revealed";
 
 /**
  * The whole show, run from one laptop plugged into the projector.
@@ -40,7 +39,7 @@ export function RaffleProjector({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const animating = stage === "shuffling" || stage === "wheel";
+  const animating = stage === "wheel";
 
   function run(action: () => Promise<{ ok: true; draw: RaffleDrawRow } | { ok: false; error: string }>) {
     setError(null);
@@ -55,7 +54,9 @@ export function RaffleProjector({
 
       setDraws((current) => [...current, result.draw]);
       setActive(result.draw);
-      setStage("shuffling");
+      // Straight to the wheel — no name-blur intro. It added a fixed ~4s to
+      // every draw and redraw, which adds up across a night of prizes.
+      setStage("wheel");
     });
   }
 
@@ -83,14 +84,6 @@ export function RaffleProjector({
             the running, plus anyone added under Setup.
           </p>
         </div>
-      ) : null}
-
-      {stage === "shuffling" && active ? (
-        <FinalistBlur
-          pool={pool}
-          finalists={active.finalists}
-          onDone={() => setStage("wheel")}
-        />
       ) : null}
 
       {stage === "wheel" && active ? (

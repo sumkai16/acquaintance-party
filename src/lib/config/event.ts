@@ -9,8 +9,7 @@
  */
 export const EVENT = {
   name: "Acquaintance Party",
-  /** The theme is not finalised. Replace this once the committee decides. */
-  tagline: "Theme to be announced",
+  tagline: "Sunset Soiree",
   host: "BSIT Department",
   startsAt: new Date("2026-10-05T16:00:00+08:00"),
   endsAt: new Date("2026-10-05T20:00:00+08:00"),

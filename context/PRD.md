@@ -49,7 +49,7 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Door scanner — offline-tolerant, multi-device
 - [x] Attendance dashboard + `.xlsx` export
 - [x] Landing page visual polish
-- [x] Two-stage raffle wheel (shortlist → spin), server-side draw
+- [x] Raffle wheel, server-side draw
 - [x] Google Sheets live sync
 
 Status as of 2026-09-02: **all three plans are written and implemented.**
@@ -73,6 +73,18 @@ explicit, admin-only supplement — add a name by hand, or import a short
 list from Excel — for someone the scanner missed. The scanned-in pool stays
 the default and the primary eligibility path; this is an escape hatch, not
 a second way in.
+
+**The raffle's "600 names blur past" shortlist stage was cut, deliberately
+diverging from the spec.** It never actually scaled with participant count
+(capped at 80 decoy names, a fixed ~4s) — the real cost was that fixed 4
+seconds landing on *every* draw and redraw, which adds up drawing several
+prizes live. Speed at the podium won over the shortlist drama; the draw
+click now goes straight to the wheel.
+
+**The theme is confirmed: Sunset Soiree** (2026-09-02). The palette built
+under the internal codename "Desert Sundown" needed no changes to fit it —
+`src/lib/config/theme.ts` and `context/DESIGN.md` §0 are updated, tokens
+untouched.
 
 **Plan 3 was built in a different order than the spec's** (landing → raffle
 → Sheets, not Sheets → landing → raffle). The spec's order was set assuming

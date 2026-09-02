@@ -4,13 +4,15 @@
 /**
  * The visual identity, in one place.
  *
- * The party theme is NOT finalised. Swapping it should be an edit to this
- * file, the @theme block in globals.css, and the Google Fonts link in
- * layout.tsx — nothing else. Components read these tokens through Tailwind
- * utilities and must never hardcode a hex value.
+ * The party theme is confirmed as "Sunset Soiree" (2026-09-02) — the working
+ * palette below was designed under the internal codename "Desert Sundown"
+ * and needed no color changes, only the name. Any future theme change is
+ * still an edit to this file, the @theme block in globals.css, and the
+ * Google Fonts link in layout.tsx — nothing else. Components read these
+ * tokens through Tailwind utilities and must never hardcode a hex value.
  */
 export const THEME = {
-  name: "Desert Sundown",
+  name: "Sunset Soiree",
   colors: {
     accent: "#C2481F", // burnt clay — primary actions, headlines
     accent2: "#E39824", // sun gold — highlights, poster title
