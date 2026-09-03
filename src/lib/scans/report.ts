@@ -69,12 +69,14 @@ export function findDoubleScans(rows: ScanRecord[]): DoubleScan[] {
 
 export function filterScans(
   rows: ScanRecord[],
-  filter: { year?: string; section?: string },
+  filter: { name?: string; year?: string; section?: string },
 ): ScanRecord[] {
+  const name = filter.name?.trim().toLowerCase();
   const year = filter.year?.trim();
   const section = filter.section?.trim();
 
   return rows.filter((row) => {
+    if (name && !row.fullName?.toLowerCase().includes(name)) return false;
     if (year && row.yearLevel !== year) return false;
     if (section && row.section !== section) return false;
     return true;

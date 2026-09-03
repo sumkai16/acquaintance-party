@@ -91,6 +91,15 @@ seconds landing on *every* draw and redraw, which adds up across a night of
 drawing several names live. Speed at the podium won over the shortlist
 drama; the draw click now goes straight to the wheel.
 
+**Attendance search and a filtered export** (2026-09-04, same QA pass). The
+Recent Scans table now has a debounced name search alongside the existing
+Year-level/Section dropdowns; the invalid-QR message the QA doc asked for
+already existed (the scanner's full-screen "Not a valid ticket" panel), so
+that item needed no change. "Download .xlsx" carries whatever name/year/
+section filter is active on the page through to the export — filter to a
+section, download, and the file only has that section; no filter downloads
+everything, same as before.
+
 **Walk-in cash sales and the one-registration-per-student cap** (2026-09-04,
 from a QA pass in `docs/Event Scanner.xlsx`) — two related gaps: nothing
 stopped a student submitting several online registrations, and there was no

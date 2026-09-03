@@ -170,4 +170,23 @@ describe("filterScans", () => {
   it("treats an empty-string filter the same as unset", () => {
     expect(filterScans(rows, { year: "", section: "" })).toHaveLength(4);
   });
+
+  it("filters by name, case-insensitively and by substring", () => {
+    expect(filterScans(rows, { name: "ana" }).map((r) => r.fullName)).toEqual([
+      "Ana Reyes",
+    ]);
+    expect(filterScans(rows, { name: "cruz" }).map((r) => r.fullName)).toEqual([
+      "Zeta Cruz",
+    ]);
+  });
+
+  it("excludes rows with no name once a name filter is active", () => {
+    const found = filterScans(rows, { name: "a" });
+    expect(found.every((r) => r.fullName !== null)).toBe(true);
+  });
+
+  it("combines a name filter with year/section filters", () => {
+    const found = filterScans(rows, { name: "santos", year: "2nd year" });
+    expect(found.map((r) => r.fullName)).toEqual(["Miko Santos"]);
+  });
 });

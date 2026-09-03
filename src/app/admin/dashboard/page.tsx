@@ -27,9 +27,15 @@ const RESULT_TONE = { ok: "green", duplicate: "amber", invalid: "red" } as const
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string; dir?: string; year?: string; section?: string }>;
+  searchParams: Promise<{
+    sort?: string;
+    dir?: string;
+    name?: string;
+    year?: string;
+    section?: string;
+  }>;
 }) {
-  const { sort, dir, year, section } = await searchParams;
+  const { sort, dir, name, year, section } = await searchParams;
   const [rawScans, sold] = await Promise.all([allScans(), approvedCount()]);
   // Counts and the double-scan alert describe the whole night, not the
   // filtered table view — a filter narrowing to one section shouldn't make
@@ -40,9 +46,17 @@ export default async function DashboardPage({
 
   const sortColumn = COLUMNS.some((c) => c.key === sort) ? (sort as SortColumn) : null;
   const direction = dir === "asc" ? "asc" : "desc";
-  const filtered = filterScans(rawScans, { year, section });
+  const filtered = filterScans(rawScans, { name, year, section });
   // No sort param: today's default, newest-first from the query itself.
   const scans = sortColumn ? sortScans(filtered, sortColumn, direction) : filtered;
+
+  const exportParams = new URLSearchParams();
+  if (name) exportParams.set("name", name);
+  if (year) exportParams.set("year", year);
+  if (section) exportParams.set("section", section);
+  const exportHref = exportParams.toString()
+    ? `/admin/dashboard/export?${exportParams.toString()}`
+    : "/admin/dashboard/export";
 
   return (
     <main className="mx-auto max-w-5xl p-6">
@@ -52,7 +66,7 @@ export default async function DashboardPage({
           <p className="text-ground/60">Live counts from every door scanner.</p>
         </div>
         <a
-          href="/admin/dashboard/export"
+          href={exportHref}
           className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
         >
           Download .xlsx
@@ -102,6 +116,7 @@ export default async function DashboardPage({
                 const params = new URLSearchParams();
                 params.set("sort", col.key);
                 params.set("dir", nextDir);
+                if (name) params.set("name", name);
                 if (year) params.set("year", year);
                 if (section) params.set("section", section);
                 return (

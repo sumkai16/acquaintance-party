@@ -1,13 +1,19 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 
+const NAME_DEBOUNCE_MS = 300;
+
 /**
- * Two dropdowns that narrow the Recent Scans table by year level and
- * section, driven by the same URL-param pattern as the table's column
- * sort (?sort=&dir=) rather than local state — so a filtered, sorted view
- * survives a refresh or a shared link.
+ * A name search plus two dropdowns, narrowing the Recent Scans table by
+ * name/year level/section — driven by the same URL-param pattern as the
+ * table's column sort (?sort=&dir=) rather than local state, so a filtered,
+ * sorted view survives a refresh or a shared link. The name field is
+ * debounced (typing shouldn't push a new URL, and re-fetch, per keystroke);
+ * the dropdowns commit immediately since a select change is already one
+ * discrete action.
  */
 export function ScanFilters({ sections }: { sections: string[] }) {
   const router = useRouter();
@@ -16,16 +22,34 @@ export function ScanFilters({ sections }: { sections: string[] }) {
 
   const year = searchParams.get("year") ?? "";
   const section = searchParams.get("section") ?? "";
+  const [name, setName] = useState(searchParams.get("name") ?? "");
 
-  function setParam(key: "year" | "section", value: string) {
+  function setParam(key: "year" | "section" | "name", value: string) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
     router.push(`${pathname}?${params.toString()}`);
   }
 
+  useEffect(() => {
+    // Skip the no-op push on mount (and after this effect's own navigation
+    // updates searchParams) — only a real edit should debounce a new URL.
+    if (name === (searchParams.get("name") ?? "")) return;
+    const timer = setTimeout(() => setParam("name", name), NAME_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name]);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <input
+        value={name}
+        onChange={(event) => setName(event.target.value)}
+        placeholder="Search by name"
+        aria-label="Filter by name"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+      />
+
       <select
         value={year}
         onChange={(event) => setParam("year", event.target.value)}
