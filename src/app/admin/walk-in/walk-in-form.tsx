@@ -38,6 +38,7 @@ export function WalkInForm() {
           name="fullName"
           required
           autoFocus
+          placeholder="Juan Dela Cruz"
           defaultValue={values?.fullName ?? ""}
           className={inputClass}
         />
@@ -49,6 +50,7 @@ export function WalkInForm() {
           id="studentId"
           name="studentId"
           required
+          placeholder="2023-00451"
           defaultValue={values?.studentId ?? ""}
           className={inputClass}
         />
@@ -80,6 +82,7 @@ export function WalkInForm() {
           id="section"
           name="section"
           required
+          placeholder="BSIT-3B"
           defaultValue={values?.section ?? ""}
           className={inputClass}
         />
@@ -97,6 +100,7 @@ export function WalkInForm() {
           name="email"
           type="email"
           required
+          placeholder="juan@example.com"
           defaultValue={values?.email ?? ""}
           className={inputClass}
         />
