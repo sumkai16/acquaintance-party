@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { buildIndex, resolveScan, type Resolution } from "@/lib/scans/resolve";
 import type { Manifest, ManifestEntry } from "@/lib/scans/manifest";
 import { startDecoder, type DecoderDiagnostics } from "@/lib/scans/camera";
+import { browserClient } from "@/lib/supabase/browser";
 import {
   clearScans,
   loadManifest,
@@ -37,6 +39,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 }
 
 export function Scanner() {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const indexRef = useRef(new Map<string, ManifestEntry>());
   const scannedRef = useRef(new Map<string, string>());
@@ -195,19 +198,41 @@ export function Scanner() {
     return () => stop?.();
   }, [ready, deviceLabel, handleCode]);
 
-  // Setup only — themed. The moment scanning starts, the live result
-  // states below (green/red/amber, full-screen) take over and stay exactly
-  // as they are: read at arm's length, in the dark, under time pressure,
-  // where an ambiguous color reads as a wrong answer instantly.
+  // Setup only — themed, including a lightweight header echoing the shared
+  // admin nav's pill/sign-out treatment (this route is excluded from the
+  // real AdminNav since it's a single-purpose tool, not a multi-page one).
+  // The moment scanning starts, the live result states below (green/red/
+  // amber, full-screen) take over and stay exactly as they are: read at
+  // arm's length, in the dark, under time pressure, where an ambiguous
+  // color reads as a wrong answer instantly.
   if (!deviceLabel) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-deep via-deep to-accent/30 p-6 text-ground">
-        <div className="w-full max-w-sm rounded-lg border border-ground/10 bg-black/20 p-6">
-          <h1 className="font-display text-2xl uppercase">Name this scanner</h1>
-          <p className="mt-2 text-ground/70">
-            Give this phone a door name, so a double entry can be traced to the
-            lane it came through. Example: <code>door-1</code>.
+      <main className="flex min-h-screen flex-col bg-deep text-ground">
+        <div className="flex items-center justify-between px-6 py-4">
+          <span className="rounded-full bg-accent px-3.5 py-1.5 text-sm font-medium text-white">
+            Scanner
+          </span>
+          <button
+            type="button"
+            onClick={async () => {
+              await browserClient().auth.signOut();
+              router.push("/admin/login");
+              router.refresh();
+            }}
+            className="rounded-full px-3.5 py-1.5 text-sm font-medium text-ground/50 hover:bg-ground/10 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            Sign out
+          </button>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+          <h1 className="font-display text-4xl uppercase leading-[0.95]">
+            Name this scanner
+          </h1>
+          <p className="text-ground/60">
+            Example: <code>door-1</code>
           </p>
+
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -217,16 +242,16 @@ export function Scanner() {
               localStorage.setItem("scanner-device-label", label);
               setDeviceLabel(label);
             }}
-            className="mt-4 flex flex-col gap-3"
+            className="mt-4 flex w-full max-w-xs flex-col items-center gap-6"
           >
             <input
               name="label"
               required
               autoFocus
               placeholder="door-1"
-              className="rounded border border-ground/20 bg-black/20 px-3 py-3 text-lg text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              className="w-full border-0 border-b-2 border-accent bg-transparent px-1 py-3 text-center text-xl text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-4 focus:outline-accent-2"
             />
-            <button className="rounded bg-accent px-6 py-3 text-lg font-semibold uppercase tracking-wide text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2">
+            <button className="rounded-full bg-accent px-8 py-3 text-sm font-semibold uppercase tracking-wide text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2">
               Start scanning
             </button>
           </form>

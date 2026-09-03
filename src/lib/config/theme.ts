@@ -17,6 +17,7 @@ export const THEME = {
     accent: "#C2481F", // burnt clay — primary actions, headlines
     accent2: "#E39824", // sun gold — highlights, poster title
     accent3: "#7E8B5F", // cactus sage — tertiary fills
+    accent4: "#D6336C", // raspberry pink — attention: redraw, selection, alerts
     deep: "#3B2136", // dusk plum — hero ground, inverted sections
     ground: "#F2E3CB", // sand — page background
     ink: "#2E1D16", // body text

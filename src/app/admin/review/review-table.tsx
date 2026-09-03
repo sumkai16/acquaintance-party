@@ -95,7 +95,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
       <div className="overflow-x-auto rounded-lg border border-ground/10 bg-black/20">
         <table className="w-full min-w-[840px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-ground/10 text-left">
+            <tr className="border-b border-ground/10 bg-ground/5 text-left">
               <th className="py-2 pr-3 pl-4 text-ground/70">Receipt</th>
               {columns.map((col) => {
                 const active = sort.column === col.key;
@@ -209,7 +209,7 @@ function ReviewRow({ row }: { row: Row }) {
               type="button"
               disabled={pending}
               onClick={() => run(() => approveRegistration(registration.id))}
-              className="rounded bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              className="rounded-full bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
             >
               Approve
             </button>
@@ -224,7 +224,7 @@ function ReviewRow({ row }: { row: Row }) {
               type="button"
               disabled={pending || !reason.trim()}
               onClick={() => run(() => rejectRegistration(registration.id, reason))}
-              className="rounded border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
+              className="rounded-full border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
             >
               Reject
             </button>

@@ -24,23 +24,23 @@ export default async function RegistrationsPage({
     <div className="min-h-[calc(100vh-49px)] bg-gradient-to-br from-deep via-deep to-accent/30">
       <main className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-16">
         <header className="text-center">
-          <h1 className="font-display text-4xl uppercase">Find a registration</h1>
+          <h1 className="font-display text-4xl uppercase">Find anyone&apos;s ticket</h1>
           <p className="mt-2 text-ground/70">
             Search by name or email when a student has lost their ticket link.
           </p>
         </header>
 
-        <form className="flex gap-2">
+        <form className="flex flex-col items-center gap-6">
           <input
             name="q"
             defaultValue={q}
-            placeholder="Name or email"
+            placeholder="Type a name or email…"
             aria-label="Search by name or email"
-            className="flex-1 rounded-md border border-ground/20 bg-black/20 px-3 py-2.5 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+            className="w-full border-0 border-b-2 border-accent bg-transparent px-1 py-3 text-center text-xl text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-4 focus:outline-accent-2"
           />
           <button
             type="submit"
-            className="rounded-md bg-accent-2 px-5 py-2.5 text-sm font-semibold text-deep hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            className="rounded-full bg-accent px-8 py-3 text-sm font-semibold uppercase tracking-wide text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
           >
             Search
           </button>

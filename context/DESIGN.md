@@ -24,6 +24,7 @@ Full rationale and the three directions considered:
 | `--color-accent` | `#C2481F` | Primary actions, headlines (burnt clay) |
 | `--color-accent-2` | `#E39824` | Highlights, poster title (sun gold) |
 | `--color-accent-3` | `#7E8B5F` | Tertiary fills (cactus sage) |
+| `--color-accent-4` | `#D6336C` | Attention — redraw, selection, alerts (raspberry pink), added 2026-09-03 |
 | `--color-deep` | `#3B2136` | Hero ground, inverted sections (dusk plum) |
 | `--color-ground` | `#F2E3CB` | Page background (sand) |
 | `--color-ink` | `#2E1D16` | Body text |

@@ -51,12 +51,12 @@ export default async function DashboardPage({
         <Stat label="Checked in" value={summary.checkedIn} />
         <Stat label="Tickets sold" value={sold} />
         <Stat label="Not yet arrived" value={summary.notYetArrived} />
-        <Stat label="Invalid scans" value={summary.invalid} />
+        <Stat label="Invalid scans" value={summary.invalid} tone="warn" />
       </dl>
 
       {doubles.length > 0 ? (
-        <section className="mt-8 rounded-lg border border-accent-2/40 bg-accent-2/10 p-4">
-          <h2 className="font-bold text-accent-2">
+        <section className="mt-8 rounded-lg border border-accent-4/40 bg-accent-4/10 p-4">
+          <h2 className="font-bold text-accent-4">
             {doubles.length} ticket{doubles.length === 1 ? "" : "s"} admitted at
             more than one door
           </h2>
@@ -135,11 +135,23 @@ export default async function DashboardPage({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone?: "warn";
+}) {
   return (
     <div className="rounded-lg border border-ground/10 bg-ground/5 p-4">
       <dt className="text-sm text-ground/60">{label}</dt>
-      <dd className="text-3xl font-bold tabular-nums text-accent-2">{value}</dd>
+      <dd
+        className={`text-3xl font-bold tabular-nums ${tone === "warn" ? "text-accent" : "text-ground"}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
