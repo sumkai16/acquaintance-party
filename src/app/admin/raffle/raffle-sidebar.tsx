@@ -31,6 +31,7 @@ export function RaffleSidebar({
   ticketsSold: number;
 }) {
   const [setupOpen, setSetupOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const extras = pool.filter((entrant) => entrant.source === "extra");
   const effectivePool = includeExtraEntrants
     ? pool
@@ -40,18 +41,43 @@ export function RaffleSidebar({
     draws.map((row) => row.supersedes).filter((id): id is string => id !== null),
   );
 
+  if (collapsed) {
+    return (
+      <aside className="flex w-12 shrink-0 flex-col items-center border-r border-ground/10 bg-black/20 py-4">
+        <button
+          type="button"
+          onClick={() => setCollapsed(false)}
+          aria-label="Show sidebar"
+          className="rounded border border-ground/25 px-2 py-1.5 text-xs hover:border-ground/50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
+        >
+          »
+        </button>
+      </aside>
+    );
+  }
+
   return (
     <aside className="flex w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-ground/10 bg-black/20 p-4">
-      <p className="text-sm text-ground/70">
-        <span className="font-semibold text-ground">{effectivePool.length}</span>{" "}
-        eligible of {ticketsSold} tickets sold
-        {!includeExtraEntrants && extras.length > 0 ? (
-          <span className="block text-ground/50">
-            ({extras.length} added name{extras.length === 1 ? "" : "s"} not
-            included this draw)
-          </span>
-        ) : null}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-ground/70">
+          <span className="font-semibold text-ground">{effectivePool.length}</span>{" "}
+          eligible of {ticketsSold} tickets sold
+          {!includeExtraEntrants && extras.length > 0 ? (
+            <span className="block text-ground/50">
+              ({extras.length} added name{extras.length === 1 ? "" : "s"} not
+              included this draw)
+            </span>
+          ) : null}
+        </p>
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          aria-label="Collapse sidebar"
+          className="shrink-0 rounded border border-ground/25 px-2 py-1.5 text-xs hover:border-ground/50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
+        >
+          «
+        </button>
+      </div>
 
       <div className="flex flex-col gap-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-ground/50">

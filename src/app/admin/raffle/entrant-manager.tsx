@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { RaffleEntrant } from "@/lib/raffle/types";
 import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
@@ -10,6 +10,11 @@ import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
  * list. The scanned-in pool is still the default and the primary
  * eligibility path — this only ever supplements it, and every addition here
  * is a deliberate, visible admin action.
+ *
+ * The list of already-added names stays inline (it's short and worth
+ * glancing at while setting up), but adding more opens a modal — the form
+ * plus the Excel import together are too tall to sit permanently inside the
+ * sidebar's Setup panel.
  */
 export function EntrantManager({
   extras,
@@ -22,67 +27,17 @@ export function EntrantManager({
   onAddMany: (entrants: RaffleEntrant[]) => void;
   onRemove: (id: string) => void;
 }) {
-  const [fullName, setFullName] = useState("");
-  const [yearLevel, setYearLevel] = useState("");
-  const [section, setSection] = useState("");
-  const [pending, setPending] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  async function handleAdd() {
-    setPending(true);
-    setError(null);
-    setNotice(null);
-    const result = await addEntrant({
-      fullName,
-      yearLevel: yearLevel || undefined,
-      section: section || undefined,
-    });
-    setPending(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    onAdd(result.entrant);
-    setFullName("");
-    setYearLevel("");
-    setSection("");
-    if (result.warning) setNotice(result.warning);
-  }
+  const [modalOpen, setModalOpen] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   async function handleRemove(id: string) {
-    setError(null);
+    setRemoveError(null);
     const result = await removeEntrant(id);
     if (!result.ok) {
-      setError(result.error);
+      setRemoveError(result.error);
       return;
     }
     onRemove(id);
-  }
-
-  async function handleImport() {
-    const file = fileRef.current?.files?.[0];
-    if (!file) return;
-
-    setImporting(true);
-    setError(null);
-    setNotice(null);
-    const formData = new FormData();
-    formData.set("file", file);
-    const result = await importEntrants(formData);
-    setImporting(false);
-
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    onAddMany(result.added);
-    if (fileRef.current) fileRef.current.value = "";
-    const parts = [`Added ${result.added.length}`];
-    if (result.skipped > 0) parts.push(`skipped ${result.skipped} blank row(s)`);
-    setNotice([...parts, ...result.warnings].join(". "));
   }
 
   return (
@@ -121,19 +76,133 @@ export function EntrantManager({
         ))}
       </ul>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          handleAdd();
-        }}
-        className="flex flex-col gap-2"
+      {removeError ? <p className="text-sm text-accent-2">{removeError}</p> : null}
+
+      <button
+        type="button"
+        onClick={() => setModalOpen(true)}
+        className="self-start rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
       >
-        <div className="grid gap-2 sm:grid-cols-3">
+        Add entrants
+      </button>
+
+      {modalOpen ? (
+        <AddEntrantsModal
+          onAdd={onAdd}
+          onAddMany={onAddMany}
+          onClose={() => setModalOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function AddEntrantsModal({
+  onAdd,
+  onAddMany,
+  onClose,
+}: {
+  onAdd: (entrant: RaffleEntrant) => void;
+  onAddMany: (entrants: RaffleEntrant[]) => void;
+  onClose: () => void;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
+  const [section, setSection] = useState("");
+  const [pending, setPending] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  async function handleAdd() {
+    setPending(true);
+    setError(null);
+    setNotice(null);
+    const result = await addEntrant({
+      fullName,
+      yearLevel: yearLevel || undefined,
+      section: section || undefined,
+    });
+    setPending(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onAdd(result.entrant);
+    setFullName("");
+    setYearLevel("");
+    setSection("");
+    if (result.warning) setNotice(result.warning);
+  }
+
+  async function handleImport() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setError(null);
+    setNotice(null);
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = await importEntrants(formData);
+    setImporting(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    onAddMany(result.added);
+    if (fileRef.current) fileRef.current.value = "";
+    const parts = [`Added ${result.added.length}`];
+    if (result.skipped > 0) parts.push(`skipped ${result.skipped} blank row(s)`);
+    setNotice([...parts, ...result.warnings].join(". "));
+  }
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add extra entrants"
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        className="flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-lg border border-ground/15 bg-deep p-6"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="text-lg font-semibold">Add extra entrants</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-full px-2 py-1 text-ground/60 hover:bg-ground/10 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
+          >
+            ✕
+          </button>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleAdd();
+          }}
+          className="flex flex-col gap-2"
+        >
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Full name"
-            className="rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3 sm:col-span-1"
+            className="rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
           />
           <select
             value={yearLevel}
@@ -153,39 +222,39 @@ export function EntrantManager({
             placeholder="Section (optional)"
             className="rounded border border-ground/25 bg-deep px-3 py-2"
           />
+          <button
+            type="submit"
+            disabled={pending || fullName.trim().length < 2}
+            className="self-start rounded-full bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
+          >
+            {pending ? "Adding…" : "Add name"}
+          </button>
+        </form>
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-ground/15 pt-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
+          />
+          <button
+            type="button"
+            disabled={importing}
+            onClick={handleImport}
+            className="rounded border border-ground/25 px-4 py-2 font-semibold hover:border-ground/50 disabled:opacity-50"
+          >
+            {importing ? "Importing…" : "Import from Excel"}
+          </button>
+          <p className="w-full text-xs text-ground/45">
+            Header row required. Full name (or Name) is required; Year level
+            and Section are optional.
+          </p>
         </div>
-        <button
-          type="submit"
-          disabled={pending || fullName.trim().length < 2}
-          className="self-start rounded bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
-        >
-          {pending ? "Adding…" : "Add name"}
-        </button>
-      </form>
 
-      <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-ground/15 pt-3">
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
-        />
-        <button
-          type="button"
-          disabled={importing}
-          onClick={handleImport}
-          className="rounded border border-ground/25 px-4 py-2 font-semibold hover:border-ground/50 disabled:opacity-50"
-        >
-          {importing ? "Importing…" : "Import from Excel"}
-        </button>
-        <p className="w-full text-xs text-ground/45">
-          Header row required. Full name (or Name) is required; Year level
-          and Section are optional.
-        </p>
+        {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
+        {error ? <p className="text-sm text-accent-2">{error}</p> : null}
       </div>
-
-      {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
-      {error ? <p className="text-sm text-accent-2">{error}</p> : null}
     </div>
   );
 }
