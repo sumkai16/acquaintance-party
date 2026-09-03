@@ -8,6 +8,7 @@ const initial: FormState = { status: "idle", attempt: 0 };
 
 const inputClass =
   "w-full rounded border border-ink/25 bg-white px-3 py-2.5 " +
+  "placeholder:text-ink/40 " +
   "focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-accent";
 
 export function CheckoutForm() {
@@ -39,6 +40,7 @@ export function CheckoutForm() {
           name="fullName"
           required
           autoComplete="name"
+          placeholder="Juan Dela Cruz"
           defaultValue={values?.fullName ?? ""}
           className={inputClass}
         />
@@ -50,6 +52,7 @@ export function CheckoutForm() {
           id="studentId"
           name="studentId"
           required
+          placeholder="2023-00451"
           defaultValue={values?.studentId ?? ""}
           className={inputClass}
         />
@@ -81,6 +84,7 @@ export function CheckoutForm() {
           id="section"
           name="section"
           required
+          placeholder="BSIT-3B"
           defaultValue={values?.section ?? ""}
           className={inputClass}
         />
@@ -99,6 +103,7 @@ export function CheckoutForm() {
           type="email"
           required
           autoComplete="email"
+          placeholder="juan@example.com"
           defaultValue={values?.email ?? ""}
           className={inputClass}
         />
@@ -116,6 +121,7 @@ export function CheckoutForm() {
           name="gcashReference"
           required
           inputMode="numeric"
+          placeholder="1234567890123"
           defaultValue={values?.gcashReference ?? ""}
           className={`${inputClass} font-mono`}
         />
