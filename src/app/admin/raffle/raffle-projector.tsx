@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { EVENT } from "@/lib/config/event";
 import { latestDraw } from "@/lib/raffle/draw";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
+import { useSetNavHidden } from "../admin-nav";
 import { drawNext, redrawLast } from "./actions";
 import { RaffleSidebar } from "./raffle-sidebar";
 import { RaffleWheel } from "./raffle-wheel";
@@ -21,7 +21,10 @@ type Stage = "idle" | "wheel" | "revealed";
  * Layout: a left sidebar for eligibility and the running winner history, and
  * a right panel for "the show" (idle/wheel/revealed, with the Draw/Redraw
  * action directly beneath it) — state ownership stays entirely here
- * regardless of which column renders which piece.
+ * regardless of which column renders which piece. The shared AdminNav
+ * (rendered above by the admin layout) hides itself only while the wheel is
+ * actually spinning, via useSetNavHidden — idle and revealed keep it, same
+ * as every other admin page.
  */
 export function RaffleProjector({
   initialPool,
@@ -42,6 +45,7 @@ export function RaffleProjector({
   const [pending, startTransition] = useTransition();
 
   const animating = stage === "wheel";
+  useSetNavHidden(animating);
   const standing = latestDraw(draws);
   const effectivePool = includeExtraEntrants
     ? pool
@@ -68,17 +72,13 @@ export function RaffleProjector({
 
   return (
     <main className="flex min-h-screen flex-col bg-deep text-ground">
-      <header className="flex items-center justify-between border-b border-ground/10 px-6 py-4 text-sm text-ground/60">
-        <p className="uppercase tracking-[0.3em]">{EVENT.name} raffle</p>
-        {!animating ? (
-          <Link
-            href="/admin/dashboard"
-            className="underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
-          >
-            Attendance
-          </Link>
-        ) : null}
-      </header>
+      {/* Event branding, always up regardless of nav visibility — the
+          shared AdminNav above already covers navigation, so this only
+          needs to say what's on screen for whoever's looking at the
+          projector. */}
+      <p className="border-b border-ground/10 px-6 py-4 text-sm uppercase tracking-[0.3em] text-ground/60">
+        {EVENT.name} raffle
+      </p>
 
       <div className="flex flex-1">
         {!animating ? (

@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { buildIndex, resolveScan, type Resolution } from "@/lib/scans/resolve";
 import type { Manifest, ManifestEntry } from "@/lib/scans/manifest";
 import { startDecoder, type DecoderDiagnostics } from "@/lib/scans/camera";
-import { browserClient } from "@/lib/supabase/browser";
+import { useSetNavHidden } from "../admin-nav";
 import {
   clearScans,
   loadManifest,
@@ -39,7 +38,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | undefined>
 }
 
 export function Scanner() {
-  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const indexRef = useRef(new Map<string, ManifestEntry>());
   const scannedRef = useRef(new Map<string, string>());
@@ -55,6 +53,11 @@ export function Scanner() {
   // which engine is in use, from a screenshot, without needing device access.
   const [diag, setDiag] = useState<DecoderDiagnostics | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Once a device is named, live scanning takes over the whole screen — the
+  // shared nav would eat into the "read at arm's length, in the dark" full
+  // color panel below. Setup keeps the nav, exactly like every other page.
+  useSetNavHidden(!!deviceLabel);
 
   // The label identifies this phone in the scan record, so a double-scan alert
   // on the dashboard can name which two doors saw the same ticket. Read after
@@ -198,33 +201,15 @@ export function Scanner() {
     return () => stop?.();
   }, [ready, deviceLabel, handleCode]);
 
-  // Setup only — themed, including a lightweight header echoing the shared
-  // admin nav's pill/sign-out treatment (this route is excluded from the
-  // real AdminNav since it's a single-purpose tool, not a multi-page one).
-  // The moment scanning starts, the live result states below (green/red/
-  // amber, full-screen) take over and stay exactly as they are: read at
-  // arm's length, in the dark, under time pressure, where an ambiguous
-  // color reads as a wrong answer instantly.
+  // Setup only, themed — the shared AdminNav (rendered above by the admin
+  // layout) already covers navigation and sign-out here. The moment scanning
+  // starts, useSetNavHidden takes the nav away and the live result states
+  // below (green/red/amber, full-screen) take over: read at arm's length, in
+  // the dark, under time pressure, where an ambiguous color reads as a wrong
+  // answer instantly.
   if (!deviceLabel) {
     return (
       <main className="flex min-h-screen flex-col bg-deep text-ground">
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className="rounded-full bg-accent px-3.5 py-1.5 text-sm font-medium text-white">
-            Scanner
-          </span>
-          <button
-            type="button"
-            onClick={async () => {
-              await browserClient().auth.signOut();
-              router.push("/admin/login");
-              router.refresh();
-            }}
-            className="rounded-full px-3.5 py-1.5 text-sm font-medium text-ground/50 hover:bg-ground/10 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-          >
-            Sign out
-          </button>
-        </div>
-
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h1 className="font-display text-4xl uppercase leading-[0.95]">
             Name this scanner

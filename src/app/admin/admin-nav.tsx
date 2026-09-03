@@ -1,5 +1,6 @@
 "use client";
 
+import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { browserClient } from "@/lib/supabase/browser";
@@ -12,26 +13,49 @@ const LINKS = [
   { href: "/admin/registrations", label: "Find a registration" },
 ] as const;
 
-const HIDDEN_ON = ["/admin/scan", "/admin/raffle"];
+type NavVisibility = { hidden: boolean; setHidden: (hidden: boolean) => void };
+const NavVisibilityContext = createContext<NavVisibility | null>(null);
 
 /**
- * Rendered from admin/layout.tsx on every admin route — replaces each
- * page's own hand-rolled, inconsistently-styled nav row.
- *
- * The two full-screen surfaces (scanner, raffle projector) hide it by
- * returning null here, using usePathname() rather than a server-side check
- * in the layout — a previous version gated this from layout.tsx via a
- * custom x-pathname header set in middleware, which came back empty on some
- * client-side navigations (an empty string trivially passes every "does not
- * include" exclusion check), so the nav rendered anyway on top of the
- * scanner's own header. usePathname() is always accurate, on every render,
- * so the exclusion belongs here.
+ * Wraps AdminNav and the page content together (from admin/layout.tsx) so a
+ * full-screen surface nested inside `children` — the scanner's live result
+ * screen, the raffle wheel mid-spin — can reach up and hide the nav for
+ * exactly that moment via useSetNavHidden. Everywhere else, including those
+ * same pages' setup/idle states, the nav stays up, so every admin page is
+ * reachable the same way.
+ */
+export function NavVisibilityProvider({ children }: { children: React.ReactNode }) {
+  const [hidden, setHidden] = useState(false);
+  return (
+    <NavVisibilityContext.Provider value={{ hidden, setHidden }}>
+      {children}
+    </NavVisibilityContext.Provider>
+  );
+}
+
+/** Call with `true` from a full-screen surface while it owns the whole screen. */
+export function useSetNavHidden(hidden: boolean) {
+  const ctx = useContext(NavVisibilityContext);
+  useEffect(() => {
+    ctx?.setHidden(hidden);
+    return () => ctx?.setHidden(false);
+  }, [hidden, ctx]);
+}
+
+/**
+ * Rendered from admin/layout.tsx on every non-login admin route — replaces
+ * each page's own hand-rolled, inconsistently-styled nav row so every admin
+ * page is reachable the same way. Hiding is driven by useSetNavHidden, not a
+ * static per-route exclusion — a previous version hid the whole scanner and
+ * raffle routes outright via usePathname(), which also hid their setup/idle
+ * states that had no reason to lose the nav.
  */
 export function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const hidden = useContext(NavVisibilityContext)?.hidden ?? false;
 
-  if (HIDDEN_ON.some((prefix) => pathname.startsWith(prefix))) return null;
+  if (hidden) return null;
 
   async function signOut() {
     await browserClient().auth.signOut();

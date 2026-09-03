@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { serverClient } from "@/lib/supabase/server";
-import { AdminNav } from "./admin-nav";
+import { AdminNav, NavVisibilityProvider } from "./admin-nav";
 
 // Sunset Soiree, throughout — see context/DESIGN.md §3. The one carve-out
 // is the scanner's live scan result screens (full-screen green/red/amber,
@@ -23,13 +23,20 @@ export default async function AdminLayout({
     if (!data.user) redirect("/admin/login");
   }
 
-  // AdminNav decides for itself whether to render on the current route
-  // (scanner, raffle projector, and login all hide it) — see the comment
-  // there for why that decision lives client-side, not here.
+  // AdminNav shows on every non-login route now — a full-screen surface
+  // nested in `children` (the scanner's live result screen, the raffle
+  // wheel mid-spin) hides it for exactly that moment via useSetNavHidden,
+  // which needs AdminNav and children under the same NavVisibilityProvider.
   return (
     <div className="min-h-screen bg-deep text-ground">
-      {!isLogin ? <AdminNav /> : null}
-      {children}
+      {!isLogin ? (
+        <NavVisibilityProvider>
+          <AdminNav />
+          {children}
+        </NavVisibilityProvider>
+      ) : (
+        children
+      )}
     </div>
   );
 }
