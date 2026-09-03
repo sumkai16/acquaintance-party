@@ -53,23 +53,24 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Google Sheets live sync
 - [x] Confirmation emails (Resend) — see below
 
-Status as of 2026-09-02: **all three plans are written and implemented.**
+Status as of 2026-09-03: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →
 ticket → QR with a real phone camera; plan 2 ("door operations") by a
 two-phone rehearsal against the live production deployment, not just
-localhost. Plan 3's code is committed but **not yet hand-verified end to
-end** — `0002_raffle.sql` and `0003_raffle_prizes_and_entrants.sql` still
-have to be pasted into the hosted project before `/admin/raffle` runs at
-all, and the raffle wants one rehearsal with real checked-in rows on the
-actual projector. See `docs/superpowers/plans/` for the authoritative task
-lists.
+localhost. Plan 3's migrations (`0002_raffle.sql`,
+`0003_raffle_prizes_and_entrants.sql`, `0004_raffle_remove_prizes.sql`) are
+pasted into the hosted project; the raffle still wants one rehearsal with
+real checked-in rows on the actual projector. See
+`docs/superpowers/plans/` for the authoritative task lists.
 
-**Raffle prizes and the entrant list are admin-managed, not config.** An
-early version of the raffle hardcoded three prizes (Third/Second/Grand) in
-`src/lib/config/event.ts` — changing them needed a code edit and a redeploy.
-That didn't fit how the raffle is actually run: prizes and their count are
-decided at the podium, and they're now added, renamed, reordered, and
-removed from `/admin/raffle` itself. The eligible pool also gained an
+**Prizes aren't tracked in the app.** An early version hardcoded three
+prizes (Third/Second/Grand) in `src/lib/config/event.ts`; a later version
+moved them into an admin-managed `raffle_prizes` table. Both were removed —
+what's being raffled off is decided and announced at the podium, and the
+software's only job is picking a winner's name, in order, all night. The
+raffle page shows a running list of who's won so far instead of a prize
+list, and only the most recently drawn name is ever redrawable (not scoped
+to a prize, since there isn't one). The eligible pool still has its
 explicit, admin-only supplement — add a name by hand, or import a short
 list from Excel — for someone the scanner missed. The scanned-in pool stays
 the default and the primary eligibility path; this is an escape hatch, not
@@ -78,16 +79,16 @@ a second way in.
 Scanned tickets are the pool by default — added names sit outside a specific
 draw until the operator opts them in. A per-draw **"Include added names"**
 toggle next to "exclude previous winners" pulls in anyone added under Setup
-for that one draw; leave it off and a prize is run strictly against
+for that one draw; leave it off and the draw runs strictly against
 ticket-holders. Setup stays a roster you manage; whether a name actually
 counts is decided draw by draw.
 
 **The raffle's "600 names blur past" shortlist stage was cut, deliberately
 diverging from the spec.** It never actually scaled with participant count
 (capped at 80 decoy names, a fixed ~4s) — the real cost was that fixed 4
-seconds landing on *every* draw and redraw, which adds up drawing several
-prizes live. Speed at the podium won over the shortlist drama; the draw
-click now goes straight to the wheel.
+seconds landing on *every* draw and redraw, which adds up across a night of
+drawing several names live. Speed at the podium won over the shortlist
+drama; the draw click now goes straight to the wheel.
 
 **The theme is confirmed: Sunset Soiree** (2026-09-02). The palette built
 under the internal codename "Desert Sundown" needed no changes to fit it —

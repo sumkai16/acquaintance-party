@@ -75,24 +75,6 @@ registration it finds the earliest `scanned_at` among rows with
 device already admitted, as long as both are online; a real signal blackout
 is the one case it can't cover.
 
-## raffle_prizes
-
-Added in `0003_raffle_prizes_and_entrants.sql`. Admin-managed at
-`/admin/raffle` (add, rename, reorder, delete) — no code edit or redeploy to
-change a prize. Superseded the original plan of a `RAFFLE_PRIZES` config
-array, which itself had replaced the spec's original `prizes` table design.
-
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| id | uuid | PK, default `gen_random_uuid()` | Written into `raffle_draws.prize_key` |
-| name | text | NOT NULL, 1–80 chars trimmed | |
-| sort_order | integer | NOT NULL | Draw order; swapped between two rows on reorder |
-| created_at | timestamptz | NOT NULL, default `now()` | |
-
-No FK from `raffle_draws.prize_key` to this table, deliberately — deleting a
-prize must never be blocked by, or cascade into, its own past results.
-`prize_name` is already snapshotted on every draw for exactly that reason.
-
 ## raffle_extra_entrants
 
 Added in the same migration. The escape hatch for someone the scanner missed
@@ -114,12 +96,16 @@ it, via an explicit admin action at `/admin/raffle`.
 ## raffle_draws
 
 One row per draw, including redraws. Added in `0002_raffle.sql`.
+`prize_key`/`prize_name` were dropped in `0004_raffle_remove_prizes.sql`,
+alongside the `raffle_prizes` table itself — prizes aren't tracked in the
+app at all now. The MC announces what's being raffled off verbally; the
+software's only job is picking a winner's name, in sequence, all night.
+Only the most recently drawn row (across the whole night, not scoped to
+anything) is ever redrawable — see `latestDraw()` in `src/lib/raffle/draw.ts`.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | uuid | PK, default `gen_random_uuid()` | |
-| prize_key | text | NOT NULL, non-empty | A `raffle_prizes.id`. Effectively append-only once the event starts — deleting the prize row doesn't touch past draws, but the key itself is never reused |
-| prize_name | text | NOT NULL, non-empty | Snapshot, so renaming or deleting the prize never rewrites history |
 | winner_registration_id | uuid | NOT NULL, **no FK** | Either a `registrations.id` or a `raffle_extra_entrants.id` — see below |
 | finalists | jsonb | NOT NULL, array of 1–12 | Snapshots `{registrationId, fullName, yearLevel, section, source}` per finalist, not bare ids — see below |
 | pool_size | integer | NOT NULL, `> 0` | Eligible students actually drawn from, after exclusions |
@@ -157,10 +143,9 @@ can't reference two tables. `finalists` already snapshots the winner's
 display data directly, so the FK was never load-bearing for anything the
 app reads.
 
-**Indexes:** `raffle_draws_prize_key_idx` on `(prize_key, drawn_at desc)`,
-`raffle_draws_winner_idx` on `winner_registration_id`, and a partial unique
-index on `supersedes` so one draw can be superseded at most once — the
-history stays a chain, not a tree nobody can read back.
+**Indexes:** `raffle_draws_winner_idx` on `winner_registration_id`, and a
+partial unique index on `supersedes` so one draw can be superseded at most
+once — the history stays a chain, not a tree nobody can read back.
 
 ## Row-level security
 
@@ -176,8 +161,6 @@ create policy "admins update registrations" on registrations
 create policy "admins read scans" on scans
   for select to authenticated using (true);
 create policy "admins read raffle_draws" on raffle_draws
-  for select to authenticated using (true);
-create policy "admins read raffle_prizes" on raffle_prizes
   for select to authenticated using (true);
 create policy "admins read raffle_extra_entrants" on raffle_extra_entrants
   for select to authenticated using (true);

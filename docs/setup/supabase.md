@@ -94,8 +94,15 @@ migrations are pasted by hand rather than run via `supabase db push`:
    an inline `references` this way by default. If it's different, edit the
    `drop constraint` line to match before running it.
 
-   Once applied, `/admin/raffle` starts with no prizes — add at least one
-   from the page's Setup panel before the first draw.
+   Once applied, `/admin/raffle` is ready to draw — the scanned-in pool is
+   already the eligible list, no setup required before the first draw.
+
+6. Paste the contents of `supabase/migrations/0004_raffle_remove_prizes.sql`,
+   run it. Prizes turned out not to belong in the app at all — what's being
+   raffled off is announced verbally at the podium, and the software's only
+   job is picking a name — so this drops `raffle_prizes` outright and drops
+   `prize_key`/`prize_name` from `raffle_draws`. Straightforward `DROP`
+   statements, nothing to verify by hand.
 
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.

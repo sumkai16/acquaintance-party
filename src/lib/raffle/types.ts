@@ -11,13 +11,6 @@ export type RaffleEntrant = {
   source: "ticket" | "extra";
 };
 
-/** A prize, in draw order. Admin-managed at /admin/raffle. */
-export type RafflePrize = {
-  id: string;
-  name: string;
-  sortOrder: number;
-};
-
 /**
  * One recorded draw.
  *
@@ -27,8 +20,6 @@ export type RafflePrize = {
  */
 export type RaffleDrawRow = {
   id: string;
-  prizeKey: string;
-  prizeName: string;
   winner: RaffleEntrant;
   finalists: RaffleEntrant[];
   poolSize: number;

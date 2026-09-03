@@ -2,7 +2,7 @@ import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { approvedManifest } from "@/lib/scans/queries";
 import type { ParsedEntrantRow } from "./entrants";
-import type { RaffleDrawRow, RaffleEntrant, RafflePrize } from "./types";
+import type { RaffleDrawRow, RaffleEntrant } from "./types";
 
 /**
  * Everyone eligible: the auto pool of approved, scanned-in students, plus
@@ -36,120 +36,6 @@ export async function eligiblePool(): Promise<RaffleEntrant[]> {
     }));
 
   return [...ticketPool, ...extras];
-}
-
-/** Every prize, in draw order. */
-export async function listPrizes(): Promise<RafflePrize[]> {
-  const { data, error } = await adminClient()
-    .from("raffle_prizes")
-    .select("id, name, sort_order")
-    .order("sort_order", { ascending: true });
-
-  if (error) {
-    console.error("listPrizes failed", error);
-    throw new Error("Could not load the prize list.");
-  }
-
-  return (data ?? []).map((row) => ({
-    id: row.id as string,
-    name: row.name as string,
-    sortOrder: row.sort_order as number,
-  }));
-}
-
-export async function getPrizeById(id: string): Promise<RafflePrize | null> {
-  const { data, error } = await adminClient()
-    .from("raffle_prizes")
-    .select("id, name, sort_order")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getPrizeById failed", error);
-    return null;
-  }
-  if (!data) return null;
-
-  return { id: data.id as string, name: data.name as string, sortOrder: data.sort_order as number };
-}
-
-export async function insertPrize(
-  name: string,
-): Promise<{ ok: true; prize: RafflePrize } | { ok: false; error: string }> {
-  const existing = await listPrizes();
-  const nextOrder = existing.length === 0
-    ? 0
-    : Math.max(...existing.map((p) => p.sortOrder)) + 1;
-
-  const { data, error } = await adminClient()
-    .from("raffle_prizes")
-    .insert({ name, sort_order: nextOrder })
-    .select("id, name, sort_order")
-    .single();
-
-  if (error || !data) {
-    console.error("insertPrize failed", error);
-    return { ok: false, error: "Could not add the prize. Try again." };
-  }
-
-  return {
-    ok: true,
-    prize: { id: data.id as string, name: data.name as string, sortOrder: data.sort_order as number },
-  };
-}
-
-export async function renamePrizeById(
-  id: string,
-  name: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await adminClient().from("raffle_prizes").update({ name }).eq("id", id);
-
-  if (error) {
-    console.error("renamePrizeById failed", error);
-    return { ok: false, error: "Could not rename the prize. Try again." };
-  }
-  return { ok: true };
-}
-
-export async function deletePrizeById(
-  id: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await adminClient().from("raffle_prizes").delete().eq("id", id);
-
-  if (error) {
-    console.error("deletePrizeById failed", error);
-    return { ok: false, error: "Could not delete the prize. Try again." };
-  }
-  return { ok: true };
-}
-
-/** Swaps a prize's sort position with its neighbor. A no-op at either end. */
-export async function movePrize(
-  id: string,
-  direction: "up" | "down",
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const prizes = await listPrizes();
-  const index = prizes.findIndex((p) => p.id === id);
-  if (index === -1) return { ok: false, error: "That prize no longer exists." };
-
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (swapIndex < 0 || swapIndex >= prizes.length) return { ok: true }; // already at the end
-
-  const a = prizes[index];
-  const b = prizes[swapIndex];
-
-  const { error } = await adminClient()
-    .from("raffle_prizes")
-    .upsert([
-      { id: a.id, name: a.name, sort_order: b.sortOrder },
-      { id: b.id, name: b.name, sort_order: a.sortOrder },
-    ]);
-
-  if (error) {
-    console.error("movePrize failed", error);
-    return { ok: false, error: "Could not reorder prizes. Try again." };
-  }
-  return { ok: true };
 }
 
 /** Extra entrants as `RaffleEntrant`s, ready to fold into the pool. */
@@ -257,8 +143,6 @@ export async function deleteExtraEntrant(
 
 type DrawRecord = {
   id: string;
-  prize_key: string;
-  prize_name: string;
   winner_registration_id: string;
   finalists: RaffleEntrant[];
   pool_size: number;
@@ -282,8 +166,6 @@ function toDrawRow(row: DrawRecord): RaffleDrawRow | null {
 
   return {
     id: row.id,
-    prizeKey: row.prize_key,
-    prizeName: row.prize_name,
     winner,
     finalists: row.finalists,
     poolSize: row.pool_size,
@@ -298,7 +180,7 @@ export async function allDraws(): Promise<RaffleDrawRow[]> {
   const { data, error } = await adminClient()
     .from("raffle_draws")
     .select(
-      "id, prize_key, prize_name, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
+      "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
     )
     .order("drawn_at", { ascending: true });
 
@@ -313,8 +195,6 @@ export async function allDraws(): Promise<RaffleDrawRow[]> {
 }
 
 export type RecordDrawInput = {
-  prizeKey: string;
-  prizeName: string;
   winner: RaffleEntrant;
   finalists: RaffleEntrant[];
   poolSize: number;
@@ -328,8 +208,6 @@ export async function recordDraw(
   const { data, error } = await adminClient()
     .from("raffle_draws")
     .insert({
-      prize_key: input.prizeKey,
-      prize_name: input.prizeName,
       winner_registration_id: input.winner.registrationId,
       finalists: input.finalists,
       pool_size: input.poolSize,
@@ -338,7 +216,7 @@ export async function recordDraw(
       supersedes: input.supersedes,
     })
     .select(
-      "id, prize_key, prize_name, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
+      "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
     )
     .single();
 

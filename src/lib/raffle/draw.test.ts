@@ -3,7 +3,7 @@ import {
   currentWinnerIds,
   drawFromPool,
   excludeEntrants,
-  latestDrawForPrize,
+  latestDraw,
 } from "./draw";
 import type { RaffleDrawRow, RaffleEntrant } from "./types";
 
@@ -26,8 +26,6 @@ const alwaysZero = () => 0;
 function draw(overrides: Partial<RaffleDrawRow>): RaffleDrawRow {
   return {
     id: "d1",
-    prizeKey: "grand",
-    prizeName: "Grand prize",
     winner: entrant(1),
     finalists: [entrant(1)],
     poolSize: 1,
@@ -172,17 +170,17 @@ describe("currentWinnerIds", () => {
     expect(ids.has("r2")).toBe(true);
   });
 
-  it("collects winners across prizes", () => {
+  it("collects winners across draws", () => {
     const ids = currentWinnerIds([
-      draw({ id: "d1", prizeKey: "third", winner: entrant(1) }),
-      draw({ id: "d2", prizeKey: "grand", winner: entrant(2) }),
+      draw({ id: "d1", winner: entrant(1) }),
+      draw({ id: "d2", winner: entrant(2) }),
     ]);
 
     expect([...ids].sort()).toEqual(["r1", "r2"]);
   });
 });
 
-describe("latestDrawForPrize", () => {
+describe("latestDraw", () => {
   it("returns the redraw rather than the draw it replaced", () => {
     const original = draw({ id: "d1", drawnAt: "2026-10-05T19:00:00+08:00" });
     const replacement = draw({
@@ -193,12 +191,12 @@ describe("latestDrawForPrize", () => {
       winner: entrant(2),
     });
 
-    const latest = latestDrawForPrize([original, replacement], "grand");
+    const latest = latestDraw([original, replacement]);
 
     expect(latest?.id).toBe("d2");
   });
 
-  it("returns null for a prize that has not been drawn", () => {
-    expect(latestDrawForPrize([draw({ prizeKey: "grand" })], "second")).toBeNull();
+  it("returns null when nothing has been drawn", () => {
+    expect(latestDraw([])).toBeNull();
   });
 });

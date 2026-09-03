@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { EVENT } from "@/lib/config/event";
-import { latestDrawForPrize } from "@/lib/raffle/draw";
-import type { RaffleDrawRow, RaffleEntrant, RafflePrize } from "@/lib/raffle/types";
-import { drawPrize, redrawPrize } from "./actions";
+import { latestDraw } from "@/lib/raffle/draw";
+import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
+import { drawNext, redrawLast } from "./actions";
 import { RaffleSidebar } from "./raffle-sidebar";
 import { RaffleWheel } from "./raffle-wheel";
 
@@ -18,26 +18,22 @@ type Stage = "idle" | "wheel" | "revealed";
  * animates, so a connection dropping mid-spin changes nothing on screen. The
  * pool arrives as a prop for the same reason — the animation never fetches.
  *
- * Layout: a left sidebar for "what to draw" (prize list, eligibility
- * toggles, Setup) and a right panel for "the show" (idle/wheel/revealed,
- * with the Draw/Redraw action directly beneath it) — state ownership stays
- * entirely here regardless of which column renders which piece.
+ * Layout: a left sidebar for eligibility and the running winner history, and
+ * a right panel for "the show" (idle/wheel/revealed, with the Draw/Redraw
+ * action directly beneath it) — state ownership stays entirely here
+ * regardless of which column renders which piece.
  */
 export function RaffleProjector({
   initialPool,
   initialDraws,
-  initialPrizes,
   ticketsSold,
 }: {
   initialPool: RaffleEntrant[];
   initialDraws: RaffleDrawRow[];
-  initialPrizes: RafflePrize[];
   ticketsSold: number;
 }) {
   const [draws, setDraws] = useState(initialDraws);
-  const [prizes, setPrizes] = useState(initialPrizes);
   const [pool, setPool] = useState(initialPool);
-  const [selectedKey, setSelectedKey] = useState<string>(initialPrizes[0]?.id ?? "");
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
   const [includeExtraEntrants, setIncludeExtraEntrants] = useState(false);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
@@ -46,7 +42,7 @@ export function RaffleProjector({
   const [pending, startTransition] = useTransition();
 
   const animating = stage === "wheel";
-  const standing = latestDrawForPrize(draws, selectedKey);
+  const standing = latestDraw(draws);
   const effectivePool = includeExtraEntrants
     ? pool
     : pool.filter((entrant) => entrant.source === "ticket");
@@ -88,27 +84,8 @@ export function RaffleProjector({
         {!animating ? (
           <RaffleSidebar
             draws={draws}
-            prizes={prizes}
-            onPrizesChange={(next) => {
-              setPrizes(next);
-              // A prize just added from empty — select it so Draw is usable
-              // without an extra click.
-              if (!selectedKey && next.length > 0) setSelectedKey(next[0].id);
-            }}
             pool={pool}
             onPoolChange={setPool}
-            selectedKey={selectedKey}
-            onSelect={(key) => {
-              setSelectedKey(key);
-              setError(null);
-
-              // Reopening a drawn prize redisplays its result — replaying
-              // the spin for something the room already heard reads as a
-              // redraw.
-              const standingForKey = latestDrawForPrize(draws, key);
-              setActive(standingForKey);
-              setStage(standingForKey ? "revealed" : "idle");
-            }}
             excludePreviousWinners={excludePreviousWinners}
             onToggleExclude={setExcludePreviousWinners}
             includeExtraEntrants={includeExtraEntrants}
@@ -124,9 +101,9 @@ export function RaffleProjector({
                 Raffle
               </p>
               <p className="max-w-prose text-ground/70">
-                Pick a prize on the left and draw. Everyone scanned in at the
-                door is in the running — turn on “Include added names” to
-                pull in anyone added under Setup too.
+                Draw a name whenever you&apos;re ready. Everyone scanned in
+                at the door is in the running — turn on “Include added
+                names” to pull in anyone added under Setup too.
               </p>
             </div>
           ) : null}
@@ -141,9 +118,11 @@ export function RaffleProjector({
 
           {stage === "revealed" && active ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-              <p className="text-sm uppercase tracking-[0.3em] text-ground/60">
-                {active.isRedraw ? `${active.prizeName} — redraw` : active.prizeName}
-              </p>
+              {active.isRedraw ? (
+                <p className="text-sm uppercase tracking-[0.3em] text-ground/60">
+                  Redraw
+                </p>
+              ) : null}
               <p className="font-display text-6xl uppercase leading-[0.9] text-accent-2 md:text-8xl">
                 {active.winner.fullName}
               </p>
@@ -158,44 +137,43 @@ export function RaffleProjector({
 
           {!animating ? (
             <div className="flex flex-col items-center gap-3 border-t border-ground/10 px-6 py-5">
-              {standing ? (
+              <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   type="button"
-                  disabled={pending}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Redraw ${standing.prizeName}? ${standing.winner.fullName} will be recorded as replaced, not erased.`,
-                      )
-                    ) {
-                      run(() =>
-                        redrawPrize({
-                          prizeKey: selectedKey,
-                          supersedesDrawId: standing.id,
-                          excludePreviousWinners,
-                          includeExtraEntrants,
-                        }),
-                      );
-                    }
-                  }}
-                  className="rounded-full bg-accent-4 px-8 py-3 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
-                >
-                  {pending ? "Drawing…" : "Redraw"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={pending || effectivePool.length === 0 || !selectedKey}
+                  disabled={pending || effectivePool.length === 0}
                   onClick={() =>
-                    run(() =>
-                      drawPrize({ prizeKey: selectedKey, excludePreviousWinners, includeExtraEntrants }),
-                    )
+                    run(() => drawNext({ excludePreviousWinners, includeExtraEntrants }))
                   }
                   className="rounded-full bg-accent-2 px-8 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
                 >
                   {pending ? "Drawing…" : "Draw"}
                 </button>
-              )}
+
+                {standing ? (
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `Redraw the last name? ${standing.winner.fullName} will be recorded as replaced, not erased.`,
+                        )
+                      ) {
+                        run(() =>
+                          redrawLast({
+                            supersedesDrawId: standing.id,
+                            excludePreviousWinners,
+                            includeExtraEntrants,
+                          }),
+                        );
+                      }
+                    }}
+                    className="rounded-full bg-accent-4 px-8 py-3 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
+                  >
+                    {pending ? "Drawing…" : "Redraw last"}
+                  </button>
+                ) : null}
+              </div>
 
               {error ? (
                 <p className="rounded border border-accent-4/50 bg-accent-4/10 px-4 py-3 text-sm">

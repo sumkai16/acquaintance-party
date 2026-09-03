@@ -1,18 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  currentWinnerIds,
-  drawFromPool,
-  excludeEntrants,
-  latestDrawForPrize,
-} from "@/lib/raffle/draw";
-import {
-  allDraws,
-  eligiblePool,
-  getPrizeById,
-  recordDraw,
-} from "@/lib/raffle/queries";
+import { currentWinnerIds, drawFromPool, excludeEntrants, latestDraw } from "@/lib/raffle/draw";
+import { allDraws, eligiblePool, recordDraw } from "@/lib/raffle/queries";
 import type { RaffleDrawRow } from "@/lib/raffle/types";
 import { currentAdminId } from "@/lib/supabase/server";
 
@@ -20,16 +10,14 @@ export type DrawActionResult =
   | { ok: true; draw: RaffleDrawRow }
   | { ok: false; error: string };
 
-export async function drawPrize(input: {
-  prizeKey: string;
+export async function drawNext(input: {
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
 }): Promise<DrawActionResult> {
   return runDraw({ ...input, supersedesDrawId: null });
 }
 
-export async function redrawPrize(input: {
-  prizeKey: string;
+export async function redrawLast(input: {
   supersedesDrawId: string;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
@@ -44,16 +32,12 @@ export async function redrawPrize(input: {
  * about to run can only ever show a result that is already in the database.
  */
 async function runDraw(input: {
-  prizeKey: string;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
   supersedesDrawId: string | null;
 }): Promise<DrawActionResult> {
   const adminId = await currentAdminId();
   if (!adminId) return { ok: false, error: "Sign in again." };
-
-  const prize = await getPrizeById(input.prizeKey);
-  if (!prize) return { ok: false, error: "That prize is not in the prize list." };
 
   const isRedraw = input.supersedesDrawId !== null;
   const [fullPool, draws] = await Promise.all([eligiblePool(), allDraws()]);
@@ -63,12 +47,12 @@ async function runDraw(input: {
   const pool = input.includeExtraEntrants
     ? fullPool
     : fullPool.filter((entrant) => entrant.source === "ticket");
-  const standing = latestDrawForPrize(draws, prize.id);
+  const standing = latestDraw(draws);
 
   let supersedes: string | null = null;
   if (isRedraw) {
     if (!standing) {
-      return { ok: false, error: `${prize.name} has not been drawn yet.` };
+      return { ok: false, error: "Nothing has been drawn yet." };
     }
     // Guards a stale tab: redrawing something that is no longer the standing
     // result would bury a winner nobody meant to replace.
@@ -79,25 +63,16 @@ async function runDraw(input: {
       };
     }
     supersedes = standing.id;
-  } else if (standing) {
-    // Without this, a second draw lands as another fresh row and reads
-    // exactly like an untagged rerun — the thing `supersedes` exists to stop.
-    return {
-      ok: false,
-      error: `${prize.name} has already been drawn. Use Redraw if the winner did not show up.`,
-    };
   }
 
   const excluded = new Set<string>();
   if (input.excludePreviousWinners) {
     for (const id of currentWinnerIds(draws)) excluded.add(id);
   }
-  if (isRedraw) {
-    // A redraw replaces a no-show. Never hand the same prize straight back
-    // to them, whatever the toggle says.
-    for (const row of draws) {
-      if (row.prizeKey === prize.id) excluded.add(row.winner.registrationId);
-    }
+  if (isRedraw && standing) {
+    // A redraw replaces a no-show. Never hand the same slot straight back to
+    // them, whatever the toggle says.
+    excluded.add(standing.winner.registrationId);
   }
 
   const candidates = excludeEntrants(pool, excluded);
@@ -116,8 +91,6 @@ async function runDraw(input: {
   }
 
   const recorded = await recordDraw({
-    prizeKey: prize.id,
-    prizeName: prize.name,
     winner: outcome.winner,
     finalists: outcome.finalists,
     poolSize: candidates.length,

@@ -82,8 +82,8 @@ src/
 │   │   ├── registrations/        # search, for lost ticket links
 │   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
 │   │   ├── raffle/               # projector: page.tsx, actions.ts (draw),
-│   │   │                         # prize-actions.ts, entrant-actions.ts,
-│   │   │                         # prize-manager.tsx / entrant-manager.tsx (Setup)
+│   │   │                         # entrant-actions.ts, entrant-manager.tsx (Setup),
+│   │   │                         # raffle-sidebar.tsx, raffle-wheel.tsx
 │   │   └── dashboard/            # attendance + double-scan alerts
 │   │       └── export/route.ts   # GET, streams .xlsx
 │   ├── api/scan/
@@ -110,10 +110,10 @@ src/
 │   │   ├── store.ts               # client-only: IndexedDB manifest cache + sync queue
 │   │   └── camera.ts              # client-only: BarcodeDetector, @zxing/browser fallback
 │   ├── raffle/
-│   │   ├── types.ts               # RaffleEntrant / RafflePrize / RaffleDrawRow
+│   │   ├── types.ts               # RaffleEntrant / RaffleDrawRow
 │   │   ├── draw.ts                # pure: crypto shortlist + winner, exclusions
 │   │   ├── entrants.ts            # pure: import-row validation, name-collision check
-│   │   └── queries.ts             # server-only: pool, prizes, extra entrants, draws
+│   │   └── queries.ts             # server-only: pool, extra entrants, draws
 │   ├── sheets/
 │   │   ├── row.ts                 # pure: one scan as a row of cells
 │   │   └── sheets.ts              # publishScans, server-only

@@ -80,18 +80,13 @@ export function currentWinnerIds(
 }
 
 /**
- * The draw that currently stands for a prize, or null if it hasn't been
- * drawn. Decides whether the operator sees Draw or Redraw, and supplies the
- * id a redraw supersedes.
+ * The most recent draw overall, or null if nothing has been drawn yet.
+ * Decides whether the operator sees a Redraw button, and supplies the id a
+ * redraw supersedes — only the latest draw is ever redrawable, so unlike a
+ * per-prize lookup this needs no key.
  */
-export function latestDrawForPrize(
-  draws: readonly RaffleDrawRow[],
-  prizeKey: string,
-): RaffleDrawRow | null {
-  const replaced = supersededIds(draws);
-
+export function latestDraw(draws: readonly RaffleDrawRow[]): RaffleDrawRow | null {
   return draws.reduce<RaffleDrawRow | null>((latest, row) => {
-    if (row.prizeKey !== prizeKey || replaced.has(row.id)) return latest;
     return !latest || row.drawnAt > latest.drawnAt ? row : latest;
   }, null);
 }
