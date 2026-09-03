@@ -125,6 +125,21 @@ export async function listPending(): Promise<Registration[]> {
   return (data as Registration[]) ?? [];
 }
 
+/**
+ * Every rejected registration, most recently rejected first — the audit
+ * trail for "who rejected this and why," browsable without first knowing
+ * which student to search for.
+ */
+export async function listRejected(): Promise<Registration[]> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .eq("status", "rejected")
+    .order("reviewed_at", { ascending: false });
+
+  return (data as Registration[]) ?? [];
+}
+
 /** Every registration sharing a GCash reference. Used to flag reused receipts. */
 export async function findByReference(
   reference: string,

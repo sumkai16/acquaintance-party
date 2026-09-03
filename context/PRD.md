@@ -91,6 +91,13 @@ seconds landing on *every* draw and redraw, which adds up across a night of
 drawing several names live. Speed at the podium won over the shortlist
 drama; the draw click now goes straight to the wheel.
 
+**A browsable rejections list** (2026-09-04). Seeing who rejected a
+registration meant searching for that specific student on Find a
+registration — an admin wanting "easy access" to that log had no way to
+just browse it. `/admin/rejections` now lists every rejected registration,
+most recently rejected first, reusing the same row component (and its
+"Rejected by `<email>` on `<date>`" line) as Find a registration.
+
 **Rejection accountability, and a door filter** (2026-09-04, same QA pass,
 the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
 already populated on every approve or reject, just never displayed —
