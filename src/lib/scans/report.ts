@@ -3,6 +3,8 @@ import type { ScanResult } from "@/lib/supabase/types";
 export type ScanRecord = {
   registrationId: string | null;
   fullName: string | null;
+  yearLevel: string | null;
+  section: string | null;
   codeScanned: string;
   scannedAt: string;
   deviceLabel: string;
@@ -63,6 +65,20 @@ export function findDoubleScans(rows: ScanRecord[]): DoubleScan[] {
     }
   }
   return found;
+}
+
+export function filterScans(
+  rows: ScanRecord[],
+  filter: { year?: string; section?: string },
+): ScanRecord[] {
+  const year = filter.year?.trim();
+  const section = filter.section?.trim();
+
+  return rows.filter((row) => {
+    if (year && row.yearLevel !== year) return false;
+    if (section && row.section !== section) return false;
+    return true;
+  });
 }
 
 export type SortColumn = "time" | "name" | "result" | "door";

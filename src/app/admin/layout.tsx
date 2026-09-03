@@ -16,23 +16,19 @@ export default async function AdminLayout({
   // out. x-pathname is set by src/proxy.ts.
   const pathname = (await headers()).get("x-pathname") ?? "";
 
-  if (!pathname.endsWith("/admin/login")) {
+  const isLogin = pathname.endsWith("/admin/login");
+  if (!isLogin) {
     const supabase = await serverClient();
     const { data } = await supabase.auth.getUser();
     if (!data.user) redirect("/admin/login");
   }
 
-  // The scanner and the raffle projector are both full-screen by design —
-  // the scanner so a result fills the whole screen, the raffle so the show
-  // has no admin chrome in view. Both fill their own bg-deep background.
-  const showNav =
-    !pathname.endsWith("/admin/login") &&
-    !pathname.includes("/admin/scan") &&
-    !pathname.includes("/admin/raffle");
-
+  // AdminNav decides for itself whether to render on the current route
+  // (scanner, raffle projector, and login all hide it) — see the comment
+  // there for why that decision lives client-side, not here.
   return (
     <div className="min-h-screen bg-deep text-ground">
-      {showNav ? <AdminNav /> : null}
+      {!isLogin ? <AdminNav /> : null}
       {children}
     </div>
   );

@@ -12,15 +12,26 @@ const LINKS = [
   { href: "/admin/registrations", label: "Find a registration" },
 ] as const;
 
+const HIDDEN_ON = ["/admin/scan", "/admin/raffle"];
+
 /**
- * Rendered once, from admin/layout.tsx, for every admin route except login
- * (no session yet) and the two full-screen surfaces (scanner, raffle
- * projector) — replaces each page's own hand-rolled, inconsistently-styled
- * nav row.
+ * Rendered from admin/layout.tsx on every admin route — replaces each
+ * page's own hand-rolled, inconsistently-styled nav row.
+ *
+ * The two full-screen surfaces (scanner, raffle projector) hide it by
+ * returning null here, using usePathname() rather than a server-side check
+ * in the layout — a previous version gated this from layout.tsx via a
+ * custom x-pathname header set in middleware, which came back empty on some
+ * client-side navigations (an empty string trivially passes every "does not
+ * include" exclusion check), so the nav rendered anyway on top of the
+ * scanner's own header. usePathname() is always accurate, on every render,
+ * so the exclusion belongs here.
  */
 export function AdminNav() {
   const pathname = usePathname();
   const router = useRouter();
+
+  if (HIDDEN_ON.some((prefix) => pathname.startsWith(prefix))) return null;
 
   async function signOut() {
     await browserClient().auth.signOut();

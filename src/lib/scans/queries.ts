@@ -134,7 +134,7 @@ export async function allScans(): Promise<ScanRecord[]> {
   const { data, error } = await adminClient()
     .from("scans")
     .select(
-      "code_scanned, scanned_at, device_label, result, registration_id, registrations(full_name)",
+      "code_scanned, scanned_at, device_label, result, registration_id, registrations(full_name, year_level, section)",
     )
     .order("scanned_at", { ascending: false });
 
@@ -143,19 +143,27 @@ export async function allScans(): Promise<ScanRecord[]> {
     return [];
   }
 
-  return (data ?? []).map((row) => ({
-    registrationId: row.registration_id as string | null,
+  return (data ?? []).map((row) => {
     // registrations is a to-one embed at runtime (registration_id is a single
     // FK), but without generated DB types the client infers it as an array —
     // hence the trip through `unknown` rather than a direct cast.
-    fullName:
-      (row.registrations as unknown as { full_name: string } | null)
-        ?.full_name ?? null,
-    codeScanned: row.code_scanned as string,
-    scannedAt: row.scanned_at as string,
-    deviceLabel: row.device_label as string,
-    result: row.result as ScanRecord["result"],
-  }));
+    const registration = row.registrations as unknown as {
+      full_name: string;
+      year_level: string;
+      section: string;
+    } | null;
+
+    return {
+      registrationId: row.registration_id as string | null,
+      fullName: registration?.full_name ?? null,
+      yearLevel: registration?.year_level ?? null,
+      section: registration?.section ?? null,
+      codeScanned: row.code_scanned as string,
+      scannedAt: row.scanned_at as string,
+      deviceLabel: row.device_label as string,
+      result: row.result as ScanRecord["result"],
+    };
+  });
 }
 
 export async function approvedCount(): Promise<number> {

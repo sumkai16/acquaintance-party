@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { findDoubleScans, sortScans, summarize, type ScanRecord } from "./report";
+import { filterScans, findDoubleScans, sortScans, summarize, type ScanRecord } from "./report";
 
 const row = (over: Partial<ScanRecord> = {}): ScanRecord => ({
   registrationId: "r1",
   fullName: "Maria Clara Santos",
+  yearLevel: "3rd year",
+  section: "BSIT-3B",
   codeScanned: "K4M92XQP7BTR",
   scannedAt: "2026-10-05T16:10:00+08:00",
   deviceLabel: "door-1",
@@ -124,5 +126,48 @@ describe("sortScans", () => {
     const before = rows.map((r) => r.fullName);
     sortScans(rows, "time", "asc");
     expect(rows.map((r) => r.fullName)).toEqual(before);
+  });
+});
+
+describe("filterScans", () => {
+  const rows = [
+    row({ fullName: "Ana Reyes", yearLevel: "1st year", section: "BSIT-1A" }),
+    row({ fullName: "Miko Santos", yearLevel: "2nd year", section: "BSIT-2A" }),
+    row({ fullName: "Zeta Cruz", yearLevel: "2nd year", section: "BSIT-2B" }),
+    row({
+      fullName: null,
+      registrationId: null,
+      yearLevel: null,
+      section: null,
+      result: "invalid",
+    }),
+  ];
+
+  it("returns everything when no filter is set", () => {
+    expect(filterScans(rows, {})).toHaveLength(4);
+  });
+
+  it("filters by year level", () => {
+    const found = filterScans(rows, { year: "2nd year" });
+    expect(found.map((r) => r.fullName)).toEqual(["Miko Santos", "Zeta Cruz"]);
+  });
+
+  it("filters by section", () => {
+    const found = filterScans(rows, { section: "BSIT-2B" });
+    expect(found.map((r) => r.fullName)).toEqual(["Zeta Cruz"]);
+  });
+
+  it("filters by year and section together", () => {
+    const found = filterScans(rows, { year: "2nd year", section: "BSIT-2A" });
+    expect(found.map((r) => r.fullName)).toEqual(["Miko Santos"]);
+  });
+
+  it("excludes rows with no year/section (e.g. invalid scans) once a filter is active", () => {
+    const found = filterScans(rows, { year: "2nd year" });
+    expect(found.every((r) => r.fullName !== null)).toBe(true);
+  });
+
+  it("treats an empty-string filter the same as unset", () => {
+    expect(filterScans(rows, { year: "", section: "" })).toHaveLength(4);
   });
 });
