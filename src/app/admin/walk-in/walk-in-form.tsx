@@ -2,23 +2,22 @@
 
 import { useActionState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
-import { submitRegistration, type FormState } from "./actions";
+import { submitWalkIn, type FormState } from "./actions";
 
 const initial: FormState = { status: "idle", attempt: 0 };
 
 const inputClass =
-  "w-full rounded border border-ink/25 bg-white px-3 py-2.5 " +
-  "focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-accent";
+  "w-full rounded border border-ground/25 bg-deep px-3 py-2.5 text-ground " +
+  "placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 " +
+  "focus:outline-offset-2 focus:outline-accent-2";
 
-export function CheckoutForm() {
-  const [state, action, pending] = useActionState(submitRegistration, initial);
+export function WalkInForm() {
+  const [state, action, pending] = useActionState(submitWalkIn, initial);
   const errors = state.fieldErrors ?? {};
   const values = state.values;
 
-  // React resets every uncontrolled field once the action finishes without
-  // redirecting — see the comment on FormState.values in actions.ts. Keying
-  // each input on the attempt number forces it to remount with the value
-  // the student actually typed, instead of going blank on any error.
+  // Same remount-on-attempt trick as checkout-form.tsx — see the comment on
+  // FormState.values in actions.ts.
   const keyed = (name: string) => `${name}-${state.attempt}`;
 
   return (
@@ -38,7 +37,7 @@ export function CheckoutForm() {
           id="fullName"
           name="fullName"
           required
-          autoComplete="name"
+          autoFocus
           defaultValue={values?.fullName ?? ""}
           className={inputClass}
         />
@@ -65,7 +64,7 @@ export function CheckoutForm() {
           className={inputClass}
         >
           <option value="" disabled>
-            Select your year level
+            Select a year level
           </option>
           {YEAR_LEVELS.map((level) => (
             <option key={level} value={level}>
@@ -87,9 +86,9 @@ export function CheckoutForm() {
       </Field>
 
       <Field
-        label="Personal email"
+        label="Email"
         name="email"
-        hint="Your ticket is tied to this address, so we can find it if you lose the link."
+        hint="So they still get a copy of their ticket link."
         error={errors.email}
       >
         <input
@@ -98,56 +97,22 @@ export function CheckoutForm() {
           name="email"
           type="email"
           required
-          autoComplete="email"
           defaultValue={values?.email ?? ""}
           className={inputClass}
-        />
-      </Field>
-
-      <Field
-        label="GCash reference number"
-        name="gcashReference"
-        hint="The 13-digit number on your GCash receipt."
-        error={errors.gcashReference}
-      >
-        <input
-          key={keyed("gcashReference")}
-          id="gcashReference"
-          name="gcashReference"
-          required
-          inputMode="numeric"
-          defaultValue={values?.gcashReference ?? ""}
-          className={`${inputClass} font-mono`}
-        />
-      </Field>
-
-      <Field
-        label="Receipt screenshot"
-        name="receipt"
-        hint="JPG, PNG, or WebP, under 5 MB."
-        error={errors.receipt}
-      >
-        <input
-          id="receipt"
-          name="receipt"
-          type="file"
-          required
-          accept="image/jpeg,image/png,image/webp"
-          className="w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-ink/10 file:px-4 file:py-2 file:font-semibold"
         />
       </Field>
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="rounded-full bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
       >
-        {pending ? "Submitting…" : "Submit"}
+        {pending ? "Saving…" : "Record cash sale"}
       </button>
 
-      <p className="text-sm text-ink/70">
-        We check every payment by hand. Your QR ticket appears on the next page
-        once an organiser approves it.
+      <p className="text-sm text-ground/60">
+        Approved immediately — only enter this once you have the cash in
+        hand. The next page shows their QR ticket.
       </p>
     </form>
   );
@@ -168,10 +133,10 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={name} className="font-semibold">
+      <label htmlFor={name} className="font-semibold text-ground">
         {label}
       </label>
-      {hint ? <p className="text-sm text-ink/70">{hint}</p> : null}
+      {hint ? <p className="text-sm text-ground/60">{hint}</p> : null}
       {children}
       {error ? <p className="text-sm font-medium text-accent">{error}</p> : null}
     </div>

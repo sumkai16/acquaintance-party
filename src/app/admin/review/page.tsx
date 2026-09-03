@@ -14,8 +14,12 @@ export default async function ReviewPage() {
   const rows = await Promise.all(
     pending.map(async (registration) => ({
       registration,
-      receiptUrl: await signedReceiptUrl(registration.receipt_path),
-      duplicateCount: (await findByReference(registration.gcash_reference))
+      // Every pending row is an online submission (walk-ins are approved on
+      // the spot, never pending) — the DB's payment_fields_match_method
+      // check guarantees both are set, so it's safe to assert past the
+      // nullable type here rather than in every other reader of Registration.
+      receiptUrl: await signedReceiptUrl(registration.receipt_path!),
+      duplicateCount: (await findByReference(registration.gcash_reference!))
         .length,
     })),
   );

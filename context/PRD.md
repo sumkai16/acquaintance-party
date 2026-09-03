@@ -38,8 +38,9 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 ## 4. Scope — MVP module set
 - [x] Event/theme config (`src/lib/config/event.ts`, `theme.ts`)
 - [x] Database schema + RLS (`supabase/migrations/0001_init.sql`)
-- [x] Checkout — name, year level, section, email, GCash reference, receipt
-      upload
+- [x] Checkout — name, student ID, year level, section, email, GCash
+      reference, receipt upload
+- [x] Walk-in cash sales (admin-entered, approved on the spot)
 - [x] Duplicate-reference detection (unique index) + orphaned-upload cleanup
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
 - [x] Admin review queue — approve/reject with reason
@@ -89,6 +90,22 @@ diverging from the spec.** It never actually scaled with participant count
 seconds landing on *every* draw and redraw, which adds up across a night of
 drawing several names live. Speed at the podium won over the shortlist
 drama; the draw click now goes straight to the wheel.
+
+**Walk-in cash sales and the one-registration-per-student cap** (2026-09-04,
+from a QA pass in `docs/Event Scanner.xlsx`) — two related gaps: nothing
+stopped a student submitting several online registrations, and there was no
+way to record a student who pays cash in person instead of GCash. Both are
+now keyed on a new required `student_id` field, collected on every
+registration regardless of how it was paid. A student can have at most one
+non-rejected registration at a time (`registrations_student_id_active_key`,
+a partial unique index — see `context/SCHEMA.md`); it reopens automatically
+if that registration is rejected, or an admin can free it explicitly via a
+new **Void** action on **Find a registration**, which works on an approved
+row too (Review Queue's own reject only ever sees pending ones). Walk-in
+sales are entered by staff at `/admin/walk-in` — no GCash reference or
+receipt, approved immediately since the cash is already in hand — and get
+the same confirmation email an online approval does, just no Discord ping,
+since there's nothing left to review.
 
 **The theme is confirmed: Sunset Soiree** (2026-09-02). The palette built
 under the internal codename "Desert Sundown" needed no changes to fit it —

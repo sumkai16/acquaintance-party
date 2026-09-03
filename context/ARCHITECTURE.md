@@ -79,7 +79,8 @@ src/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
 │   │   ├── login/
 │   │   ├── review/               # approve/reject queue
-│   │   ├── registrations/        # search, for lost ticket links
+│   │   ├── registrations/        # search + Void, for lost tickets / freeing a student ID
+│   │   ├── walk-in/              # admin-entered cash sale, approved on the spot
 │   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
 │   │   ├── raffle/               # projector: page.tsx, actions.ts (draw),
 │   │   │                         # entrant-actions.ts, entrant-manager.tsx (Setup),

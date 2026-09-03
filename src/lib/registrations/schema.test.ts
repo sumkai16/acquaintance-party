@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSchema } from "./schema";
+import { checkoutSchema, walkInSchema } from "./schema";
 
 const valid = {
   fullName: "Juan Miguel Dela Cruz",
+  studentId: "2023-00451",
   yearLevel: "3rd year",
   section: "B",
   email: "juan@example.com",
@@ -82,5 +83,36 @@ describe("checkoutSchema", () => {
     if (!result.success) {
       expect(result.error.issues[0].message).toBe("Choose your year level.");
     }
+  });
+
+  it("trims the student ID", () => {
+    const parsed = checkoutSchema.parse({ ...valid, studentId: "  2023-00451  " });
+    expect(parsed.studentId).toBe("2023-00451");
+  });
+
+  it("rejects an empty student ID", () => {
+    expect(checkoutSchema.safeParse({ ...valid, studentId: "   " }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe("walkInSchema", () => {
+  const walkInValid = {
+    fullName: valid.fullName,
+    studentId: valid.studentId,
+    yearLevel: valid.yearLevel,
+    section: valid.section,
+    email: valid.email,
+  };
+
+  it("accepts a submission with no GCash reference", () => {
+    expect(walkInSchema.safeParse(walkInValid).success).toBe(true);
+  });
+
+  it("still requires a student ID", () => {
+    expect(
+      walkInSchema.safeParse({ ...walkInValid, studentId: "" }).success,
+    ).toBe(false);
   });
 });

@@ -1,14 +1,25 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
+import { generateTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
-import type { CheckoutInput } from "./schema";
+import type { CheckoutInput, WalkInInput } from "./schema";
 
 /** Postgres unique-violation SQLSTATE. */
 const UNIQUE_VIOLATION = "23505";
 
+/**
+ * A 23505 doesn't say which constraint fired, but the Postgres error message
+ * names it — used to tell "this GCash reference is already used" apart from
+ * "this student already has an active registration" instead of always
+ * assuming the former.
+ */
+function isStudentIdViolation(message: string): boolean {
+  return message.includes("registrations_student_id_active_key");
+}
+
 export type CreateResult =
   | { ok: true; id: string }
-  | { ok: false; error: "duplicate_reference" | "failed" };
+  | { ok: false; error: "duplicate_reference" | "duplicate_student_id" | "failed" };
 
 export async function createRegistration(
   input: CheckoutInput & { receiptPath: string; amount: number },
@@ -17,9 +28,11 @@ export async function createRegistration(
     .from("registrations")
     .insert({
       full_name: input.fullName,
+      student_id: input.studentId,
       year_level: input.yearLevel,
       section: input.section,
       email: input.email,
+      payment_method: "online",
       gcash_reference: input.gcashReference,
       receipt_path: input.receiptPath,
       amount: input.amount,
@@ -29,13 +42,67 @@ export async function createRegistration(
 
   if (error) {
     if (error.code === UNIQUE_VIOLATION) {
-      return { ok: false, error: "duplicate_reference" };
+      return {
+        ok: false,
+        error: isStudentIdViolation(error.message)
+          ? "duplicate_student_id"
+          : "duplicate_reference",
+      };
     }
     console.error("createRegistration failed", error);
     return { ok: false, error: "failed" };
   }
 
   return { ok: true, id: data.id };
+}
+
+export type CreateWalkInResult =
+  | { ok: true; id: string }
+  | { ok: false; error: "duplicate_student_id" | "failed" };
+
+/**
+ * A cash sale entered directly by an admin — approved immediately, since
+ * staff already has the cash in hand and there's no receipt to review.
+ * Retries on a ticket-code collision the same way approveRegistration does
+ * in admin/review/actions.ts.
+ */
+export async function createWalkInRegistration(
+  input: WalkInInput & { amount: number; reviewedBy: string },
+): Promise<CreateWalkInResult> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await adminClient()
+      .from("registrations")
+      .insert({
+        full_name: input.fullName,
+        student_id: input.studentId,
+        year_level: input.yearLevel,
+        section: input.section,
+        email: input.email,
+        payment_method: "walk_in",
+        gcash_reference: null,
+        receipt_path: null,
+        amount: input.amount,
+        status: "approved",
+        ticket_code: generateTicketCode(),
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: input.reviewedBy,
+      })
+      .select("id")
+      .single();
+
+    if (!error) return { ok: true, id: data.id };
+
+    if (error.code === UNIQUE_VIOLATION) {
+      if (isStudentIdViolation(error.message)) {
+        return { ok: false, error: "duplicate_student_id" };
+      }
+      continue; // ticket-code collision — try again
+    }
+    console.error("createWalkInRegistration failed", error);
+    return { ok: false, error: "failed" };
+  }
+
+  return { ok: false, error: "failed" };
 }
 
 export async function getRegistration(id: string): Promise<Registration | null> {

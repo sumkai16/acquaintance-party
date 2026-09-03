@@ -16,6 +16,7 @@ import { sendTicketSubmittedEmail } from "@/lib/notify/email";
 
 export type SubmittedValues = {
   fullName: string;
+  studentId: string;
   yearLevel: string;
   section: string;
   email: string;
@@ -46,6 +47,7 @@ const ALLOWED_RECEIPT_TYPES = ["image/jpeg", "image/png", "image/webp"];
 function readValues(formData: FormData): SubmittedValues {
   return {
     fullName: String(formData.get("fullName") ?? ""),
+    studentId: String(formData.get("studentId") ?? ""),
     yearLevel: String(formData.get("yearLevel") ?? ""),
     section: String(formData.get("section") ?? ""),
     email: String(formData.get("email") ?? ""),
@@ -155,6 +157,18 @@ export async function submitRegistration(
           "That GCash reference number has already been used for another " +
           "ticket. Check that you copied the number from your own receipt.",
         fieldErrors: { gcashReference: "Already used for another ticket." },
+        values,
+        attempt,
+      };
+    }
+    if (created.error === "duplicate_student_id") {
+      return {
+        status: "error",
+        message:
+          "You've already submitted a registration with this student ID. " +
+          "If it was rejected, you can submit again — otherwise contact an " +
+          "organiser.",
+        fieldErrors: { studentId: "Already has an active registration." },
         values,
         attempt,
       };

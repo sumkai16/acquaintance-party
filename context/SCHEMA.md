@@ -1,8 +1,8 @@
 # SCHEMA.md — Database Schema
 
-Source of truth: the migration files under `supabase/migrations/`
-(`0001_init.sql`, `0002_raffle.sql`). This file is a fast reference — if the
-two disagree, the migration files are right and this needs updating.
+Source of truth: the migration files under `supabase/migrations/`. This
+file is a fast reference — if the two disagree, the migration files are
+right and this needs updating.
 
 Applied by hand into the hosted Supabase project (no CLI/Docker on this
 machine) — see `docs/setup/supabase.md` §6 for the exact steps, and follow
@@ -17,14 +17,16 @@ purchasing means there's no separate orders table.
 |---|---|---|---|
 | id | uuid | PK, default `gen_random_uuid()` | |
 | full_name | text | NOT NULL, 2–120 chars trimmed | |
+| student_id | text | NOT NULL, non-blank | Added in `0005_student_id_and_walk_in.sql` — the real anti-spam identity key; email alone let one student submit repeatedly with a new address each time |
 | year_level | text | NOT NULL | Free text, validated at the app layer against `YEAR_LEVELS` in `schema.ts` |
 | section | text | NOT NULL | |
 | email | text | NOT NULL | Lowercased at the app layer before insert |
-| gcash_reference | text | NOT NULL, **UNIQUE** (`registrations_gcash_reference_key`) | The core anti-fraud lever — one real GCash transaction, one ticket. Normalized (digits only, no spaces/dashes) before insert |
-| receipt_path | text | NOT NULL | Key into the private `receipts` storage bucket, not a URL |
+| payment_method | text | NOT NULL, `'online'` \| `'walk_in'` | Added in `0005` — `online` goes through checkout + review; `walk_in` is a cash sale an admin enters directly at `/admin/walk-in`, approved immediately |
+| gcash_reference | text | nullable, **UNIQUE** (`registrations_gcash_reference_key`) | The anti-fraud lever for online payments — one real GCash transaction, one ticket. Normalized (digits only, no spaces/dashes) before insert. `NULL` for a walk-in row; Postgres treats every `NULL` as distinct, so any number of walk-ins coexist under this index |
+| receipt_path | text | nullable | Key into the private `receipts` storage bucket, not a URL. `NULL` for a walk-in row — no receipt to review |
 | amount | integer | NOT NULL, `> 0` | **Centavos**, never a float |
 | status | `registration_status` enum | NOT NULL, default `pending` | `pending` \| `approved` \| `rejected` |
-| reject_reason | text | nullable | Shown to the student on their ticket page |
+| reject_reason | text | nullable | Shown to the student on their ticket page. Also holds the reason when an admin voids an *approved* row to free its student ID for resubmission — see below |
 | ticket_code | text | nullable, UNIQUE | 12-char opaque code, generated only on approval |
 | created_at | timestamptz | NOT NULL, default `now()` | |
 | reviewed_at | timestamptz | nullable | |
@@ -38,12 +40,25 @@ purchasing means there's no separate orders table.
 - `rejection_has_reason` — `status = 'rejected'` requires a non-empty
   `reject_reason`. A student is never shown a bare rejection with no
   explanation.
+- `payment_fields_match_method` (`0005`) — `online` requires both
+  `gcash_reference` and `receipt_path`; `walk_in` requires neither.
 
 **Indexes:**
-- `registrations_gcash_reference_key` — unique, the fraud lever above
+- `registrations_gcash_reference_key` — unique, the online fraud lever above
 - `registrations_status_created_idx` — `(status, created_at desc)`, serves
   the admin review queue's "pending, oldest first" list
 - `registrations_email_idx` — `lower(email)`, serves admin search
+- `registrations_student_id_active_key` (`0005`) — unique on `student_id`
+  **where `status <> 'rejected'`**. This is the actual one-active-
+  registration-per-student rule: a rejected row falls outside the index, so
+  it never blocks a resubmission. There are two ways a row ends up
+  rejected — the normal Review Queue reject (still pending-only, in
+  `admin/review/actions.ts`), or `voidRegistration` in
+  `admin/registrations/actions.ts`, which does the same update but also
+  accepts an *approved* row, for the case where a student legitimately
+  needs a do-over after their ticket already went through. Both paths land
+  on the same `rejected` state, so the index needs no separate concept of
+  "reactivated."
 
 ## scans
 

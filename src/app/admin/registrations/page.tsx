@@ -1,13 +1,8 @@
-import Link from "next/link";
-import { Badge } from "../badge";
-import { formatPeso } from "@/lib/config/event";
 import { searchRegistrations } from "@/lib/registrations/queries";
-import { formatTicketCode } from "@/lib/tickets/code";
+import { RegistrationRow } from "./registration-row";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Find a registration" };
-
-const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
 
 export default async function RegistrationsPage({
   searchParams,
@@ -55,39 +50,7 @@ export default async function RegistrationsPage({
 
         <ul className="flex flex-col gap-3">
           {results.map((registration) => (
-            <li
-              key={registration.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ground/10 bg-black/20 p-4"
-            >
-              <div>
-                <p className="font-semibold">{registration.full_name}</p>
-                <p className="text-sm text-ground/60">
-                  {registration.year_level} · Section {registration.section} ·{" "}
-                  {registration.email}
-                </p>
-                <p className="text-sm text-ground/45">
-                  {formatPeso(registration.amount)} · ref{" "}
-                  <span className="font-mono">{registration.gcash_reference}</span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Badge tone={STATUS_TONE[registration.status]}>
-                  {registration.status}
-                </Badge>
-                {registration.ticket_code ? (
-                  <span className="font-mono text-sm">
-                    {formatTicketCode(registration.ticket_code)}
-                  </span>
-                ) : null}
-                <Link
-                  href={`/ticket/${registration.id}`}
-                  className="text-sm font-semibold text-accent-2 underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-                >
-                  Open ticket
-                </Link>
-              </div>
-            </li>
+            <RegistrationRow key={registration.id} registration={registration} />
           ))}
         </ul>
       </main>

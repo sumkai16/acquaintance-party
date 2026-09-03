@@ -34,11 +34,14 @@ function sortKey(row: Row, column: SortColumn): string | number {
 function matches(row: Row, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
-  const { full_name, email, gcash_reference } = row.registration;
+  const { full_name, email, gcash_reference, student_id } = row.registration;
   return (
     full_name.toLowerCase().includes(q) ||
     email.toLowerCase().includes(q) ||
-    gcash_reference.toLowerCase().includes(q)
+    student_id.toLowerCase().includes(q) ||
+    // Every row here is pending, which is always an online submission — but
+    // the type is nullable now that walk-ins exist, so guard anyway.
+    (gcash_reference ?? "").toLowerCase().includes(q)
   );
 }
 
@@ -88,7 +91,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search name, email, or reference"
+        placeholder="Search name, email, student ID, or reference"
         aria-label="Search the review queue"
         className="w-full max-w-sm rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
       />
@@ -193,6 +196,7 @@ function ReviewRow({ row }: { row: Row }) {
           {registration.year_level} · Section {registration.section}
         </p>
         <p className="text-ground/60">{registration.email}</p>
+        <p className="text-ground/60">ID: {registration.student_id}</p>
       </td>
 
       <td className="py-2 pr-3 whitespace-nowrap">{formatPeso(registration.amount)}</td>

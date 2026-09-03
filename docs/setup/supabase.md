@@ -104,6 +104,34 @@ migrations are pasted by hand rather than run via `supabase db push`:
    `prize_key`/`prize_name` from `raffle_draws`. Straightforward `DROP`
    statements, nothing to verify by hand.
 
+7. Paste the contents of
+   `supabase/migrations/0005_student_id_and_walk_in.sql`, run it. Adds a
+   required `student_id` to every registration (QA feedback: nothing was
+   stopping one student from submitting several times) and a
+   `payment_method` column so a walk-in cash sale — no GCash reference, no
+   receipt — can exist alongside an online one. Verify the anti-spam index
+   is live — this should **fail** on the second insert:
+   ```sql
+   insert into registrations (full_name, student_id, year_level, section,
+     email, payment_method, gcash_reference, receipt_path, amount, status,
+     ticket_code)
+   values ('Test A', 'sid-test-1', '3rd year', 'B', 'a@example.com',
+     'online', '1111111111111', 'x.jpg', 49500, 'pending', null);
+
+   insert into registrations (full_name, student_id, year_level, section,
+     email, payment_method, gcash_reference, receipt_path, amount, status,
+     ticket_code)
+   values ('Test B', 'sid-test-1', '3rd year', 'B', 'b@example.com',
+     'online', '2222222222222', 'y.jpg', 49500, 'pending', null);
+   ```
+   Expected: the second insert raises `duplicate key value violates unique
+   constraint "registrations_student_id_active_key"`. That error is
+   correct — it proves the same student ID can't have two active
+   registrations at once. Clean up both test rows afterward:
+   ```sql
+   delete from registrations where student_id = 'sid-test-1';
+   ```
+
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
