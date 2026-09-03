@@ -9,6 +9,7 @@ import {
   rejectRegistration,
   type ActionResult,
 } from "./actions";
+import { ReceiptLightbox } from "./receipt-lightbox";
 
 type Row = {
   registration: Registration;
@@ -144,6 +145,7 @@ function ReviewRow({ row }: { row: Row }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   function run(action: () => Promise<ActionResult>) {
     setError(null);
@@ -157,15 +159,29 @@ function ReviewRow({ row }: { row: Row }) {
     <tr className="border-b border-ground/5 align-top last:border-0 hover:bg-ground/5">
       <td className="py-2 pr-3 pl-4">
         {receiptUrl ? (
-          <a href={receiptUrl} target="_blank" rel="noreferrer">
-            {/* Signed Supabase URL, not a configured next/image host — plain img. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={receiptUrl}
-              alt={`Receipt submitted by ${registration.full_name}`}
-              className="h-16 w-16 rounded border border-ground/15 object-cover"
-            />
-          </a>
+          <>
+            <button
+              type="button"
+              onClick={() => setLightboxOpen(true)}
+              aria-label={`View receipt submitted by ${registration.full_name}`}
+              className="block rounded focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            >
+              {/* Signed Supabase URL, not a configured next/image host — plain img. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={receiptUrl}
+                alt={`Receipt submitted by ${registration.full_name}`}
+                className="h-16 w-16 rounded border border-ground/15 object-cover"
+              />
+            </button>
+            {lightboxOpen ? (
+              <ReceiptLightbox
+                src={receiptUrl}
+                alt={`Receipt submitted by ${registration.full_name}`}
+                onClose={() => setLightboxOpen(false)}
+              />
+            ) : null}
+          </>
         ) : (
           <span className="text-ground/40">No receipt</span>
         )}
