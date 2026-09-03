@@ -91,6 +91,15 @@ seconds landing on *every* draw and redraw, which adds up across a night of
 drawing several names live. Speed at the podium won over the shortlist
 drama; the draw click now goes straight to the wheel.
 
+**Rejection accountability, and a door filter** (2026-09-04, same QA pass,
+the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
+already populated on every approve or reject, just never displayed —
+**Find a registration** now shows "Rejected by `<email>` on `<date>`" on a
+rejected row, resolving the admin's email from Supabase Auth via a new
+`listAdminEmails()` (there's no admin profile table to join against). The
+Recent Scans filters gain a fourth dropdown, Door, alongside Name/Year/
+Section — same pattern, and included in the filtered `.xlsx` export too.
+
 **Attendance search and a filtered export** (2026-09-04, same QA pass). The
 Recent Scans table now has a debounced name search alongside the existing
 Year-level/Section dropdowns; the invalid-QR message the QA doc asked for

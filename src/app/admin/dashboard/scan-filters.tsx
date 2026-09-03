@@ -7,24 +7,31 @@ import { YEAR_LEVELS } from "@/lib/registrations/schema";
 const NAME_DEBOUNCE_MS = 300;
 
 /**
- * A name search plus two dropdowns, narrowing the Recent Scans table by
- * name/year level/section — driven by the same URL-param pattern as the
- * table's column sort (?sort=&dir=) rather than local state, so a filtered,
- * sorted view survives a refresh or a shared link. The name field is
- * debounced (typing shouldn't push a new URL, and re-fetch, per keystroke);
- * the dropdowns commit immediately since a select change is already one
- * discrete action.
+ * A name search plus three dropdowns, narrowing the Recent Scans table by
+ * name/year level/section/door — driven by the same URL-param pattern as
+ * the table's column sort (?sort=&dir=) rather than local state, so a
+ * filtered, sorted view survives a refresh or a shared link. The name field
+ * is debounced (typing shouldn't push a new URL, and re-fetch, per
+ * keystroke); the dropdowns commit immediately since a select change is
+ * already one discrete action.
  */
-export function ScanFilters({ sections }: { sections: string[] }) {
+export function ScanFilters({
+  sections,
+  doors,
+}: {
+  sections: string[];
+  doors: string[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const year = searchParams.get("year") ?? "";
   const section = searchParams.get("section") ?? "";
+  const door = searchParams.get("door") ?? "";
   const [name, setName] = useState(searchParams.get("name") ?? "");
 
-  function setParam(key: "year" | "section" | "name", value: string) {
+  function setParam(key: "year" | "section" | "door" | "name", value: string) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
@@ -72,6 +79,20 @@ export function ScanFilters({ sections }: { sections: string[] }) {
       >
         <option value="">All sections</option>
         {sections.map((value) => (
+          <option key={value} value={value}>
+            {value}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={door}
+        onChange={(event) => setParam("door", event.target.value)}
+        aria-label="Filter by door"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+      >
+        <option value="">All doors</option>
+        {doors.map((value) => (
           <option key={value} value={value}>
             {value}
           </option>

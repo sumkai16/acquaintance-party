@@ -69,16 +69,18 @@ export function findDoubleScans(rows: ScanRecord[]): DoubleScan[] {
 
 export function filterScans(
   rows: ScanRecord[],
-  filter: { name?: string; year?: string; section?: string },
+  filter: { name?: string; year?: string; section?: string; door?: string },
 ): ScanRecord[] {
   const name = filter.name?.trim().toLowerCase();
   const year = filter.year?.trim();
   const section = filter.section?.trim();
+  const door = filter.door?.trim();
 
   return rows.filter((row) => {
     if (name && !row.fullName?.toLowerCase().includes(name)) return false;
     if (year && row.yearLevel !== year) return false;
     if (section && row.section !== section) return false;
+    if (door && row.deviceLabel !== door) return false;
     return true;
   });
 }

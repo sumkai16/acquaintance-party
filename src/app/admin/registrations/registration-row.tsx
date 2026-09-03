@@ -10,7 +10,13 @@ import { voidRegistration } from "./actions";
 
 const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
 
-export function RegistrationRow({ registration }: { registration: Registration }) {
+export function RegistrationRow({
+  registration,
+  reviewerEmail,
+}: {
+  registration: Registration;
+  reviewerEmail: string | null;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +58,15 @@ export function RegistrationRow({ registration }: { registration: Registration }
           {" · ID "}
           <span className="font-mono">{registration.student_id}</span>
         </p>
+        {registration.status === "rejected" ? (
+          <p className="mt-1 text-sm text-ground/50">
+            Rejected by {reviewerEmail ?? "an admin"}
+            {registration.reviewed_at
+              ? ` on ${new Date(registration.reviewed_at).toLocaleString("en-PH")}`
+              : ""}
+            {registration.reject_reason ? ` — ${registration.reject_reason}` : ""}
+          </p>
+        ) : null}
         {error ? (
           <p className="mt-1 text-sm font-medium text-accent">{error}</p>
         ) : null}

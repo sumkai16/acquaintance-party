@@ -1,4 +1,4 @@
-import { searchRegistrations } from "@/lib/registrations/queries";
+import { listAdminEmails, searchRegistrations } from "@/lib/registrations/queries";
 import { RegistrationRow } from "./registration-row";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +11,9 @@ export default async function RegistrationsPage({
 }) {
   const { q = "" } = await searchParams;
   const results = await searchRegistrations(q);
+  // Only needed to label a rejected row with who rejected it — skip the
+  // lookup entirely on an empty results page.
+  const adminEmails = results.length > 0 ? await listAdminEmails() : new Map<string, string>();
 
   return (
     // A single-focus search screen, not a data-dense one — the gradient
@@ -50,7 +53,15 @@ export default async function RegistrationsPage({
 
         <ul className="flex flex-col gap-3">
           {results.map((registration) => (
-            <RegistrationRow key={registration.id} registration={registration} />
+            <RegistrationRow
+              key={registration.id}
+              registration={registration}
+              reviewerEmail={
+                registration.reviewed_by
+                  ? (adminEmails.get(registration.reviewed_by) ?? null)
+                  : null
+              }
+            />
           ))}
         </ul>
       </main>

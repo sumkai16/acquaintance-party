@@ -189,4 +189,14 @@ describe("filterScans", () => {
     const found = filterScans(rows, { name: "santos", year: "2nd year" });
     expect(found.map((r) => r.fullName)).toEqual(["Miko Santos"]);
   });
+
+  it("filters by door", () => {
+    const doorRows = [
+      row({ fullName: "Ana Reyes", deviceLabel: "door-1" }),
+      row({ fullName: "Miko Santos", deviceLabel: "door-2" }),
+    ];
+    expect(filterScans(doorRows, { door: "door-2" }).map((r) => r.fullName)).toEqual([
+      "Miko Santos",
+    ]);
+  });
 });

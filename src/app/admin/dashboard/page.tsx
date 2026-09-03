@@ -33,9 +33,10 @@ export default async function DashboardPage({
     name?: string;
     year?: string;
     section?: string;
+    door?: string;
   }>;
 }) {
-  const { sort, dir, name, year, section } = await searchParams;
+  const { sort, dir, name, year, section, door } = await searchParams;
   const [rawScans, sold] = await Promise.all([allScans(), approvedCount()]);
   // Counts and the double-scan alert describe the whole night, not the
   // filtered table view — a filter narrowing to one section shouldn't make
@@ -43,10 +44,11 @@ export default async function DashboardPage({
   const summary = summarize(rawScans, sold);
   const doubles = findDoubleScans(rawScans);
   const sections = [...new Set(rawScans.map((s) => s.section).filter((s): s is string => !!s))].sort();
+  const doors = [...new Set(rawScans.map((s) => s.deviceLabel))].sort();
 
   const sortColumn = COLUMNS.some((c) => c.key === sort) ? (sort as SortColumn) : null;
   const direction = dir === "asc" ? "asc" : "desc";
-  const filtered = filterScans(rawScans, { name, year, section });
+  const filtered = filterScans(rawScans, { name, year, section, door });
   // No sort param: today's default, newest-first from the query itself.
   const scans = sortColumn ? sortScans(filtered, sortColumn, direction) : filtered;
 
@@ -54,6 +56,7 @@ export default async function DashboardPage({
   if (name) exportParams.set("name", name);
   if (year) exportParams.set("year", year);
   if (section) exportParams.set("section", section);
+  if (door) exportParams.set("door", door);
   const exportHref = exportParams.toString()
     ? `/admin/dashboard/export?${exportParams.toString()}`
     : "/admin/dashboard/export";
@@ -103,7 +106,7 @@ export default async function DashboardPage({
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Recent scans</h2>
-        <ScanFilters sections={sections} />
+        <ScanFilters sections={sections} doors={doors} />
       </div>
       <div className="mt-2 overflow-x-auto rounded-lg border border-ground/10 bg-black/20">
         <table className="w-full border-collapse text-sm">
@@ -119,6 +122,7 @@ export default async function DashboardPage({
                 if (name) params.set("name", name);
                 if (year) params.set("year", year);
                 if (section) params.set("section", section);
+                if (door) params.set("door", door);
                 return (
                   <th key={col.key} className="py-2 pr-3 pl-3 first:pl-4">
                     <Link

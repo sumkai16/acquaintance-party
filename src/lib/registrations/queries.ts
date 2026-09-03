@@ -187,3 +187,19 @@ export async function signedReceiptUrl(path: string): Promise<string | null> {
 
   return data?.signedUrl ?? null;
 }
+
+/**
+ * Maps every admin's user id to their email — `registrations.reviewed_by`
+ * is a bare `auth.users` id, and there's no admin-facing profile table to
+ * join against, so this reads straight from Supabase Auth via the
+ * service-role client. One call covers everyone: the admin team is a
+ * handful of people, well under `listUsers()`'s default page size.
+ */
+export async function listAdminEmails(): Promise<Map<string, string>> {
+  const { data, error } = await adminClient().auth.admin.listUsers();
+  if (error) {
+    console.error("listAdminEmails failed", error);
+    return new Map();
+  }
+  return new Map(data.users.map((user) => [user.id, user.email ?? user.id]));
+}

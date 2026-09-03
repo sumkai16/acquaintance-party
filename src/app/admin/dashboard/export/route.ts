@@ -10,20 +10,21 @@ export async function GET(request: Request) {
     return Response.json({ error: "Sign in again." }, { status: 401 });
   }
 
-  // Same name/year/section filters as the dashboard table, so "download
-  // .xlsx" from a filtered view exports exactly what's on screen — omit all
-  // three for the full, unfiltered list.
+  // Same name/year/section/door filters as the dashboard table, so
+  // "download .xlsx" from a filtered view exports exactly what's on screen
+  // — omit all four for the full, unfiltered list.
   const params = new URL(request.url).searchParams;
   const name = params.get("name") ?? undefined;
   const year = params.get("year") ?? undefined;
   const section = params.get("section") ?? undefined;
+  const door = params.get("door") ?? undefined;
 
   // Duplicates and invalids matter live, on the dashboard, where an admin is
   // watching for problems. In an exported attendance list they're just noise
   // — this file answers "who actually got in," not "every scan attempted."
   const scans = filterScans(
     (await allScans()).filter((scan) => scan.result === "ok"),
-    { name, year, section },
+    { name, year, section, door },
   );
 
   const workbook = new ExcelJS.Workbook();
@@ -57,6 +58,7 @@ export async function GET(request: Request) {
     "attendance",
     ...(section ? [section.toLowerCase().replace(/\s+/g, "-")] : []),
     ...(year ? [year.toLowerCase().replace(/\s+/g, "-")] : []),
+    ...(door ? [door.toLowerCase().replace(/\s+/g, "-")] : []),
   ];
   const filename = `${filenameParts.join("-")}.xlsx`;
 
