@@ -7,9 +7,9 @@ const SPIN_MS = 6000;
 const EXTRA_SPINS = 6;
 
 const SLICE_COLORS = [
-  "var(--color-night-accent)",
-  "var(--color-night-accent-2)",
-  "var(--color-night-accent-3)",
+  "var(--color-accent)",
+  "var(--color-accent-2)",
+  "var(--color-accent-3)",
 ];
 
 /**
@@ -79,19 +79,19 @@ export function RaffleWheel({
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-6">
-      <p className="text-sm uppercase tracking-[0.3em] text-night-ink/60">
+      <p className="text-sm uppercase tracking-[0.3em] text-ground/60">
         {finalists.length} finalists
       </p>
 
       <div className="relative aspect-square w-[min(70vh,90vw)]">
         <div
           className="absolute left-1/2 top-0 z-10 h-0 w-0 -translate-x-1/2 border-x-[14px] border-t-[24px] border-x-transparent"
-          style={{ borderTopColor: "var(--color-night-ink)" }}
+          style={{ borderTopColor: "var(--color-ground)" }}
           aria-hidden
         />
 
         <div
-          className="h-full w-full rounded-full ring-4 ring-night-ink/20"
+          className="h-full w-full rounded-full ring-4 ring-ground/20"
           style={{
             backgroundImage: `conic-gradient(${gradient})`,
             transform: `rotate(${rotation}deg)`,
@@ -105,7 +105,7 @@ export function RaffleWheel({
               style={{ transform: `rotate(${i * slice + slice / 2}deg)` }}
             >
               <span
-                className={`absolute left-1/2 -translate-x-1/2 whitespace-normal text-center leading-tight font-semibold text-night-ground ${labelSize}`}
+                className={`absolute left-1/2 -translate-x-1/2 whitespace-normal text-center leading-tight font-semibold text-deep ${labelSize}`}
               >
                 {entrant.fullName}
               </span>
@@ -113,7 +113,7 @@ export function RaffleWheel({
           ))}
         </div>
 
-        <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-night-deep ring-4 ring-night-ink/20" />
+        <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/20 ring-4 ring-ground/20" />
       </div>
     </div>
   );

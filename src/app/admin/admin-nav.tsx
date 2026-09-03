@@ -14,10 +14,9 @@ const LINKS = [
 
 /**
  * Rendered once, from admin/layout.tsx, for every admin route except login
- * (no session yet), the scanner (full-screen by design, no chrome), and the
- * raffle projector (its own Night Set header already has an Attendance
- * link) — replaces each page's own hand-rolled, inconsistently-styled nav
- * row.
+ * (no session yet) and the two full-screen surfaces (scanner, raffle
+ * projector) — replaces each page's own hand-rolled, inconsistently-styled
+ * nav row.
  */
 export function AdminNav() {
   const pathname = usePathname();
@@ -30,7 +29,7 @@ export function AdminNav() {
   }
 
   return (
-    <nav className="border-b border-slate-300 bg-white">
+    <nav className="border-b border-ground/10">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-1 px-5 py-2.5">
         {LINKS.map((link) => {
           const active = pathname.startsWith(link.href);
@@ -38,10 +37,10 @@ export function AdminNav() {
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded px-3 py-1.5 text-sm font-medium transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-slate-500 ${
+              className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 ${
                 active
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-accent text-white"
+                  : "text-ground/70 hover:bg-ground/10 hover:text-ground"
               }`}
             >
               {link.label}
@@ -52,7 +51,7 @@ export function AdminNav() {
         <button
           type="button"
           onClick={signOut}
-          className="ml-auto rounded px-3 py-1.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500"
+          className="ml-auto rounded-full px-3.5 py-1.5 text-sm font-medium text-ground/50 hover:bg-ground/10 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
         >
           Sign out
         </button>

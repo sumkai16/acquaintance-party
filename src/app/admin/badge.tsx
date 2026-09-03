@@ -1,14 +1,13 @@
 const TONES = {
-  green: "bg-green-100 text-green-900",
-  amber: "bg-amber-100 text-amber-900",
-  red: "bg-red-100 text-red-900",
-  slate: "bg-slate-200 text-slate-800",
+  green: "bg-green-500/15 text-green-300 border border-green-500/30",
+  amber: "bg-amber-500/15 text-amber-300 border border-amber-500/30",
+  red: "bg-red-500/15 text-red-300 border border-red-500/30",
+  slate: "bg-ground/10 text-ground/70 border border-ground/15",
 } as const;
 
 /**
- * A small status pill in the app's neutral/semantic admin palette — never
- * the theme accent (context/DESIGN.md §5). Shared shape for anything that
- * shows a status at a glance: scan results, registration status.
+ * A small status pill. Semantic-only — green/amber/red for status, never
+ * the theme accent for meaning — on the dark bg-deep admin shell.
  */
 export function Badge({
   tone,

@@ -87,10 +87,10 @@ export function EntrantManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-night-ink/70">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-ground/70">
         Extra entrants
       </h2>
-      <p className="text-sm text-night-ink/50">
+      <p className="text-sm text-ground/50">
         For someone the scanner missed, or a name from outside the ticket
         system. The scanned-in pool is still the default — this only adds to
         it.
@@ -100,11 +100,11 @@ export function EntrantManager({
         {extras.map((entrant) => (
           <li
             key={entrant.registrationId}
-            className="flex items-center gap-2 rounded border border-night-ink/15 bg-night-ground/40 px-3 py-2 text-sm"
+            className="flex items-center gap-2 rounded border border-ground/15 bg-deep/40 px-3 py-2 text-sm"
           >
             <span className="flex-1">
               {entrant.fullName}
-              <span className="text-night-ink/50">
+              <span className="text-ground/50">
                 {" "}
                 · {entrant.yearLevel} · {entrant.section}
               </span>
@@ -112,7 +112,7 @@ export function EntrantManager({
             <button
               type="button"
               onClick={() => handleRemove(entrant.registrationId)}
-              className="rounded px-2 py-1 text-night-accent-2 hover:opacity-80"
+              className="rounded px-2 py-1 text-accent-2 hover:opacity-80"
               aria-label={`Remove ${entrant.fullName}`}
             >
               ✕
@@ -133,12 +133,12 @@ export function EntrantManager({
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Full name"
-            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2 focus:border-night-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3 sm:col-span-1"
+            className="rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3 sm:col-span-1"
           />
           <select
             value={yearLevel}
             onChange={(e) => setYearLevel(e.target.value)}
-            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
+            className="rounded border border-ground/25 bg-deep px-3 py-2"
           >
             <option value="">Year level (optional)</option>
             {YEAR_LEVELS.map((level) => (
@@ -151,41 +151,41 @@ export function EntrantManager({
             value={section}
             onChange={(e) => setSection(e.target.value)}
             placeholder="Section (optional)"
-            className="rounded border border-night-ink/25 bg-night-ground px-3 py-2"
+            className="rounded border border-ground/25 bg-deep px-3 py-2"
           />
         </div>
         <button
           type="submit"
           disabled={pending || fullName.trim().length < 2}
-          className="self-start rounded bg-night-accent px-4 py-2 font-semibold text-night-ground disabled:opacity-50"
+          className="self-start rounded bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
         >
           {pending ? "Adding…" : "Add name"}
         </button>
       </form>
 
-      <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-night-ink/15 pt-3">
+      <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-ground/15 pt-3">
         <input
           ref={fileRef}
           type="file"
           accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="text-sm text-night-ink/70 file:mr-3 file:rounded file:border-0 file:bg-night-ink/10 file:px-3 file:py-1.5 file:text-night-ink"
+          className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
         />
         <button
           type="button"
           disabled={importing}
           onClick={handleImport}
-          className="rounded border border-night-ink/25 px-4 py-2 font-semibold hover:border-night-ink/50 disabled:opacity-50"
+          className="rounded border border-ground/25 px-4 py-2 font-semibold hover:border-ground/50 disabled:opacity-50"
         >
           {importing ? "Importing…" : "Import from Excel"}
         </button>
-        <p className="w-full text-xs text-night-ink/45">
+        <p className="w-full text-xs text-ground/45">
           Header row required. Full name (or Name) is required; Year level
           and Section are optional.
         </p>
       </div>
 
-      {notice ? <p className="text-sm text-night-accent-3">{notice}</p> : null}
-      {error ? <p className="text-sm text-night-accent-2">{error}</p> : null}
+      {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
+      {error ? <p className="text-sm text-accent-2">{error}</p> : null}
     </div>
   );
 }

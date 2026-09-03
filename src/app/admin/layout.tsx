@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 import { serverClient } from "@/lib/supabase/server";
 import { AdminNav } from "./admin-nav";
 
-// Admin is a deliberately neutral shell — no theme accent, no display font.
-// See context/DESIGN.md §3: the public surfaces get the festival identity,
-// admin is a tool someone works through quickly, under pressure, on a phone.
+// Sunset Soiree, throughout — see context/DESIGN.md §3. The one carve-out
+// is the scanner's live scan result screens (full-screen green/red/amber,
+// read at arm's length in the dark under time pressure), which stay
+// untouched inside scanner.tsx itself; this shell doesn't reach them.
 export default async function AdminLayout({
   children,
 }: {
@@ -21,16 +22,16 @@ export default async function AdminLayout({
     if (!data.user) redirect("/admin/login");
   }
 
-  // The scanner is full-screen by design (read at arm's length, in the
-  // dark) and the raffle projector already has its own Night Set header
-  // with an Attendance link — neither wants this neutral chrome on top.
+  // The scanner and the raffle projector are both full-screen by design —
+  // the scanner so a result fills the whole screen, the raffle so the show
+  // has no admin chrome in view. Both fill their own bg-deep background.
   const showNav =
     !pathname.endsWith("/admin/login") &&
     !pathname.includes("/admin/scan") &&
     !pathname.includes("/admin/raffle");
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-deep text-ground">
       {showNav ? <AdminNav /> : null}
       {children}
     </div>

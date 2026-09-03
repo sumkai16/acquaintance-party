@@ -56,14 +56,14 @@ export function OperatorControls({
     : pool.filter((entrant) => entrant.source === "ticket");
 
   return (
-    <div className="border-t border-night-ink/15 bg-night-deep/60 px-6 py-5">
+    <div className="border-t border-ground/15 bg-black/60 px-6 py-5">
       <div className="mx-auto flex max-w-5xl flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-night-ink/70">
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ground/70">
           <p>
-            <span className="font-semibold text-night-ink">{effectivePool.length}</span>{" "}
+            <span className="font-semibold text-ground">{effectivePool.length}</span>{" "}
             eligible of {ticketsSold} tickets sold
             {!includeExtraEntrants && extras.length > 0 ? (
-              <span className="text-night-ink/50">
+              <span className="text-ground/50">
                 {" "}
                 ({extras.length} added name{extras.length === 1 ? "" : "s"} not
                 included this draw)
@@ -73,14 +73,14 @@ export function OperatorControls({
           <button
             type="button"
             onClick={() => setSetupOpen((open) => !open)}
-            className="rounded border border-night-ink/25 px-3 py-1.5 text-xs uppercase tracking-wide hover:border-night-ink/50"
+            className="rounded border border-ground/25 px-3 py-1.5 text-xs uppercase tracking-wide hover:border-ground/50"
           >
             {setupOpen ? "Hide setup" : "Setup"}
           </button>
         </div>
 
         {setupOpen ? (
-          <div className="grid gap-6 rounded border border-night-ink/15 bg-night-ground/30 p-4 md:grid-cols-2">
+          <div className="grid gap-6 rounded border border-ground/15 bg-deep/30 p-4 md:grid-cols-2">
             <PrizeManager
               prizes={prizes}
               onChange={onPrizesChange}
@@ -94,7 +94,7 @@ export function OperatorControls({
             />
           </div>
         ) : (
-          <p className="text-night-ink/50">
+          <p className="text-ground/50">
             Students scanned in at the door can win — turn on “Include added
             names” below to pull in anyone added under Setup for this draw.
             A scanner that has not synced yet is missing from this count.
@@ -111,14 +111,14 @@ export function OperatorControls({
                 <button
                   type="button"
                   onClick={() => onSelect(prize.id)}
-                  className={`rounded border px-4 py-2 text-left transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3 ${
+                  className={`rounded border px-4 py-2 text-left transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-accent-3 ${
                     selected
-                      ? "border-night-accent-3 bg-night-accent-3/15"
-                      : "border-night-ink/25 hover:border-night-ink/50"
+                      ? "border-accent-3 bg-accent-3/15"
+                      : "border-ground/25 hover:border-ground/50"
                   }`}
                 >
                   <span className="block font-semibold">{prize.name}</span>
-                  <span className="block text-sm text-night-ink/60">
+                  <span className="block text-sm text-ground/60">
                     {drawn
                       ? `${drawn.isRedraw ? "Redrawn — " : ""}${drawn.winner.fullName}`
                       : "Not drawn"}
@@ -128,7 +128,7 @@ export function OperatorControls({
             );
           })}
           {prizes.length === 0 ? (
-            <li className="text-sm text-night-ink/50">
+            <li className="text-sm text-ground/50">
               Add a prize under Setup to start drawing.
             </li>
           ) : null}
@@ -148,7 +148,7 @@ export function OperatorControls({
                   onRedraw(standing.id);
                 }
               }}
-              className="rounded bg-night-accent-2 px-6 py-3 font-semibold uppercase tracking-wide text-night-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-night-ink disabled:opacity-50"
+              className="rounded bg-accent-2 px-6 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
             >
               {pending ? "Drawing…" : "Redraw"}
             </button>
@@ -157,7 +157,7 @@ export function OperatorControls({
               type="button"
               disabled={pending || effectivePool.length === 0 || !selectedKey}
               onClick={onDraw}
-              className="rounded bg-night-accent-2 px-6 py-3 font-semibold uppercase tracking-wide text-night-ground transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-night-ink disabled:opacity-50"
+              className="rounded bg-accent-2 px-6 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
             >
               {pending ? "Drawing…" : "Draw"}
             </button>
@@ -185,7 +185,7 @@ export function OperatorControls({
         </div>
 
         {error ? (
-          <p className="rounded border border-night-accent-2/50 bg-night-accent-2/10 px-4 py-3">
+          <p className="rounded border border-accent-2/50 bg-accent-2/10 px-4 py-3">
             {error}
           </p>
         ) : null}

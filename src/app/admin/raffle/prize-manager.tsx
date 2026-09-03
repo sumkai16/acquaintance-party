@@ -88,7 +88,7 @@ export function PrizeManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-night-ink/70">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-ground/70">
         Prizes
       </h2>
 
@@ -96,7 +96,7 @@ export function PrizeManager({
         {prizes.map((prize, i) => (
           <li
             key={prize.id}
-            className="flex items-center gap-2 rounded border border-night-ink/15 bg-night-ground/40 px-3 py-2"
+            className="flex items-center gap-2 rounded border border-ground/15 bg-deep/40 px-3 py-2"
           >
             {editingId === prize.id ? (
               <input
@@ -105,12 +105,12 @@ export function PrizeManager({
                 onChange={(e) => setEditingValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleRename(prize.id)}
                 onBlur={() => handleRename(prize.id)}
-                className="flex-1 rounded border border-night-accent-3 bg-night-ground px-2 py-1"
+                className="flex-1 rounded border border-accent-3 bg-deep px-2 py-1"
               />
             ) : (
               <button
                 type="button"
-                className="flex-1 text-left focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3"
+                className="flex-1 text-left focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
                 onClick={() => {
                   setEditingId(prize.id);
                   setEditingValue(prize.name);
@@ -124,7 +124,7 @@ export function PrizeManager({
               type="button"
               disabled={i === 0}
               onClick={() => handleMove(prize.id, "up")}
-              className="rounded px-2 py-1 text-night-ink/60 hover:text-night-ink disabled:opacity-30"
+              className="rounded px-2 py-1 text-ground/60 hover:text-ground disabled:opacity-30"
               aria-label={`Move ${prize.name} up`}
             >
               ↑
@@ -133,7 +133,7 @@ export function PrizeManager({
               type="button"
               disabled={i === prizes.length - 1}
               onClick={() => handleMove(prize.id, "down")}
-              className="rounded px-2 py-1 text-night-ink/60 hover:text-night-ink disabled:opacity-30"
+              className="rounded px-2 py-1 text-ground/60 hover:text-ground disabled:opacity-30"
               aria-label={`Move ${prize.name} down`}
             >
               ↓
@@ -141,7 +141,7 @@ export function PrizeManager({
             <button
               type="button"
               onClick={() => handleDelete(prize)}
-              className="rounded px-2 py-1 text-night-accent-2 hover:opacity-80"
+              className="rounded px-2 py-1 text-accent-2 hover:opacity-80"
               aria-label={`Delete ${prize.name}`}
             >
               ✕
@@ -149,7 +149,7 @@ export function PrizeManager({
           </li>
         ))}
         {prizes.length === 0 ? (
-          <li className="text-sm text-night-ink/50">No prizes yet — add one below.</li>
+          <li className="text-sm text-ground/50">No prizes yet — add one below.</li>
         ) : null}
       </ul>
 
@@ -159,19 +159,19 @@ export function PrizeManager({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           placeholder="Prize name"
-          className="flex-1 rounded border border-night-ink/25 bg-night-ground px-3 py-2 focus:border-night-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-night-accent-3"
+          className="flex-1 rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
         />
         <button
           type="button"
           disabled={pending || !name.trim()}
           onClick={handleAdd}
-          className="rounded bg-night-accent px-4 py-2 font-semibold text-night-ground disabled:opacity-50"
+          className="rounded bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
         >
           Add
         </button>
       </div>
 
-      {error ? <p className="text-sm text-night-accent-2">{error}</p> : null}
+      {error ? <p className="text-sm text-accent-2">{error}</p> : null}
     </div>
   );
 }

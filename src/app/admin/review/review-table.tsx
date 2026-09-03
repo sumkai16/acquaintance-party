@@ -89,14 +89,14 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
         onChange={(event) => setQuery(event.target.value)}
         placeholder="Search name, email, or reference"
         aria-label="Search the review queue"
-        className="w-full max-w-sm rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-200"
+        className="w-full max-w-sm rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
       />
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-lg border border-ground/10 bg-black/20">
         <table className="w-full min-w-[840px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left">
-              <th className="py-2 pr-3 pl-4">Receipt</th>
+            <tr className="border-b border-ground/10 text-left">
+              <th className="py-2 pr-3 pl-4 text-ground/70">Receipt</th>
               {columns.map((col) => {
                 const active = sort.column === col.key;
                 const nextDir = active && sort.direction === "asc" ? "desc" : "asc";
@@ -106,7 +106,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
                       type="button"
                       onClick={() => toggleSort(col.key)}
                       aria-label={`Sort by ${col.label}, ${nextDir}ending`}
-                      className="inline-flex items-center gap-1 font-semibold text-slate-700 hover:text-slate-900 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500"
+                      className="inline-flex items-center gap-1 font-semibold text-ground/70 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
                     >
                       {col.label}
                       {active ? (
@@ -116,8 +116,8 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
                   </th>
                 );
               })}
-              <th className="py-2 pr-3">Reference</th>
-              <th className="py-2 pl-3">Actions</th>
+              <th className="py-2 pr-3 text-ground/70">Reference</th>
+              <th className="py-2 pl-3 text-ground/70">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -128,7 +128,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
         </table>
 
         {visible.length === 0 ? (
-          <p className="px-4 py-6 text-slate-600">
+          <p className="px-4 py-6 text-ground/60">
             {rows.length === 0
               ? "Nothing waiting. Every payment has been reviewed."
               : `Nothing matches “${query}”.`}
@@ -154,7 +154,7 @@ function ReviewRow({ row }: { row: Row }) {
   }
 
   return (
-    <tr className="border-b border-slate-100 align-top last:border-0 hover:bg-slate-50">
+    <tr className="border-b border-ground/5 align-top last:border-0 hover:bg-ground/5">
       <td className="py-2 pr-3 pl-4">
         {receiptUrl ? (
           <a href={receiptUrl} target="_blank" rel="noreferrer">
@@ -163,25 +163,25 @@ function ReviewRow({ row }: { row: Row }) {
             <img
               src={receiptUrl}
               alt={`Receipt submitted by ${registration.full_name}`}
-              className="h-16 w-16 rounded border border-slate-200 object-cover"
+              className="h-16 w-16 rounded border border-ground/15 object-cover"
             />
           </a>
         ) : (
-          <span className="text-slate-400">No receipt</span>
+          <span className="text-ground/40">No receipt</span>
         )}
       </td>
 
       <td className="py-2 pr-3">
         <p className="font-semibold">{registration.full_name}</p>
-        <p className="text-slate-500">
+        <p className="text-ground/60">
           {registration.year_level} · Section {registration.section}
         </p>
-        <p className="text-slate-500">{registration.email}</p>
+        <p className="text-ground/60">{registration.email}</p>
       </td>
 
       <td className="py-2 pr-3 whitespace-nowrap">{formatPeso(registration.amount)}</td>
 
-      <td className="py-2 pr-3 whitespace-nowrap">
+      <td className="py-2 pr-3 whitespace-nowrap text-ground/70">
         {new Date(registration.created_at).toLocaleString("en-PH")}
       </td>
 
@@ -200,7 +200,7 @@ function ReviewRow({ row }: { row: Row }) {
       <td className="py-2 pl-3">
         <div className="flex flex-col gap-2">
           {error ? (
-            <p role="alert" className="text-xs font-medium text-red-700">
+            <p role="alert" className="text-xs font-medium text-red-300">
               {error}
             </p>
           ) : null}
@@ -209,7 +209,7 @@ function ReviewRow({ row }: { row: Row }) {
               type="button"
               disabled={pending}
               onClick={() => run(() => approveRegistration(registration.id))}
-              className="rounded bg-green-800 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-green-800"
+              className="rounded bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
             >
               Approve
             </button>
@@ -218,13 +218,13 @@ function ReviewRow({ row }: { row: Row }) {
               onChange={(event) => setReason(event.target.value)}
               placeholder="Reason for rejecting"
               aria-label={`Reason for rejecting ${registration.full_name}`}
-              className="w-40 rounded border border-slate-300 px-2 py-1.5 text-xs focus:border-slate-500 focus:outline-2 focus:outline-offset-2 focus:outline-slate-500"
+              className="w-40 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
             />
             <button
               type="button"
               disabled={pending || !reason.trim()}
               onClick={() => run(() => rejectRegistration(registration.id, reason))}
-              className="rounded border border-red-800 px-3 py-1.5 text-xs font-semibold text-red-800 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-800"
+              className="rounded border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
             >
               Reject
             </button>

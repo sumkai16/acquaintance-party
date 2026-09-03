@@ -195,36 +195,42 @@ export function Scanner() {
     return () => stop?.();
   }, [ready, deviceLabel, handleCode]);
 
+  // Setup only — themed. The moment scanning starts, the live result
+  // states below (green/red/amber, full-screen) take over and stay exactly
+  // as they are: read at arm's length, in the dark, under time pressure,
+  // where an ambiguous color reads as a wrong answer instantly.
   if (!deviceLabel) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-6">
-        <h1 className="text-2xl font-bold">Name this scanner</h1>
-        <p className="text-slate-600">
-          Give this phone a door name, so a double entry can be traced to the
-          lane it came through. Example: <code>door-1</code>.
-        </p>
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const value = new FormData(event.currentTarget).get("label");
-            const label = String(value ?? "").trim();
-            if (!label) return;
-            localStorage.setItem("scanner-device-label", label);
-            setDeviceLabel(label);
-          }}
-          className="flex flex-col gap-3"
-        >
-          <input
-            name="label"
-            required
-            autoFocus
-            placeholder="door-1"
-            className="rounded border border-slate-400 px-3 py-3 text-lg"
-          />
-          <button className="rounded bg-slate-900 px-6 py-3 text-lg font-semibold text-white">
-            Start scanning
-          </button>
-        </form>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gradient-to-br from-deep via-deep to-accent/30 p-6 text-ground">
+        <div className="w-full max-w-sm rounded-lg border border-ground/10 bg-black/20 p-6">
+          <h1 className="font-display text-2xl uppercase">Name this scanner</h1>
+          <p className="mt-2 text-ground/70">
+            Give this phone a door name, so a double entry can be traced to the
+            lane it came through. Example: <code>door-1</code>.
+          </p>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              const value = new FormData(event.currentTarget).get("label");
+              const label = String(value ?? "").trim();
+              if (!label) return;
+              localStorage.setItem("scanner-device-label", label);
+              setDeviceLabel(label);
+            }}
+            className="mt-4 flex flex-col gap-3"
+          >
+            <input
+              name="label"
+              required
+              autoFocus
+              placeholder="door-1"
+              className="rounded border border-ground/20 bg-black/20 px-3 py-3 text-lg text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            />
+            <button className="rounded bg-accent px-6 py-3 text-lg font-semibold uppercase tracking-wide text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2">
+              Start scanning
+            </button>
+          </form>
+        </div>
       </main>
     );
   }

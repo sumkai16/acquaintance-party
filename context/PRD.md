@@ -142,6 +142,29 @@ scanner's last manifest fetch read as "not a valid ticket" until the next
 admins approving stragglers while people queue at the door is a real event
 scenario, not just a test artifact.
 
+**Admin is fully themed as of 2026-09-03**, reversing what had been a hard
+rule all session (`context/DESIGN.md` §3/§5's "neutral, dense, no accent").
+Driven by Figma mockups the user provided for five surfaces — Find a
+registration, Raffle, Attendance, Scanner, Review queue — and confirmed
+explicitly, twice, over the two real tradeoffs this raised:
+- **The raffle projector's separate dark "Night Set" palette was retired**
+  in favor of one consistent Sunset Soiree language across admin and the
+  raffle. It wasn't found broken — it was built deliberately (a dark room,
+  a projector, the sand palette would glare) and dropped anyway by explicit
+  user choice, confirmed with the projector-glare tradeoff stated plainly
+  before the decision was made.
+- **The door scanner's live scan result screens (green/red/amber) are the
+  one surviving carve-out**, explicitly confirmed rather than assumed: only
+  the pre-scan "Name this scanner" setup screen is themed. The reasoning
+  that kept it out — read at arm's length, in the dark, under time
+  pressure — is unchanged from the original neutral-admin rule; it's just
+  no longer applied to setup screens or the rest of admin.
+
+Admin login is the one built surface not yet themed — out of scope for the
+mockups provided, flagged rather than silently expanded into. No schema,
+server action, or business logic changed; purely visual/interaction-layer,
+and the existing 117-test suite passed unmodified.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later
