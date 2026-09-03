@@ -50,7 +50,7 @@ export function WalkInForm() {
           id="studentId"
           name="studentId"
           required
-          placeholder="2023-00451"
+          placeholder="SCC-00-0000000"
           defaultValue={values?.studentId ?? ""}
           className={inputClass}
         />
