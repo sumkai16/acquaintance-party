@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { RaffleEntrant } from "@/lib/raffle/types";
 import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
+import { Modal } from "./modal";
 
 /**
  * The escape hatch: add someone the scanner missed, or import a walk-in
@@ -11,10 +12,10 @@ import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
  * eligibility path — this only ever supplements it, and every addition here
  * is a deliberate, visible admin action.
  *
- * The list of already-added names stays inline (it's short and worth
- * glancing at while setting up), but adding more opens a modal — the form
- * plus the Excel import together are too tall to sit permanently inside the
- * sidebar's Setup panel.
+ * Rendered inside the sidebar's Setup modal (raffle-sidebar.tsx), which
+ * supplies the "Setup" heading — this only needs its own description, the
+ * already-added list, and the button that opens a second, stacked modal for
+ * the add form and Excel import (too tall to sit inline here).
  */
 export function EntrantManager({
   extras,
@@ -42,9 +43,6 @@ export function EntrantManager({
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-ground/70">
-        Extra entrants
-      </h2>
       <p className="text-sm text-ground/50">
         For someone the scanner missed, or a name from outside the ticket
         system. The scanned-in pool is still the default — this only adds to
@@ -115,14 +113,6 @@ function AddEntrantsModal({
   const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
   async function handleAdd() {
     setPending(true);
     setError(null);
@@ -168,93 +158,70 @@ function AddEntrantsModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Add extra entrants"
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-    >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        className="flex max-h-[90vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-lg border border-ground/15 bg-deep p-6"
+    <Modal title="Add extra entrants" onClose={onClose}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAdd();
+        }}
+        className="flex flex-col gap-2"
       >
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-lg font-semibold">Add extra entrants</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-full px-2 py-1 text-ground/60 hover:bg-ground/10 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
-          >
-            ✕
-          </button>
-        </div>
-
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleAdd();
-          }}
-          className="flex flex-col gap-2"
+        <input
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          placeholder="Full name"
+          className="rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
+        />
+        <select
+          value={yearLevel}
+          onChange={(e) => setYearLevel(e.target.value)}
+          className="rounded border border-ground/25 bg-deep px-3 py-2"
         >
-          <input
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Full name"
-            className="rounded border border-ground/25 bg-deep px-3 py-2 focus:border-accent-3 focus:outline-2 focus:outline-offset-2 focus:outline-accent-3"
-          />
-          <select
-            value={yearLevel}
-            onChange={(e) => setYearLevel(e.target.value)}
-            className="rounded border border-ground/25 bg-deep px-3 py-2"
-          >
-            <option value="">Year level (optional)</option>
-            {YEAR_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}
-              </option>
-            ))}
-          </select>
-          <input
-            value={section}
-            onChange={(e) => setSection(e.target.value)}
-            placeholder="Section (optional)"
-            className="rounded border border-ground/25 bg-deep px-3 py-2"
-          />
-          <button
-            type="submit"
-            disabled={pending || fullName.trim().length < 2}
-            className="self-start rounded-full bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
-          >
-            {pending ? "Adding…" : "Add name"}
-          </button>
-        </form>
+          <option value="">Year level (optional)</option>
+          {YEAR_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+        <input
+          value={section}
+          onChange={(e) => setSection(e.target.value)}
+          placeholder="Section (optional)"
+          className="rounded border border-ground/25 bg-deep px-3 py-2"
+        />
+        <button
+          type="submit"
+          disabled={pending || fullName.trim().length < 2}
+          className="self-start rounded-full bg-accent px-4 py-2 font-semibold text-white disabled:opacity-50"
+        >
+          {pending ? "Adding…" : "Add name"}
+        </button>
+      </form>
 
-        <div className="flex flex-wrap items-center gap-3 border-t border-ground/15 pt-3">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
-          />
-          <button
-            type="button"
-            disabled={importing}
-            onClick={handleImport}
-            className="rounded border border-ground/25 px-4 py-2 font-semibold hover:border-ground/50 disabled:opacity-50"
-          >
-            {importing ? "Importing…" : "Import from Excel"}
-          </button>
-          <p className="w-full text-xs text-ground/45">
-            Header row required. Full name (or Name) is required; Year level
-            and Section are optional.
-          </p>
-        </div>
-
-        {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
-        {error ? <p className="text-sm text-accent-2">{error}</p> : null}
+      <div className="flex flex-wrap items-center gap-3 border-t border-ground/15 pt-3">
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
+        />
+        <button
+          type="button"
+          disabled={importing}
+          onClick={handleImport}
+          className="rounded border border-ground/25 px-4 py-2 font-semibold hover:border-ground/50 disabled:opacity-50"
+        >
+          {importing ? "Importing…" : "Import from Excel"}
+        </button>
+        <p className="w-full text-xs text-ground/45">
+          Header row required. Full name (or Name) is required; Year level
+          and Section are optional.
+        </p>
       </div>
-    </div>
+
+      {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
+      {error ? <p className="text-sm text-accent-2">{error}</p> : null}
+    </Modal>
   );
 }

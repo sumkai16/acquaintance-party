@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { EntrantManager } from "./entrant-manager";
+import { Modal } from "./modal";
 
 /**
  * The left column: everyone's eligibility (the count, the two toggles,
@@ -135,28 +136,28 @@ export function RaffleSidebar({
 
       <button
         type="button"
-        onClick={() => setSetupOpen((open) => !open)}
+        onClick={() => setSetupOpen(true)}
         className="self-start rounded border border-ground/25 px-3 py-1.5 text-xs uppercase tracking-wide hover:border-ground/50"
       >
-        {setupOpen ? "Hide setup" : "Setup"}
+        Setup
       </button>
 
+      <p className="text-sm text-ground/50">
+        Students scanned in at the door can win — turn on “Include added
+        names” to pull in anyone added under Setup. A scanner that has not
+        synced yet is missing from the count above.
+      </p>
+
       {setupOpen ? (
-        <div className="rounded border border-ground/15 bg-deep/30 p-4">
+        <Modal title="Setup" onClose={() => setSetupOpen(false)}>
           <EntrantManager
             extras={extras}
             onAdd={(entrant) => onPoolChange([...pool, entrant])}
             onAddMany={(entrants) => onPoolChange([...pool, ...entrants])}
             onRemove={(id) => onPoolChange(pool.filter((e) => e.registrationId !== id))}
           />
-        </div>
-      ) : (
-        <p className="text-sm text-ground/50">
-          Students scanned in at the door can win — turn on “Include added
-          names” to pull in anyone added under Setup. A scanner that has not
-          synced yet is missing from the count above.
-        </p>
-      )}
+        </Modal>
+      ) : null}
     </aside>
   );
 }
