@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
@@ -13,6 +14,7 @@ import {
 import { adminClient } from "@/lib/supabase/admin";
 import { notifyNewRegistration } from "@/lib/notify/discord";
 import { sendTicketSubmittedEmail } from "@/lib/notify/email";
+import { verifyTurnstileToken } from "@/lib/turnstile/verify";
 
 export type SubmittedValues = {
   fullName: string;
@@ -61,6 +63,24 @@ export async function submitRegistration(
 ): Promise<FormState> {
   const values = readValues(formData);
   const attempt = _prev.attempt + 1;
+
+  // Checked before anything else — cheapest to reject here, and a real
+  // student essentially never fails this (Turnstile's Managed mode is
+  // invisible unless the traffic already looks suspicious).
+  const turnstileToken = String(formData.get("cf-turnstile-response") ?? "");
+  const forwardedFor = (await headers()).get("x-forwarded-for");
+  const turnstile = await verifyTurnstileToken(
+    turnstileToken,
+    forwardedFor?.split(",")[0]?.trim(),
+  );
+  if (!turnstile.ok) {
+    return {
+      status: "error",
+      message: "We couldn't verify you're not a bot. Reload the page and try again.",
+      values,
+      attempt,
+    };
+  }
 
   const parsed = checkoutSchema.safeParse(values);
   const fieldErrors: Record<string, string> = {};

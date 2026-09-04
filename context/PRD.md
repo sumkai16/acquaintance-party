@@ -136,6 +136,28 @@ no submit button. Landing on the page with no filter now defaults to
 same as Attendance always showing Recent Scans without requiring a filter
 first.
 
+**"Review queue" renamed to "Payments"** (2026-09-04) — the generic name
+undersold what the page actually does (check a submitted GCash payment
+against its receipt). Renamed the nav label, page title, and every code
+comment/doc reference; the route stays `/admin/review`, matching
+`/admin/dashboard` not being called "Attendance" in the URL either. Also
+gained a Year level dropdown next to its search box (the same
+`YEAR_LEVELS` list checkout and Attendance already use), filtering
+client-side alongside the existing instant search.
+
+**Bot protection on checkout via Cloudflare Turnstile** (2026-09-04) — see
+`docs/setup/turnstile.md`. The email throttle and the unique GCash
+reference index both key on values a script fully controls (a fresh fake
+email, a fresh fake reference per request); Turnstile is a real check that
+doesn't reuse the same escape hatch. `src/lib/turnstile/verify.ts`
+(`server-only`) checks the token before anything else in
+`submitRegistration` — before the Zod schema, before the throttle, before
+any upload — and fails open on a Cloudflare outage rather than blocking a
+real student, the same reasoning `context/RULES.md` already documents for
+why the honeypot was removed. Optional, same contract as every other
+integration here: unset `TURNSTILE_SECRET_KEY` and checkout works exactly
+as it did before this existed.
+
 **Rejection accountability, and a door filter** (2026-09-04, same QA pass,
 the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
 already populated on every approve or reject, just never displayed —

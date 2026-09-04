@@ -128,6 +128,9 @@ src/
 │   │   ├── discord.ts             # notifyNewRegistration, server-only
 │   │   ├── email-message.ts       # pure formatting, no server-only import
 │   │   └── email.ts               # sendTicketSubmittedEmail/Approved, server-only
+│   ├── turnstile/
+│   │   └── verify.ts              # verifyTurnstileToken, server-only — checked first
+│   │                               # in checkout/actions.ts, before the Zod schema
 │   └── supabase/
 │       ├── admin.ts | server.ts | browser.ts
 │       └── types.ts

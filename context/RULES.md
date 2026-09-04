@@ -72,9 +72,14 @@ a sign the design is wrong — route it through a server action instead.
   real name on a real submission, silently killing it with no error shown —
   confirmed live via a server-side log, not assumed. For a small one-off
   event, blocking a real paying student is worse than the bot traffic a
-  honeypot guards against, and the unique reference index already covers the
-  realistic threat. If abuse becomes a real problem, reach for the throttle
-  window or a timing-based check before a value-based hidden field.
+  honeypot guards against.
+- **Cloudflare Turnstile is the actual next lever, added 2026-09-04** — see
+  `docs/setup/turnstile.md`. `src/lib/turnstile/verify.ts` checks the token
+  before anything else in `submitRegistration`, fails open on a Cloudflare
+  outage (same "don't block a real student over a third-party hiccup"
+  reasoning as the honeypot removal above), and skips entirely if
+  `TURNSTILE_SECRET_KEY` is unset — optional, same contract as Discord/
+  Resend/Sheets.
 - The `ticket_code_matches_status` and `rejection_has_reason` check
   constraints on `registrations` are backstops, not decoration. Don't work
   around them from application code (e.g. setting `ticket_code` outside

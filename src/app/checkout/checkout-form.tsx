@@ -1,10 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
+import Script from "next/script";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { submitRegistration, type FormState } from "./actions";
 
 const initial: FormState = { status: "idle", attempt: 0 };
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const inputClass =
   "w-full rounded border border-ink/25 bg-white px-3 py-2.5 " +
@@ -148,6 +150,20 @@ export function CheckoutForm() {
           className="w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-ink/10 file:px-4 file:py-2 file:font-semibold"
         />
       </Field>
+
+      {TURNSTILE_SITE_KEY ? (
+        <>
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            strategy="afterInteractive"
+          />
+          {/* Cloudflare's script finds this by class and injects a hidden
+              cf-turnstile-response input into the enclosing form once the
+              (usually invisible) check completes — read server-side in
+              actions.ts before anything else runs. */}
+          <div className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} />
+        </>
+      ) : null}
 
       <button
         type="submit"
