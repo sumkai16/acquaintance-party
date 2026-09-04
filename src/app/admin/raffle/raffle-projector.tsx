@@ -70,7 +70,11 @@ export function RaffleProjector({
   }
 
   return (
-    <main className="flex min-h-screen flex-col bg-deep text-ground">
+    // flex-1, not min-h-screen — the layout wrapper is already flex-col, so
+    // this fills exactly the viewport height left over after AdminNav
+    // instead of adding a second full 100vh under it (that was the scroll
+    // bug: two min-h-screens stacked taller than the actual screen).
+    <main className="flex flex-1 flex-col bg-deep text-ground">
       <div className="flex flex-1">
         {!animating ? (
           <RaffleSidebar

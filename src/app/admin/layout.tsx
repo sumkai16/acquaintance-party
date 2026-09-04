@@ -27,8 +27,16 @@ export default async function AdminLayout({
   // nested in `children` (the scanner's live result screen, the raffle
   // wheel mid-spin) hides it for exactly that moment via useSetNavHidden,
   // which needs AdminNav and children under the same NavVisibilityProvider.
+  //
+  // flex-col here, so a page whose root is `flex-1` (raffle) gets exactly
+  // the viewport height minus AdminNav's real rendered height, not another
+  // full 100vh stacked under it — that stacking is what made the raffle
+  // page (min-h-screen on its own <main>, same as this wrapper) scroll
+  // when it never should. A page that doesn't opt into flex-1 (Payments,
+  // Attendance, ...) renders exactly as before — flex only sizes children
+  // that ask it to.
   return (
-    <div className="min-h-screen bg-deep text-ground">
+    <div className="flex min-h-screen flex-col bg-deep text-ground">
       {!isLogin ? (
         <NavVisibilityProvider>
           <AdminNav />

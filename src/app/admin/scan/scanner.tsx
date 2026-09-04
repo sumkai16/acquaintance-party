@@ -209,7 +209,11 @@ export function Scanner() {
   // answer instantly.
   if (!deviceLabel) {
     return (
-      <main className="flex min-h-screen flex-col bg-deep text-ground">
+      // flex-1, not min-h-screen — see the comment on the same fix in
+      // raffle-projector.tsx. AdminNav is visible here (setup only), so
+      // min-h-screen on top of the layout wrapper's own min-h-screen made
+      // this page taller than the viewport and unnecessarily scrollable.
+      <main className="flex flex-1 flex-col bg-deep text-ground">
         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
           <h1 className="font-display text-4xl uppercase leading-[0.95]">
             Name this scanner

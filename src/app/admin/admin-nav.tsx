@@ -67,7 +67,11 @@ export function AdminNav() {
 
   return (
     <nav className="border-b border-ground/10">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-1 px-5 py-2.5">
+      {/* Full-width, not the mx-auto max-w-5xl column every page's own
+          content uses — the brand belongs at the true left edge, not
+          inset to match a content column that isn't this bar's job to
+          mirror. */}
+      <div className="flex flex-wrap items-center gap-1 px-5 py-2.5">
         <span className="mr-2 shrink-0 text-sm uppercase tracking-[0.3em] text-ground/60">
           {EVENT.name}
         </span>

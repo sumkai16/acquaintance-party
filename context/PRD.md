@@ -176,6 +176,22 @@ of raffle alone getting a redundant second one. Checked every other admin
 page for the same pattern first (grepped for the distinctive
 `tracking-[0.3em]` header class) — raffle was the only offender.
 
+**Two follow-up fixes to that same nav bar** (2026-09-04, same day). The
+brand label sat inside `AdminNav`'s `mx-auto max-w-5xl` column, so on any
+screen wider than that it was inset from the true left edge instead of
+flush against it — that div dropped the `max-w-5xl` constraint entirely
+(the nav bar has no reason to mirror each page's own content width). And
+the raffle page was unexpectedly scrollable: `admin/layout.tsx`'s wrapper
+and raffle's own `<main>` both used `min-h-screen`, stacking to more than
+100vh once `AdminNav`'s real height was added on top. Fixed by making the
+layout wrapper `flex flex-col` and having raffle's `<main>` (and the
+scanner setup screen's, same bug) use `flex-1` instead of its own
+`min-h-screen` — it now fills exactly the space left over after the nav,
+confirmed via `document.documentElement.scrollHeight === window.innerHeight`
+in a real browser, not just eyeballed. Pages with no explicit height
+(Payments, Attendance, ...) are unaffected — flex only sizes children that
+opt into `flex-1`.
+
 **Walk-in cash sales and the one-registration-per-student cap** (2026-09-04,
 from a QA pass in `docs/Event Scanner.xlsx`) — two related gaps: nothing
 stopped a student submitting several online registrations, and there was no
