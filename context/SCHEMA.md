@@ -46,13 +46,13 @@ purchasing means there's no separate orders table.
 **Indexes:**
 - `registrations_gcash_reference_key` — unique, the online fraud lever above
 - `registrations_status_created_idx` — `(status, created_at desc)`, serves
-  the admin review queue's "pending, oldest first" list
+  the Payments page's "pending, oldest first" list
 - `registrations_email_idx` — `lower(email)`, serves admin search
 - `registrations_student_id_active_key` (`0005`) — unique on `student_id`
   **where `status <> 'rejected'`**. This is the actual one-active-
   registration-per-student rule: a rejected row falls outside the index, so
   it never blocks a resubmission. There are two ways a row ends up
-  rejected — the normal Review Queue reject (still pending-only, in
+  rejected — the normal Payments reject (still pending-only, in
   `admin/review/actions.ts`), or `voidRegistration` in
   `admin/registrations/actions.ts`, which does the same update but also
   accepts an *approved* row, for the case where a student legitimately

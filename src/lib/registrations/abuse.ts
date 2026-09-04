@@ -1,5 +1,5 @@
 /**
- * Cheap defences against someone flooding the review queue.
+ * Cheap defences against someone flooding the Payments queue.
  *
  * A hidden-field honeypot used to sit here too, but browser and extension
  * autofill silently fills off-screen fields regardless of visibility —

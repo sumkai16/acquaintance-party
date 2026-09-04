@@ -6,7 +6,7 @@ import {
 import { ReviewTable } from "./review-table";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Review queue" };
+export const metadata = { title: "Payments" };
 
 export default async function ReviewPage() {
   const pending = await listPending();
@@ -27,7 +27,7 @@ export default async function ReviewPage() {
   return (
     <main className="mx-auto max-w-5xl p-6">
       <header>
-        <h1 className="font-display text-3xl uppercase">Review queue</h1>
+        <h1 className="font-display text-3xl uppercase">Payments</h1>
         <p className="text-ground/60">
           {pending.length === 0
             ? "Nothing waiting. Every payment has been reviewed."

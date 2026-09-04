@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Badge } from "../badge";
 import { Table, Th, SortHeaderButton, Tr } from "../table";
 import { formatPeso } from "@/lib/config/event";
+import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { Registration } from "@/lib/supabase/types";
 import {
   approveRegistration,
@@ -61,17 +62,20 @@ function matches(row: Row, query: string): boolean {
  */
 export function ReviewTable({ rows }: { rows: Row[] }) {
   const [query, setQuery] = useState("");
+  const [year, setYear] = useState("");
   const [sort, setSort] = useState<SortState>({ column: "submitted", direction: "asc" });
 
   const visible = useMemo(() => {
-    const filtered = rows.filter((row) => matches(row, query));
+    const filtered = rows.filter(
+      (row) => matches(row, query) && (!year || row.registration.year_level === year),
+    );
     const sorted = [...filtered].sort((a, b) => {
       const ka = sortKey(a, sort.column);
       const kb = sortKey(b, sort.column);
       return ka < kb ? -1 : ka > kb ? 1 : 0;
     });
     return sort.direction === "asc" ? sorted : sorted.reverse();
-  }, [rows, query, sort]);
+  }, [rows, query, year, sort]);
 
   function toggleSort(column: SortColumn) {
     setSort((current) =>
@@ -91,13 +95,28 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
     <>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Pending</h2>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search name, email, student ID, or reference"
-          aria-label="Search the review queue"
-          className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search name, email, student ID, or reference"
+            aria-label="Search the review queue"
+            className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+          />
+          <select
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+            aria-label="Filter by year level"
+            className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+          >
+            <option value="">All year levels</option>
+            {YEAR_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mt-2">
@@ -106,7 +125,9 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
             visible.length === 0
               ? rows.length === 0
                 ? "Nothing waiting. Every payment has been reviewed."
-                : `Nothing matches “${query}”.`
+                : query
+                  ? `Nothing matches “${query}”.`
+                  : "Nothing matches this filter."
               : undefined
           }
         >

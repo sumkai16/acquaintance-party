@@ -148,7 +148,7 @@ weeks. This pings a Discord channel the instant someone submits.
    checkpoint at the end of the plan.
 3. Optionally set `NEXT_PUBLIC_SITE_URL` to the deployed site's URL (e.g.
    `https://your-app.vercel.app`, no trailing slash) so the Discord message
-   includes a clickable link straight to the review queue.
+   includes a clickable link straight to Payments.
 
 Leaving `DISCORD_WEBHOOK_URL` unset is fine — checkout works normally, the
 notification is just silently skipped, not an error.

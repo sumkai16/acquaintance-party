@@ -33,7 +33,7 @@ export function hexToDiscordColor(hex: string): number {
  *
  * A rich embed reads far better than a plain-text ping on a phone
  * notification — structured fields, a colored bar matching the event
- * theme, and a clickable title straight to the review queue.
+ * theme, and a clickable title straight to Payments.
  *
  * Fields are stacked (no `inline`), not side by side: Discord's inline
  * layout wraps unpredictably once a name or section is long — three fields

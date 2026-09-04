@@ -29,7 +29,7 @@ assumption.
 **Revisited 2026-08-31**, once the real date (five weeks out) was confirmed:
 kept proof-of-payment anyway, by deliberate choice, not because it no longer
 fit. The flow was already built, tested, and working end to end — checkout,
-review queue, QR tickets, Discord notifications. Switching to a gateway
+Payments, QR tickets, Discord notifications. Switching to a gateway
 trades that for new scope (a merchant account application with uncertain
 approval timing, plus real API integration) to remove manual review, which
 saves admin time rather than solving any real blocker. Revisit only if
@@ -43,7 +43,7 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Walk-in cash sales (admin-entered, approved on the spot)
 - [x] Duplicate-reference detection (unique index) + orphaned-upload cleanup
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
-- [x] Admin review queue — approve/reject with reason
+- [x] Payments — approve/reject with reason
 - [x] Ticket page with QR
 - [x] Submission throttle (honeypot tried and removed — see §6)
 - [x] Admin search (find a lost ticket by name/email)
@@ -105,23 +105,23 @@ layout-consistency entry below for how this is actually presented now.
 registration moved from a card list to a table "just like Attendance,"
 and that consistency is now real, not visual coincidence:
 `src/app/admin/table.tsx` exports `Table`/`Th`/`SortHeaderLink`/
-`SortHeaderButton`/`Tr`, and Attendance, Review Queue, and Find a
+`SortHeaderButton`/`Tr`, and Attendance, Payments, and Find a
 registration are all built from them. `SortHeaderLink` is for a page whose
 sort lives in the URL (Attendance, Find a registration); `SortHeaderButton`
-is for Review Queue's deliberately client-side, URL-free instant search
+is for Payments' deliberately client-side, URL-free instant search
 (see the comment in `review-table.tsx` — the pending queue is small enough
 that an admin triaging it wants as-you-type filtering, not a page reload
 per keystroke; that reasoning didn't change, only the markup it renders
 through). Find a registration's table sorts by the same three columns
-Review Queue already did (name/amount/submitted) via a new pure
+Payments already did (name/amount/submitted) via a new pure
 `sortRegistrations()` in `src/lib/registrations/sort.ts`, mirroring
-`sortScans()`. Review Queue's header row lost its `bg-ground/5` band and
+`sortScans()`. Payments' header row lost its `bg-ground/5` band and
 its table its explicit `min-w-[840px]` — both existed only because nothing
 forced consistency with Attendance before.
 
 **Full page-layout consistency across the three admin lists** (2026-09-04,
 same day, one round of feedback later — "consistency" turned out to mean
-the whole page, not just the `<table>`). Review Queue and Find a
+the whole page, not just the `<table>`). Payments and Find a
 registration now follow Attendance's exact structure: an `<h1>` +
 subtitle header, then an `mt-8` row pairing a small section heading
 ("Pending" / "Results") with the filter controls, then the table two
@@ -164,7 +164,7 @@ non-rejected registration at a time (`registrations_student_id_active_key`,
 a partial unique index — see `context/SCHEMA.md`); it reopens automatically
 if that registration is rejected, or an admin can free it explicitly via a
 new **Void** action on **Find a registration**, which works on an approved
-row too (Review Queue's own reject only ever sees pending ones). Walk-in
+row too (Payments' own reject only ever sees pending ones). Walk-in
 sales are entered by staff at `/admin/walk-in` — no GCash reference or
 receipt, approved immediately since the cash is already in hand — and get
 the same confirmation email an online approval does, just no Discord ping,
@@ -226,7 +226,7 @@ scenario, not just a test artifact.
 **Admin is fully themed as of 2026-09-03**, reversing what had been a hard
 rule all session (`context/DESIGN.md` §3/§5's "neutral, dense, no accent").
 Driven by Figma mockups the user provided for five surfaces — Find a
-registration, Raffle, Attendance, Scanner, Review queue — and confirmed
+registration, Raffle, Attendance, Scanner, Payments — and confirmed
 explicitly, twice, over the two real tradeoffs this raised:
 - **The raffle projector's separate dark "Night Set" palette was retired**
   in favor of one consistent Sunset Soiree language across admin and the

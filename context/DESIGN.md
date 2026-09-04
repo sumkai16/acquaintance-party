@@ -61,8 +61,8 @@ a stated functional reason rather than taste:
 |---|---|---|
 | Landing, checkout | Full theme | The marketing surface — this is where the visual direction does its work |
 | Ticket page | Themed header, **plain white QR card** | See §4 |
-| Admin — dashboard, review queue | Full theme, solid `bg-deep` | Themed 2026-09-03 (was neutral/slate) — data-dense but no longer treated as a reason to drop the identity |
-| Admin — find a registration, scanner setup | Full theme, gradient wash | Single-focus screens; themed 2026-09-03 |
+| Admin — dashboard, Payments, find a registration | Full theme, solid `bg-deep` | Themed 2026-09-03 (was neutral/slate) — data-dense but no longer treated as a reason to drop the identity. Find a registration moved here 2026-09-04, dropping its earlier gradient hero once it became a filterable table matching the other two |
+| Admin — scanner setup | Full theme, gradient wash | The one remaining single-focus screen; themed 2026-09-03 |
 | Raffle projector | Full theme, same tokens as the rest of admin | Previously had its own separate "Night Set" dark palette; retired 2026-09-03 in favor of one consistent language — see §1 |
 | Door scanner — **live scan results only** | Semantic color only, no theme accent | The one surviving carve-out: read at arm's length, in the dark, by a volunteer under time pressure, where an ambiguous color reads as a wrong answer instantly. Only the *result* screens (green/red/amber) — the setup screen before scanning starts is themed |
 | Admin login | Not yet themed | Out of scope for the 2026-09-03 pass; flagged as the next inconsistency to fix, not forgotten |
@@ -114,15 +114,15 @@ easy to get subtly wrong. It just tells the volunteer where to aim.
 
 ## 7. What's actually built vs. planned
 Every surface exists and follows this system: landing (polished), checkout,
-ticket page, admin review queue, admin search, the door scanner (setup
-screen themed, live results semantic-only), the attendance dashboard, and
-the raffle projector — all themed as of 2026-09-03. Admin login is the one
-built surface still on its original neutral styling; a known gap, not an
+ticket page, Payments, admin search, the door scanner (setup screen themed,
+live results semantic-only), the attendance dashboard, and the raffle
+projector — all themed as of 2026-09-03. Admin login is the one built
+surface still on its original neutral styling; a known gap, not an
 oversight.
 
 Plans 1 and 2 are verified by hand. The raffle projector is built but not yet
 rehearsed on a real projector — check its legibility from the back of a room
 before the night, not on a laptop at arm's length. The admin theming pass
-(dashboard, review queue, find-a-registration, scanner setup, raffle) has
+(dashboard, Payments, find-a-registration, scanner setup, raffle) has
 passed `npm test`/`build`/`lint` but has not yet been clicked through by a
 human — it needs the same hand-verification every other surface got.

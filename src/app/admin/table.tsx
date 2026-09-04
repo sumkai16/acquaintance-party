@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * The shared visual shell for every admin table (Attendance, Review Queue,
+ * The shared visual shell for every admin table (Attendance, Payments,
  * Find a registration) — same wrapper, same `<table>` base, same empty-state
  * slot. Lifted from what all three already looked like independently, not a
  * redesign.
@@ -90,7 +90,7 @@ export function SortHeaderLink({
 
 /**
  * A sortable header cell for a page that sorts client-side, in memory
- * (Review Queue — deliberately not URL-driven, see review-table.tsx).
+ * (Payments — deliberately not URL-driven, see review-table.tsx).
  */
 export function SortHeaderButton({
   label,

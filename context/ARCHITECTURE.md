@@ -78,10 +78,10 @@ src/
 │   ├── admin/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
 │   │   ├── table.tsx             # shared Table/Th/SortHeaderLink/SortHeaderButton/Tr —
-│   │   │                         # every admin table (Attendance, Review Queue, Find a
+│   │   │                         # every admin table (Attendance, Payments, Find a
 │   │   │                         # registration) is built from these
 │   │   ├── login/
-│   │   ├── review/               # approve/reject queue
+│   │   ├── review/               # "Payments" in the nav — approve/reject queue
 │   │   ├── registrations/        # search + status browse (All/Pending/Approved/
 │   │   │                         # Rejected) + Void, one page for both use cases
 │   │   ├── walk-in/              # admin-entered cash sale, approved on the spot

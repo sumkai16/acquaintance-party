@@ -7,11 +7,11 @@ import { currentAdminId } from "@/lib/supabase/server";
 export type ActionResult = { ok: boolean; error?: string };
 
 /**
- * Frees a student's ID for a fresh submission without going through Review
- * Queue's own reject flow, which only ever sees pending rows. This works on
- * an approved row too — the whole point is covering the case Review Queue
- * can't: a student needs a legitimate do-over after their ticket already
- * went through.
+ * Frees a student's ID for a fresh submission without going through the
+ * Payments page's own reject flow, which only ever sees pending rows. This
+ * works on an approved row too — the whole point is covering the case
+ * Payments can't: a student needs a legitimate do-over after their ticket
+ * already went through.
  *
  * Rejecting is what actually unlocks the slot: the migration's partial
  * unique index on registrations(student_id) excludes rejected rows, so this
