@@ -50,7 +50,7 @@ Variables**:
 | `RESEND_FROM_EMAIL` | optional — defaults to `onboarding@resend.dev` if unset |
 
 **`NEXT_PUBLIC_SITE_URL` must also be set** (same var the Discord
-notification already uses for its Payments link) — without it, sending
+notification already uses for its review-queue link) — without it, sending
 is skipped entirely rather than emailing a broken link. See
 `docs/setup/supabase.md` for where this is already documented as a
 production-only var.
