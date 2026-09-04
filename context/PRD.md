@@ -165,6 +165,17 @@ walk-in alike. `Stat`'s `value` prop widened from `number` to `number |
 string` to render the formatted peso string; its now-unused `tone="warn"`
 prop was dropped along with it, since nothing sets it anymore.
 
+**The event name moved from the raffle page into the shared nav itself**
+(2026-09-04). The raffle projector had its own "ACQUAINTANCE PARTY RAFFLE"
+branding bar sitting directly under the shared `AdminNav` — a leftover from
+when `AdminNav` "carried no branding" was the stated reason for adding it,
+which read as two stacked bars once `AdminNav` started showing on every
+page. `AdminNav` now renders `EVENT.name` as a small label on the left,
+before the nav links, so every admin page gets it in the one bar instead
+of raffle alone getting a redundant second one. Checked every other admin
+page for the same pattern first (grepped for the distinctive
+`tracking-[0.3em]` header class) — raffle was the only offender.
+
 **Walk-in cash sales and the one-registration-per-student cap** (2026-09-04,
 from a QA pass in `docs/Event Scanner.xlsx`) — two related gaps: nothing
 stopped a student submitting several online registrations, and there was no

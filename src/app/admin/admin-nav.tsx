@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { EVENT } from "@/lib/config/event";
 import { browserClient } from "@/lib/supabase/browser";
 
 const LINKS = [
@@ -67,6 +68,10 @@ export function AdminNav() {
   return (
     <nav className="border-b border-ground/10">
       <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-1 px-5 py-2.5">
+        <span className="mr-2 shrink-0 text-sm uppercase tracking-[0.3em] text-ground/60">
+          {EVENT.name}
+        </span>
+
         {LINKS.map((link) => {
           const active = pathname.startsWith(link.href);
           return (

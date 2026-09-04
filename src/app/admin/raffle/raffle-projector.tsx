@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { EVENT } from "@/lib/config/event";
 import { latestDraw } from "@/lib/raffle/draw";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { useSetNavHidden } from "../admin-nav";
@@ -72,14 +71,6 @@ export function RaffleProjector({
 
   return (
     <main className="flex min-h-screen flex-col bg-deep text-ground">
-      {/* Event branding, always up regardless of nav visibility — the
-          shared AdminNav above already covers navigation, so this only
-          needs to say what's on screen for whoever's looking at the
-          projector. */}
-      <p className="border-b border-ground/10 px-6 py-4 text-sm uppercase tracking-[0.3em] text-ground/60">
-        {EVENT.name} raffle
-      </p>
-
       <div className="flex flex-1">
         {!animating ? (
           <RaffleSidebar
