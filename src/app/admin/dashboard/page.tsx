@@ -1,6 +1,7 @@
 import { Badge } from "../badge";
 import { Table, Th, SortHeaderLink, Tr } from "../table";
-import { allScans, approvedCount } from "@/lib/scans/queries";
+import { formatPeso } from "@/lib/config/event";
+import { allScans, approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import {
   filterScans,
   findDoubleScans,
@@ -37,7 +38,11 @@ export default async function DashboardPage({
   }>;
 }) {
   const { sort, dir, name, year, section, door } = await searchParams;
-  const [rawScans, sold] = await Promise.all([allScans(), approvedCount()]);
+  const [rawScans, sold, collectedCentavos] = await Promise.all([
+    allScans(),
+    approvedCount(),
+    totalCollectedCentavos(),
+  ]);
   // Counts and the double-scan alert describe the whole night, not the
   // filtered table view — a filter narrowing to one section shouldn't make
   // "Checked in" look like fewer people showed up.
@@ -80,7 +85,7 @@ export default async function DashboardPage({
         <Stat label="Checked in" value={summary.checkedIn} />
         <Stat label="Tickets sold" value={sold} />
         <Stat label="Not yet arrived" value={summary.notYetArrived} />
-        <Stat label="Invalid scans" value={summary.invalid} tone="warn" />
+        <Stat label="Total collected" value={formatPeso(collectedCentavos)} />
       </dl>
 
       {doubles.length > 0 ? (
@@ -173,21 +178,11 @@ export default async function DashboardPage({
   );
 }
 
-function Stat({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone?: "warn";
-}) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <div className="rounded-lg border border-ground/10 bg-ground/5 p-4">
       <dt className="text-sm text-ground/60">{label}</dt>
-      <dd
-        className={`text-3xl font-bold tabular-nums ${tone === "warn" ? "text-accent" : "text-ground"}`}
-      >
+      <dd className="text-3xl font-bold tabular-nums text-ground">
         {value}
       </dd>
     </div>

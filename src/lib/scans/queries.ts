@@ -173,3 +173,18 @@ export async function approvedCount(): Promise<number> {
     .eq("status", "approved");
   return count ?? 0;
 }
+
+/** Sum of every approved registration's amount, in centavos — online and walk-in alike. */
+export async function totalCollectedCentavos(): Promise<number> {
+  const { data, error } = await adminClient()
+    .from("registrations")
+    .select("amount")
+    .eq("status", "approved");
+
+  if (error) {
+    console.error("totalCollectedCentavos failed", error);
+    return 0;
+  }
+
+  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+}

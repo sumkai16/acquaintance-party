@@ -154,6 +154,17 @@ section filter is active on the page through to the export — filter to a
 section, download, and the file only has that section; no filter downloads
 everything, same as before.
 
+**Attendance's fourth stat card swapped from "Invalid scans" to "Total
+collected"** (2026-09-04). Invalid scans is an edge-case count (a bad QR, a
+stale code) that's still visible per-row in Recent Scans (a red "INVALID"
+badge) — it just stopped earning a dedicated summary card. A new
+`totalCollectedCentavos()` in `src/lib/scans/queries.ts` (next to
+`approvedCount()`, same file, same "registration data the dashboard needs"
+reasoning) sums `amount` across every approved registration, online and
+walk-in alike. `Stat`'s `value` prop widened from `number` to `number |
+string` to render the formatted peso string; its now-unused `tone="warn"`
+prop was dropped along with it, since nothing sets it anymore.
+
 **Walk-in cash sales and the one-registration-per-student cap** (2026-09-04,
 from a QA pass in `docs/Event Scanner.xlsx`) — two related gaps: nothing
 stopped a student submitting several online registrations, and there was no
