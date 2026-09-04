@@ -21,7 +21,11 @@ export function WalkInForm() {
   const keyed = (name: string) => `${name}-${state.attempt}`;
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    // noValidate — see the comment on checkout-form.tsx's form. Without it,
+    // the browser's own required-field validation stops at the first empty
+    // field instead of letting submitWalkIn report every invalid field at
+    // once.
+    <form action={action} noValidate className="flex flex-col gap-5">
       {state.message ? (
         <p
           role="alert"

@@ -23,7 +23,13 @@ export function CheckoutForm() {
   const keyed = (name: string) => `${name}-${state.attempt}`;
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    // noValidate: the browser's own required-field validation stops at the
+    // first empty field and blocks the submit entirely, so a student sees
+    // one error, fixes it, resubmits, and hits the next one — one at a
+    // time. Skipping it lets every submit reach submitRegistration, whose
+    // Zod check already reports every invalid field (plus the receipt) in
+    // a single pass.
+    <form action={action} noValidate className="flex flex-col gap-5">
       {state.message ? (
         <p
           role="alert"

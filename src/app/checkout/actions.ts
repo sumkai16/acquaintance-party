@@ -63,13 +63,28 @@ export async function submitRegistration(
   const attempt = _prev.attempt + 1;
 
   const parsed = checkoutSchema.safeParse(values);
-
+  const fieldErrors: Record<string, string> = {};
   if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
       const field = String(issue.path[0]);
       fieldErrors[field] ??= issue.message;
     }
+  }
+
+  // Checked alongside the text fields, not after, so a completely empty
+  // submission flags every missing field at once — including the receipt —
+  // instead of the receipt only showing up once the text fields are fixed
+  // and resubmitted.
+  const receipt = formData.get("receipt");
+  if (!(receipt instanceof File) || receipt.size === 0) {
+    fieldErrors.receipt = "Attach your receipt screenshot.";
+  } else if (receipt.size > MAX_RECEIPT_BYTES) {
+    fieldErrors.receipt = "Keep the image under 5 MB.";
+  } else if (!ALLOWED_RECEIPT_TYPES.includes(receipt.type)) {
+    fieldErrors.receipt = "Use a JPG, PNG, or WebP image.";
+  }
+
+  if (!parsed.success || fieldErrors.receipt) {
     return {
       status: "error",
       message: "Check the highlighted fields.",
@@ -94,41 +109,20 @@ export async function submitRegistration(
     };
   }
 
-  const receipt = formData.get("receipt");
-  if (!(receipt instanceof File) || receipt.size === 0) {
-    return {
-      status: "error",
-      message: "Attach a screenshot of your GCash receipt.",
-      fieldErrors: { receipt: "Attach your receipt screenshot." },
-      values,
-      attempt,
-    };
-  }
-  if (receipt.size > MAX_RECEIPT_BYTES) {
-    return {
-      status: "error",
-      message: "That image is over 5 MB. Try a screenshot instead of a photo.",
-      fieldErrors: { receipt: "Keep the image under 5 MB." },
-      values,
-      attempt,
-    };
-  }
-  if (!ALLOWED_RECEIPT_TYPES.includes(receipt.type)) {
-    return {
-      status: "error",
-      message: "Upload a JPG, PNG, or WebP image.",
-      fieldErrors: { receipt: "Use a JPG, PNG, or WebP image." },
-      values,
-      attempt,
-    };
-  }
-
-  const extension = receipt.type.split("/")[1].replace("jpeg", "jpg");
+  // Already validated as a well-formed File above (that's what makes
+  // fieldErrors.receipt falsy) — TS can't follow that through the merged
+  // if/else-if chain on its own, so this asserts what the guard above
+  // already guarantees rather than re-deriving it.
+  const validReceipt = receipt as File;
+  const extension = validReceipt.type.split("/")[1].replace("jpeg", "jpg");
   const receiptPath = `${new Date().getFullYear()}/${randomUUID()}.${extension}`;
 
   const upload = await adminClient()
     .storage.from("receipts")
-    .upload(receiptPath, receipt, { contentType: receipt.type, upsert: false });
+    .upload(receiptPath, validReceipt, {
+      contentType: validReceipt.type,
+      upsert: false,
+    });
 
   if (upload.error) {
     console.error("receipt upload failed", upload.error);
