@@ -7,7 +7,6 @@ import { browserClient } from "@/lib/supabase/browser";
 
 const LINKS = [
   { href: "/admin/review", label: "Review queue" },
-  { href: "/admin/rejections", label: "Rejections" },
   { href: "/admin/walk-in", label: "Walk-in" },
   { href: "/admin/scan", label: "Scanner" },
   { href: "/admin/dashboard", label: "Attendance" },

@@ -79,9 +79,8 @@ src/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
 │   │   ├── login/
 │   │   ├── review/               # approve/reject queue
-│   │   ├── rejections/           # browsable list of every rejected registration
-│   │   ├── registrations/        # search + Void, for lost tickets / freeing a student ID
-│   │   │                         # (registration-row.tsx is shared with rejections/)
+│   │   ├── registrations/        # search + status browse (All/Pending/Approved/
+│   │   │                         # Rejected) + Void, one page for both use cases
 │   │   ├── walk-in/              # admin-entered cash sale, approved on the spot
 │   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
 │   │   ├── raffle/               # projector: page.tsx, actions.ts (draw),

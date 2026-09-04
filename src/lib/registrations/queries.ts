@@ -1,7 +1,7 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { generateTicketCode } from "@/lib/tickets/code";
-import type { Registration } from "@/lib/supabase/types";
+import type { Registration, RegistrationStatus } from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
 
 /** Postgres unique-violation SQLSTATE. */
@@ -125,21 +125,6 @@ export async function listPending(): Promise<Registration[]> {
   return (data as Registration[]) ?? [];
 }
 
-/**
- * Every rejected registration, most recently rejected first — the audit
- * trail for "who rejected this and why," browsable without first knowing
- * which student to search for.
- */
-export async function listRejected(): Promise<Registration[]> {
-  const { data } = await adminClient()
-    .from("registrations")
-    .select("*")
-    .eq("status", "rejected")
-    .order("reviewed_at", { ascending: false });
-
-  return (data as Registration[]) ?? [];
-}
-
 /** Every registration sharing a GCash reference. Used to flag reused receipts. */
 export async function findByReference(
   reference: string,
@@ -171,21 +156,34 @@ export async function countRecentByEmail(
  * Finds registrations by partial name or email, for a student at the door
  * who has lost their ticket link. Capped at 50 so a one-letter search cannot
  * drag the whole table down mid-event.
+ *
+ * `status` also lets this browse without a query at all — "all" (or a
+ * specific status) with an empty query lists registrations directly,
+ * covering what used to be a separate Rejections page. With neither a
+ * query nor a status, there is nothing to show yet.
  */
-export async function searchRegistrations(query: string): Promise<Registration[]> {
+export async function searchRegistrations(
+  query: string,
+  status?: "all" | RegistrationStatus,
+): Promise<Registration[]> {
   const trimmed = query.trim();
-  if (trimmed.length < 2) return [];
-
   // Escape PostgREST's pattern wildcards and its comma/parenthesis
   // separators so a search for "a,b" cannot break out of the filter.
   const safe = trimmed.replace(/[%_,()\\]/g, "");
-  if (!safe) return [];
+  const hasQuery = safe.length >= 2;
 
-  const { data } = await adminClient()
-    .from("registrations")
-    .select("*")
-    .or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`)
-    .order("created_at", { ascending: false })
+  if (!hasQuery && !status) return [];
+
+  let builder = adminClient().from("registrations").select("*");
+  if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
+  if (status && status !== "all") builder = builder.eq("status", status);
+
+  // Rejected rows read newest-rejected-first; everything else reads
+  // newest-submitted-first — matches what the old dedicated Rejections
+  // page did before it was folded into this search.
+  const orderColumn = status === "rejected" ? "reviewed_at" : "created_at";
+  const { data } = await builder
+    .order(orderColumn, { ascending: false })
     .limit(50);
 
   return (data as Registration[]) ?? [];

@@ -91,12 +91,17 @@ seconds landing on *every* draw and redraw, which adds up across a night of
 drawing several names live. Speed at the podium won over the shortlist
 drama; the draw click now goes straight to the wheel.
 
-**A browsable rejections list** (2026-09-04). Seeing who rejected a
-registration meant searching for that specific student on Find a
-registration — an admin wanting "easy access" to that log had no way to
-just browse it. `/admin/rejections` now lists every rejected registration,
-most recently rejected first, reusing the same row component (and its
-"Rejected by `<email>` on `<date>`" line) as Find a registration.
+**Rejections folded into Find a registration** (2026-09-04). A separate,
+dedicated `/admin/rejections` page briefly existed for "easy access" to
+who-rejected-what, but a standalone page browsing one status was really the
+same table as Find a registration with a filter applied. `searchRegistrations()`
+now takes an optional status (`all` | `pending` | `approved` | `rejected`)
+and browses without a query when one is picked — a filter-pill row under
+the search box replaces the separate page and its nav entry. Search and a
+status filter combine (e.g. "santos" within Rejected only). Deliberately
+kept the existing single-focus hero layout rather than switching to a dense
+table now that the page does double duty — a row per result, same as
+before, capped at 50.
 
 **Rejection accountability, and a door filter** (2026-09-04, same QA pass,
 the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
