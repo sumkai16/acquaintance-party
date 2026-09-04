@@ -25,7 +25,7 @@ export default async function ReviewPage() {
   );
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-5 px-5 py-10">
+    <main className="mx-auto max-w-5xl p-6">
       <header>
         <h1 className="font-display text-3xl uppercase">Review queue</h1>
         <p className="text-ground/60">

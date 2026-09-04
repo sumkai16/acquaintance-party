@@ -88,47 +88,52 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
   ];
 
   return (
-    <div className="flex flex-col gap-3">
-      <input
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-        placeholder="Search name, email, student ID, or reference"
-        aria-label="Search the review queue"
-        className="w-full max-w-sm rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
-      />
+    <>
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Pending</h2>
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search name, email, student ID, or reference"
+          aria-label="Search the review queue"
+          className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+        />
+      </div>
 
-      <Table
-        empty={
-          visible.length === 0
-            ? rows.length === 0
-              ? "Nothing waiting. Every payment has been reviewed."
-              : `Nothing matches “${query}”.`
-            : undefined
-        }
-      >
-        <thead>
-          <tr className="text-left">
-            <Th>Receipt</Th>
-            {columns.map((col) => (
-              <SortHeaderButton
-                key={col.key}
-                label={col.label}
-                onClick={() => toggleSort(col.key)}
-                active={sort.column === col.key}
-                direction={sort.direction}
-              />
+      <div className="mt-2">
+        <Table
+          empty={
+            visible.length === 0
+              ? rows.length === 0
+                ? "Nothing waiting. Every payment has been reviewed."
+                : `Nothing matches “${query}”.`
+              : undefined
+          }
+        >
+          <thead>
+            <tr className="text-left">
+              <Th>Receipt</Th>
+              {columns.map((col) => (
+                <SortHeaderButton
+                  key={col.key}
+                  label={col.label}
+                  onClick={() => toggleSort(col.key)}
+                  active={sort.column === col.key}
+                  direction={sort.direction}
+                />
+              ))}
+              <Th>Reference</Th>
+              <Th>Actions</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map((row) => (
+              <ReviewRow key={row.registration.id} row={row} />
             ))}
-            <Th>Reference</Th>
-            <Th>Actions</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map((row) => (
-            <ReviewRow key={row.registration.id} row={row} />
-          ))}
-        </tbody>
-      </Table>
-    </div>
+          </tbody>
+        </Table>
+      </div>
+    </>
   );
 }
 

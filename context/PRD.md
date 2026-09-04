@@ -98,9 +98,8 @@ same table as Find a registration with a filter applied. `searchRegistrations()`
 now takes an optional status (`all` | `pending` | `approved` | `rejected`)
 and browses without a query when one is picked — a filter-pill row under
 the search box replaces the separate page and its nav entry. Search and a
-status filter combine (e.g. "santos" within Rejected only). The hero
-(title, search box, status pills) stays a single-focus centered column;
-results below it render as a table (see the next entry), capped at 50.
+status filter combine (e.g. "santos" within Rejected only) — see the
+layout-consistency entry below for how this is actually presented now.
 
 **One shared table for every admin list** (2026-09-04). Results on Find a
 registration moved from a card list to a table "just like Attendance,"
@@ -119,6 +118,23 @@ Review Queue already did (name/amount/submitted) via a new pure
 `sortScans()`. Review Queue's header row lost its `bg-ground/5` band and
 its table its explicit `min-w-[840px]` — both existed only because nothing
 forced consistency with Attendance before.
+
+**Full page-layout consistency across the three admin lists** (2026-09-04,
+same day, one round of feedback later — "consistency" turned out to mean
+the whole page, not just the `<table>`). Review Queue and Find a
+registration now follow Attendance's exact structure: an `<h1>` +
+subtitle header, then an `mt-8` row pairing a small section heading
+("Pending" / "Results") with the filter controls, then the table two
+spacing units below. Find a registration dropped its centered gradient
+hero entirely — the "single-focus search screen" framing chosen earlier
+this session was explicitly reversed in favor of matching the other two
+pages. Its search+status controls became a new client component,
+`registration-filters.tsx`, built the same way `scan-filters.tsx` already
+was: the text field debounces, the status `<select>` navigates instantly,
+no submit button. Landing on the page with no filter now defaults to
+`status=all` and shows the 50 most recent registrations immediately,
+same as Attendance always showing Recent Scans without requiring a filter
+first.
 
 **Rejection accountability, and a door filter** (2026-09-04, same QA pass,
 the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
