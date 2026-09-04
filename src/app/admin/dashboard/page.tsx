@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Badge } from "../badge";
+import { Table, Th, SortHeaderLink, Tr } from "../table";
 import { allScans, approvedCount } from "@/lib/scans/queries";
 import {
   filterScans,
@@ -108,14 +108,21 @@ export default async function DashboardPage({
         <h2 className="text-lg font-semibold">Recent scans</h2>
         <ScanFilters sections={sections} doors={doors} />
       </div>
-      <div className="mt-2 overflow-x-auto rounded-lg border border-ground/10 bg-black/20">
-        <table className="w-full border-collapse text-sm">
+      <div className="mt-2">
+        <Table
+          empty={
+            scans.length === 0
+              ? rawScans.length === 0
+                ? "No scans yet. They appear here as soon as a scanner syncs."
+                : "No scans match this filter."
+              : undefined
+          }
+        >
           <thead>
-            <tr className="border-b border-ground/10 text-left">
+            <tr className="text-left">
               {COLUMNS.map((col) => {
-                const nextDir =
-                  sortColumn === col.key && direction === "asc" ? "desc" : "asc";
                 const isActive = sortColumn === col.key;
+                const nextDir = isActive && direction === "asc" ? "desc" : "asc";
                 const params = new URLSearchParams();
                 params.set("sort", col.key);
                 params.set("dir", nextDir);
@@ -124,30 +131,23 @@ export default async function DashboardPage({
                 if (section) params.set("section", section);
                 if (door) params.set("door", door);
                 return (
-                  <th key={col.key} className="py-2 pr-3 pl-3 first:pl-4">
-                    <Link
-                      href={`?${params.toString()}`}
-                      className="inline-flex items-center gap-1 font-semibold text-ground/70 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-                    >
-                      {col.label}
-                      {isActive ? (
-                        <span aria-hidden>{direction === "asc" ? "↑" : "↓"}</span>
-                      ) : null}
-                    </Link>
-                  </th>
+                  <SortHeaderLink
+                    key={col.key}
+                    label={col.label}
+                    href={`?${params.toString()}`}
+                    active={isActive}
+                    direction={direction}
+                  />
                 );
               })}
-              <th className="py-2 pr-3 text-ground/70">Year level</th>
-              <th className="py-2 pr-3 text-ground/70">Section</th>
-              <th className="py-2 pl-3 text-ground/70">Code</th>
+              <Th>Year level</Th>
+              <Th>Section</Th>
+              <Th>Code</Th>
             </tr>
           </thead>
           <tbody>
             {scans.slice(0, 100).map((scan, i) => (
-              <tr
-                key={`${scan.codeScanned}-${i}`}
-                className="border-b border-ground/5 last:border-0 hover:bg-ground/5"
-              >
+              <Tr key={`${scan.codeScanned}-${i}`}>
                 <td className="py-2 pr-3 pl-4 whitespace-nowrap">
                   {new Date(scan.scannedAt).toLocaleTimeString("en-PH", {
                     hour: "numeric",
@@ -164,17 +164,10 @@ export default async function DashboardPage({
                 <td className="py-2 pl-3 font-mono text-xs text-ground/50">
                   {scan.codeScanned}
                 </td>
-              </tr>
+              </Tr>
             ))}
           </tbody>
-        </table>
-        {scans.length === 0 ? (
-          <p className="px-4 py-6 text-ground/60">
-            {rawScans.length === 0
-              ? "No scans yet. They appear here as soon as a scanner syncs."
-              : "No scans match this filter."}
-          </p>
-        ) : null}
+        </Table>
       </div>
     </main>
   );

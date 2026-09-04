@@ -77,6 +77,9 @@ src/
 │   ├── ticket/[id]/page.tsx      # student's permanent ticket link
 │   ├── admin/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
+│   │   ├── table.tsx             # shared Table/Th/SortHeaderLink/SortHeaderButton/Tr —
+│   │   │                         # every admin table (Attendance, Review Queue, Find a
+│   │   │                         # registration) is built from these
 │   │   ├── login/
 │   │   ├── review/               # approve/reject queue
 │   │   ├── registrations/        # search + status browse (All/Pending/Approved/
@@ -101,7 +104,8 @@ src/
 │   │   ├── reference.ts           # GCash reference normalize/validate
 │   │   └── qr.ts                  # ticketQrDataUrl
 │   ├── registrations/
-│   │   ├── schema.ts              # checkoutSchema (Zod)
+│   │   ├── schema.ts              # checkoutSchema / walkInSchema (Zod)
+│   │   ├── sort.ts                # pure: sortRegistrations (name/amount/submitted)
 │   │   ├── abuse.ts               # submission throttle (no honeypot — see RULES.md)
 │   │   └── queries.ts             # all DB reads/writes
 │   ├── scans/

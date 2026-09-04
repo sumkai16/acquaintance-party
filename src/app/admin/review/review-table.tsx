@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "../badge";
+import { Table, Th, SortHeaderButton, Tr } from "../table";
 import { formatPeso } from "@/lib/config/event";
 import type { Registration } from "@/lib/supabase/types";
 import {
@@ -96,49 +97,37 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
         className="w-full max-w-sm rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
       />
 
-      <div className="overflow-x-auto rounded-lg border border-ground/10 bg-black/20">
-        <table className="w-full min-w-[840px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b border-ground/10 bg-ground/5 text-left">
-              <th className="py-2 pr-3 pl-4 text-ground/70">Receipt</th>
-              {columns.map((col) => {
-                const active = sort.column === col.key;
-                const nextDir = active && sort.direction === "asc" ? "desc" : "asc";
-                return (
-                  <th key={col.key} className="py-2 pr-3">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort(col.key)}
-                      aria-label={`Sort by ${col.label}, ${nextDir}ending`}
-                      className="inline-flex items-center gap-1 font-semibold text-ground/70 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-                    >
-                      {col.label}
-                      {active ? (
-                        <span aria-hidden>{sort.direction === "asc" ? "↑" : "↓"}</span>
-                      ) : null}
-                    </button>
-                  </th>
-                );
-              })}
-              <th className="py-2 pr-3 text-ground/70">Reference</th>
-              <th className="py-2 pl-3 text-ground/70">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.map((row) => (
-              <ReviewRow key={row.registration.id} row={row} />
-            ))}
-          </tbody>
-        </table>
-
-        {visible.length === 0 ? (
-          <p className="px-4 py-6 text-ground/60">
-            {rows.length === 0
+      <Table
+        empty={
+          visible.length === 0
+            ? rows.length === 0
               ? "Nothing waiting. Every payment has been reviewed."
-              : `Nothing matches “${query}”.`}
-          </p>
-        ) : null}
-      </div>
+              : `Nothing matches “${query}”.`
+            : undefined
+        }
+      >
+        <thead>
+          <tr className="text-left">
+            <Th>Receipt</Th>
+            {columns.map((col) => (
+              <SortHeaderButton
+                key={col.key}
+                label={col.label}
+                onClick={() => toggleSort(col.key)}
+                active={sort.column === col.key}
+                direction={sort.direction}
+              />
+            ))}
+            <Th>Reference</Th>
+            <Th>Actions</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {visible.map((row) => (
+            <ReviewRow key={row.registration.id} row={row} />
+          ))}
+        </tbody>
+      </Table>
     </div>
   );
 }
@@ -159,7 +148,7 @@ function ReviewRow({ row }: { row: Row }) {
   }
 
   return (
-    <tr className="border-b border-ground/5 align-top last:border-0 hover:bg-ground/5">
+    <Tr>
       <td className="py-2 pr-3 pl-4">
         {receiptUrl ? (
           <>
@@ -251,6 +240,6 @@ function ReviewRow({ row }: { row: Row }) {
           </div>
         </div>
       </td>
-    </tr>
+    </Tr>
   );
 }

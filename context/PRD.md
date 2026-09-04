@@ -98,10 +98,27 @@ same table as Find a registration with a filter applied. `searchRegistrations()`
 now takes an optional status (`all` | `pending` | `approved` | `rejected`)
 and browses without a query when one is picked — a filter-pill row under
 the search box replaces the separate page and its nav entry. Search and a
-status filter combine (e.g. "santos" within Rejected only). Deliberately
-kept the existing single-focus hero layout rather than switching to a dense
-table now that the page does double duty — a row per result, same as
-before, capped at 50.
+status filter combine (e.g. "santos" within Rejected only). The hero
+(title, search box, status pills) stays a single-focus centered column;
+results below it render as a table (see the next entry), capped at 50.
+
+**One shared table for every admin list** (2026-09-04). Results on Find a
+registration moved from a card list to a table "just like Attendance,"
+and that consistency is now real, not visual coincidence:
+`src/app/admin/table.tsx` exports `Table`/`Th`/`SortHeaderLink`/
+`SortHeaderButton`/`Tr`, and Attendance, Review Queue, and Find a
+registration are all built from them. `SortHeaderLink` is for a page whose
+sort lives in the URL (Attendance, Find a registration); `SortHeaderButton`
+is for Review Queue's deliberately client-side, URL-free instant search
+(see the comment in `review-table.tsx` — the pending queue is small enough
+that an admin triaging it wants as-you-type filtering, not a page reload
+per keystroke; that reasoning didn't change, only the markup it renders
+through). Find a registration's table sorts by the same three columns
+Review Queue already did (name/amount/submitted) via a new pure
+`sortRegistrations()` in `src/lib/registrations/sort.ts`, mirroring
+`sortScans()`. Review Queue's header row lost its `bg-ground/5` band and
+its table its explicit `min-w-[840px]` — both existed only because nothing
+forced consistency with Attendance before.
 
 **Rejection accountability, and a door filter** (2026-09-04, same QA pass,
 the two Mid-priority items). `registrations.reviewed_by`/`reviewed_at` were
