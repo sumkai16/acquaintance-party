@@ -23,11 +23,15 @@ export default function HomePage() {
 
   return (
     <main className="flex-1">
-      <section>
+      {/* The whole hero — photo + info panel + CTA — fills exactly one
+          screen (dvh, not vh, so mobile browser chrome collapsing doesn't
+          leave a gap at the fold) so the ticket CTA needs zero scrolling to
+          reach. The photo takes whatever height that leaves over. */}
+      <section className="flex min-h-dvh flex-col">
         {/* Immersive photo hero — the image carries the mood, the gradient
             fade keeps the headline readable regardless of what's behind it
             at that exact pixel. */}
-        <div className="relative h-[480px] overflow-hidden sm:h-[560px] md:h-[640px]">
+        <div className="relative min-h-[240px] flex-1 overflow-hidden">
           <Image
             src="/landing-hero.jpg"
             alt=""
@@ -56,7 +60,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="bg-deep text-ground">
+        <div className="shrink-0 bg-deep text-ground">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 2xl:max-w-7xl">
             <dl className="flex flex-wrap gap-x-10 gap-y-3 border-b border-ground/25 pb-6">
               <div>
