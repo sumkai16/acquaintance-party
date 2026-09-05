@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { latestDraw } from "@/lib/raffle/draw";
+import { latestDraw } from "@/lib/raffle/pool";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { useSetNavHidden } from "../admin-nav";
 import { drawNext, redrawLast } from "./actions";

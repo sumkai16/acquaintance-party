@@ -1,5 +1,9 @@
 import { randomInt as cryptoRandomInt } from "node:crypto";
-import type { RaffleDrawRow, RaffleEntrant } from "./types";
+import type { RaffleEntrant } from "./types";
+
+// Pool/winner bookkeeping (excludeEntrants, currentWinnerIds, latestDraw)
+// lives in ./pool.ts, not here — that module is imported from a client
+// component, and node:crypto has no browser bundle. See pool.ts's header.
 
 export const FINALIST_COUNT = 12;
 
@@ -49,44 +53,4 @@ export function drawFromPool(
     finalists,
     winner: finalists[randomInt(finalists.length)],
   };
-}
-
-export function excludeEntrants(
-  pool: readonly RaffleEntrant[],
-  excludedIds: ReadonlySet<string>,
-): RaffleEntrant[] {
-  return pool.filter((entrant) => !excludedIds.has(entrant.registrationId));
-}
-
-function supersededIds(draws: readonly RaffleDrawRow[]): Set<string> {
-  const ids = new Set<string>();
-  for (const row of draws) {
-    if (row.supersedes) ids.add(row.supersedes);
-  }
-  return ids;
-}
-
-/** Winners as they currently stand — a replaced no-show is not a winner. */
-export function currentWinnerIds(
-  draws: readonly RaffleDrawRow[],
-): Set<string> {
-  const replaced = supersededIds(draws);
-
-  return new Set(
-    draws
-      .filter((row) => !replaced.has(row.id))
-      .map((row) => row.winner.registrationId),
-  );
-}
-
-/**
- * The most recent draw overall, or null if nothing has been drawn yet.
- * Decides whether the operator sees a Redraw button, and supplies the id a
- * redraw supersedes — only the latest draw is ever redrawable, so unlike a
- * per-prize lookup this needs no key.
- */
-export function latestDraw(draws: readonly RaffleDrawRow[]): RaffleDrawRow | null {
-  return draws.reduce<RaffleDrawRow | null>((latest, row) => {
-    return !latest || row.drawnAt > latest.drawnAt ? row : latest;
-  }, null);
 }

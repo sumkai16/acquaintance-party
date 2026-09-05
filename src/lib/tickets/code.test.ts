@@ -3,9 +3,9 @@ import {
   TICKET_CODE_ALPHABET,
   TICKET_CODE_LENGTH,
   formatTicketCode,
-  generateTicketCode,
   normalizeScannedCode,
 } from "./code";
+import { generateTicketCode } from "./generate";
 
 describe("generateTicketCode", () => {
   it("produces a code of the declared length", () => {

@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  currentWinnerIds,
-  drawFromPool,
-  excludeEntrants,
-  latestDraw,
-} from "./draw";
+import { drawFromPool } from "./draw";
+import { currentWinnerIds, excludeEntrants, latestDraw } from "./pool";
 import type { RaffleDrawRow, RaffleEntrant } from "./types";
 
 function entrant(n: number): RaffleEntrant {

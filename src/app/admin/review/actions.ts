@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { generateTicketCode } from "@/lib/tickets/code";
+import { generateTicketCode } from "@/lib/tickets/generate";
 import { adminClient } from "@/lib/supabase/admin";
 import { currentAdminId } from "@/lib/supabase/server";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";

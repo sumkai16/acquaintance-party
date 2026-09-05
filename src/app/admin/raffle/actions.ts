@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentWinnerIds, drawFromPool, excludeEntrants, latestDraw } from "@/lib/raffle/draw";
+import { drawFromPool } from "@/lib/raffle/draw";
+import { currentWinnerIds, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
 import { allDraws, eligiblePool, recordDraw } from "@/lib/raffle/queries";
 import type { RaffleDrawRow } from "@/lib/raffle/types";
 import { currentAdminId } from "@/lib/supabase/server";

@@ -1,6 +1,6 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
-import { generateTicketCode } from "@/lib/tickets/code";
+import { generateTicketCode } from "@/lib/tickets/generate";
 import type { Registration, RegistrationStatus } from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
 
