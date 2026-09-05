@@ -80,10 +80,13 @@ export default function HomePage() {
   return (
     <main className="flex-1">
       {/* The whole hero — photo + info panel + CTA — fills exactly one
-          screen (dvh, not vh, so mobile browser chrome collapsing doesn't
-          leave a gap at the fold) so the ticket CTA needs zero scrolling to
-          reach. The photo takes whatever height that leaves over. */}
-      <section className="flex min-h-dvh flex-col">
+          screen so the ticket CTA needs zero scrolling to reach. svh, not
+          dvh: svh is the smallest the viewport ever gets (mobile browser
+          chrome fully expanded, the worst case caught live — a phone with
+          its bottom toolbar still showing) — dvh can measure taller than
+          that and let the CTA land partly behind the toolbar. The photo
+          takes whatever height that leaves over. */}
+      <section className="flex min-h-svh flex-col">
         {/* Immersive photo hero — the image carries the mood, the gradient
             fade keeps the headline readable regardless of what's behind it
             at that exact pixel. */}
@@ -117,7 +120,7 @@ export default function HomePage() {
         </div>
 
         <div className="shrink-0 bg-deep text-ground">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 2xl:max-w-7xl">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 pt-8 pb-[max(2rem,env(safe-area-inset-bottom))] sm:px-8 2xl:max-w-7xl">
             <dl className="flex flex-wrap gap-x-10 gap-y-3 border-b border-ground/25 pb-6">
               <div>
                 <dt className="text-xs uppercase tracking-wide text-ground/65">
