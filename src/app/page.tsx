@@ -4,11 +4,67 @@ import { EVENT, formatPeso, formatTimeRange } from "@/lib/config/event";
 
 // One icon accent per inclusion, matched by position to the confirmed
 // design (circle / circle / diamond) — not tied to inclusion content, so
-// reordering EVENT.inclusions still gets a sensible icon.
+// reordering EVENT.inclusions still gets a sensible icon. Hand-drawn inline
+// SVGs rather than an icon library dependency for three glyphs.
 const INCLUSION_ICONS = [
-  <span key="circle-1" aria-hidden className="size-9 shrink-0 rounded-full bg-accent-2" />,
-  <span key="circle-2" aria-hidden className="size-9 shrink-0 rounded-full bg-accent" />,
-  <span key="diamond" aria-hidden className="m-1 size-7 shrink-0 rotate-45 rounded bg-deep" />,
+  // Entry for one — a single guest.
+  <span
+    key="entry"
+    aria-hidden
+    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-2"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5 stroke-white"
+    >
+      <circle cx="12" cy="8" r="3.2" />
+      <path d="M5.5 20c0-3.6 3-6 6.5-6s6.5 2.4 6.5 6" />
+    </svg>
+  </span>,
+  // Food and drinks — a mug.
+  <span
+    key="food"
+    aria-hidden
+    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-5 stroke-white"
+    >
+      <path d="M6 8h10v6a5 5 0 0 1-10 0V8Z" />
+      <path d="M16 9.5h1.8a2.2 2.2 0 0 1 0 4.4H16" />
+      <path d="M9 4c0 .7-.6.9-.6 1.6s.6.9.6 1.6" />
+      <path d="M12.5 4c0 .7-.6.9-.6 1.6s.6.9.6 1.6" />
+    </svg>
+  </span>,
+  // Raffle entry — a perforated ticket.
+  <span
+    key="raffle"
+    aria-hidden
+    className="m-1 flex size-7 shrink-0 rotate-45 items-center justify-center rounded bg-deep"
+  >
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-4 -rotate-45 stroke-ground"
+    >
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <circle cx="3" cy="12" r="2.1" className="fill-deep stroke-none" />
+      <circle cx="21" cy="12" r="2.1" className="fill-deep stroke-none" />
+      <path d="M12 6v12" strokeDasharray="2 2" />
+    </svg>
+  </span>,
 ];
 
 export default function HomePage() {
