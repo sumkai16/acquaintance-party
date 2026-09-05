@@ -1,8 +1,16 @@
+import Image from "next/image";
 import Link from "next/link";
 import { EVENT, formatPeso, formatTimeRange } from "@/lib/config/event";
 
-// The hero stays structurally theme-neutral — eyebrow, title, date, call to
-// action — so swapping the party theme is a token edit, not a rebuild.
+// One icon accent per inclusion, matched by position to the confirmed
+// design (circle / circle / diamond) — not tied to inclusion content, so
+// reordering EVENT.inclusions still gets a sensible icon.
+const INCLUSION_ICONS = [
+  <span key="circle-1" aria-hidden className="size-9 shrink-0 rounded-full bg-accent-2" />,
+  <span key="circle-2" aria-hidden className="size-9 shrink-0 rounded-full bg-accent" />,
+  <span key="diamond" aria-hidden className="m-1 size-7 shrink-0 rotate-45 rounded bg-deep" />,
+];
+
 export default function HomePage() {
   const date = EVENT.startsAt.toLocaleDateString("en-PH", {
     weekday: "long",
@@ -15,46 +23,68 @@ export default function HomePage() {
 
   return (
     <main className="flex-1">
-      <section className="bg-deep text-ground">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-5 py-14 sm:py-20 md:py-28 2xl:max-w-7xl">
-          <p className="text-sm uppercase tracking-[0.2em] text-ground/70">
-            {EVENT.host} presents
-          </p>
+      <section>
+        {/* Immersive photo hero — the image carries the mood, the gradient
+            fade keeps the headline readable regardless of what's behind it
+            at that exact pixel. */}
+        <div className="relative h-[480px] overflow-hidden sm:h-[560px] md:h-[640px]">
+          <Image
+            src="/landing-hero.jpg"
+            alt=""
+            fill
+            priority
+            className="object-cover"
+            style={{ objectPosition: "center 30%" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-deep/0 via-deep/70 to-deep" />
 
-          {/* leading stays tight for the poster look, but not so tight that
-              the lines collide once the name wraps on a phone. */}
-          <h1 className="font-display text-5xl uppercase leading-[0.95] text-accent-2 sm:text-6xl md:text-8xl md:leading-[0.9]">
-            {EVENT.name}
-          </h1>
+          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-5xl px-5 pb-8 sm:px-8 sm:pb-10 2xl:max-w-7xl">
+            <p className="text-sm uppercase tracking-[0.2em] text-ground/80">
+              {EVENT.host} presents
+            </p>
 
-          <p className="max-w-prose text-lg text-ground/85">{EVENT.tagline}</p>
+            {/* leading stays tight for the poster look, but not so tight that
+                the lines collide once the name wraps on a phone. The
+                pink-to-gold gradient fill is the confirmed mockup's
+                signature touch — built from the same accent-4/accent-2
+                tokens used everywhere else, not new hex. */}
+            <h1 className="mt-2 bg-gradient-to-r from-accent-4 via-accent-2 to-accent-4 bg-clip-text font-display text-5xl uppercase leading-[0.95] text-transparent sm:text-6xl md:text-8xl md:leading-[0.9]">
+              {EVENT.name}
+            </h1>
 
-          <dl className="flex flex-wrap gap-x-10 gap-y-3 border-y border-ground/25 py-5">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-ground/65">
-                When
-              </dt>
-              <dd className="font-semibold">
-                {date}, {time}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-ground/65">
-                Where
-              </dt>
-              <dd className="font-semibold">{EVENT.venue}</dd>
-            </div>
-          </dl>
+            <p className="mt-2 text-lg text-ground/90">{EVENT.tagline}</p>
+          </div>
+        </div>
 
-          <Link
-            href="/checkout"
-            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start"
-          >
-            Get your ticket{" "}
-            {/* Its own element so a narrow phone drops the price onto a
-                second line cleanly, instead of stranding a dash. */}
-            <span className="whitespace-nowrap font-normal">{price}</span>
-          </Link>
+        <div className="bg-deep text-ground">
+          <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-8 sm:px-8 2xl:max-w-7xl">
+            <dl className="flex flex-wrap gap-x-10 gap-y-3 border-b border-ground/25 pb-6">
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-ground/65">
+                  When
+                </dt>
+                <dd className="font-semibold">
+                  {date}, {time}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs uppercase tracking-wide text-ground/65">
+                  Where
+                </dt>
+                <dd className="font-semibold">{EVENT.venue}</dd>
+              </div>
+            </dl>
+
+            <Link
+              href="/checkout"
+              className="w-full rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            >
+              Get your ticket{" "}
+              {/* Its own element so a narrow phone drops the price onto a
+                  second line cleanly, instead of stranding a dash. */}
+              <span className="whitespace-nowrap font-normal">{price}</span>
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -67,13 +97,18 @@ export default function HomePage() {
         </h2>
 
         <ul className="mt-8 grid gap-5 md:grid-cols-3">
-          {EVENT.inclusions.map((item) => (
+          {EVENT.inclusions.map((item, index) => (
             <li
               key={item.title}
-              className="rounded border border-ink/20 bg-white/60 p-5"
+              className="flex gap-4 rounded border border-ink/20 bg-white/60 p-5"
             >
-              <h3 className="font-display text-2xl uppercase">{item.title}</h3>
-              <p className="mt-2 text-ink/75">{item.body}</p>
+              {INCLUSION_ICONS[index]}
+              <div>
+                <h3 className="font-display text-2xl uppercase">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-ink/75">{item.body}</p>
+              </div>
             </li>
           ))}
         </ul>
