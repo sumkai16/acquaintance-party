@@ -31,6 +31,7 @@ purchasing means there's no separate orders table.
 | created_at | timestamptz | NOT NULL, default `now()` | |
 | reviewed_at | timestamptz | nullable | |
 | reviewed_by | uuid | FK → `auth.users(id)`, nullable | The admin who approved/rejected |
+| evaluation_invited_at | timestamptz | nullable | Added in `0006_evaluation.sql`. When the post-event evaluation email went out. `NULL` is the queue: the admin send picks recipients by this being null, so pressing the button again retries failures and catches late-syncing scans without emailing anyone twice |
 
 **Check constraints — do not work around these from application code:**
 - `ticket_code_matches_status` — `status = 'approved'` requires
@@ -90,9 +91,33 @@ registration it finds the earliest `scanned_at` among rows with
 device already admitted, as long as both are online; a real signal blackout
 is the one case it can't cover.
 
+## evaluations
+
+Added in `0006_evaluation.sql`. One row per attendee who filled in the
+post-event evaluation. Submitting it is what unlocks their certificate of
+attendance at `/certificate/<registration id>`.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| registration_id | uuid | NOT NULL, **UNIQUE**, FK → `registrations(id)` ON DELETE CASCADE | The unique index *is* the one-submission-per-attendee rule — a double-tap on Submit races here and loses with `23505`, which `saveEvaluation()` reads as "already submitted" and turns into a redirect to the certificate |
+| form_version | text | NOT NULL | Which draft of the questions produced these answers. The questions live in `src/lib/evaluation/questions.ts`, not the database |
+| answers | jsonb | NOT NULL | Keyed by question id. Ratings are numbers, choices are the option string, skipped free text is `null`. jsonb rather than a column per question so the draft questionnaire can change without a migration |
+| submitted_at | timestamptz | NOT NULL, default `now()` | |
+
+**Eligibility is not stored here.** "Attended" is derived the same way the
+raffle and the attendance dashboard derive it — at least one `scans` row with
+`result = 'ok'`. Both gates (scanned in, and evaluation submitted) live in
+`certificateFor()` in `src/lib/certificates/data.ts`, so the page, the PNG
+route, the PDF route and the email can never disagree about who gets one.
+
+Responses are linked to the registration so a duplicate can be rejected and
+the certificate can be gated — but `/admin/evaluations` shows totals only, and
+lists the written answers without names.
+
 ## raffle_extra_entrants
 
-Added in the same migration. The escape hatch for someone the scanner missed
+Added in the same migration as `raffle_draws`. The escape hatch for someone the scanner missed
 or a name from outside the ticket system (a walk-in list, imported from
 Excel). The scanned-in pool built from `registrations`/`scans` stays the
 default and the primary eligibility path — this table only ever supplements
@@ -179,11 +204,19 @@ create policy "admins read raffle_draws" on raffle_draws
   for select to authenticated using (true);
 create policy "admins read raffle_extra_entrants" on raffle_extra_entrants
   for select to authenticated using (true);
+create policy "admins read evaluations" on evaluations
+  for select to authenticated using (true);
 ```
 
 No `insert` policy exists for any of these tables on any role — all inserts go
 through the service-role client from server actions, which bypasses RLS
 entirely. This is deliberate: see `context/RULES.md` §Security.
+
+`evaluations` is the clearest case for that rule: the writer is an
+unauthenticated student, not an admin, and it still gets no `anon` policy.
+`submitEvaluation` re-derives their eligibility server-side on every submit
+and writes through the service-role client. If a feature seems to need an
+`anon` insert policy, that's the wrong layer.
 
 ## Storage
 

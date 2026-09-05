@@ -13,11 +13,15 @@ import QRCode from "qrcode";
  * A data URL rather than inline SVG: it needs no raw HTML injection, so there
  * is nothing to sanitize anywhere in this project.
  */
-export async function ticketQrDataUrl(code: string): Promise<string> {
-  return QRCode.toDataURL(code, {
+export async function qrDataUrl(value: string): Promise<string> {
+  return QRCode.toDataURL(value, {
     errorCorrectionLevel: "M",
     margin: 4,
     width: 512,
     color: { dark: "#000000", light: "#FFFFFF" },
   });
+}
+
+export async function ticketQrDataUrl(code: string): Promise<string> {
+  return qrDataUrl(code);
 }

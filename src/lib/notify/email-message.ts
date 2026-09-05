@@ -1,9 +1,10 @@
 import { EVENT } from "@/lib/config/event";
 import { THEME } from "@/lib/config/theme";
 
-export type TicketEmailInput = {
+export type EmailInput = {
   fullName: string;
-  ticketUrl: string;
+  /** Absolute URL the email's button points at. */
+  url: string;
 };
 
 export type BuiltEmail = {
@@ -73,9 +74,7 @@ function wrap(bodyHtml: string, ctaLabel: string, ctaUrl: string): string {
  * link outside the browser tab they're sitting in — it must not imply the
  * ticket is already valid, since review is manual and can take a while.
  */
-export function buildTicketSubmittedEmail(
-  input: TicketEmailInput,
-): BuiltEmail {
+export function buildTicketSubmittedEmail(input: EmailInput): BuiltEmail {
   const name = escapeHtml(input.fullName);
 
   return {
@@ -88,20 +87,20 @@ export function buildTicketSubmittedEmail(
         `<p style="margin:0">Bookmark it. It updates on its own once it's reviewed, ` +
         `and we'll email you again the moment it is.</p>`,
       "View your ticket status",
-      input.ticketUrl,
+      input.url,
     ),
     text:
       `Hi ${input.fullName},\n\n` +
       `We received your ${EVENT.name} registration. We check every payment ` +
       `by hand, so this isn't your ticket yet — it's the link where you'll ` +
       `find it once an organiser reviews your receipt.\n\n` +
-      `${input.ticketUrl}\n\n` +
+      `${input.url}\n\n` +
       `Bookmark that link. It updates on its own once it's reviewed.`,
   };
 }
 
 /** Sent the moment an admin approves a registration. */
-export function buildTicketApprovedEmail(input: TicketEmailInput): BuiltEmail {
+export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
   const name = escapeHtml(input.fullName);
 
   return {
@@ -112,12 +111,67 @@ export function buildTicketApprovedEmail(input: TicketEmailInput): BuiltEmail {
         `code is ready at the link below — screenshot it or keep the page ` +
         `bookmarked for the door.</p>`,
       "View your QR ticket",
-      input.ticketUrl,
+      input.url,
     ),
     text:
       `Hi ${input.fullName},\n\n` +
       `Your ${EVENT.name} ticket is approved. Your QR code is ready at the ` +
       `link below — screenshot it or keep the page bookmarked.\n\n` +
-      `${input.ticketUrl}`,
+      `${input.url}`,
+  };
+}
+
+/**
+ * Sent after the party, to everyone who was scanned in at the door.
+ *
+ * The certificate is the reason to open it, so it leads with that rather than
+ * with the survey — and it says plainly that the evaluation comes first, so
+ * nobody clicks expecting a download and feels ambushed by a form.
+ */
+export function buildEvaluationInviteEmail(input: EmailInput): BuiltEmail {
+  const name = escapeHtml(input.fullName);
+
+  return {
+    subject: `How was ${EVENT.name}? Your certificate is waiting`,
+    html: wrap(
+      `<p style="margin:0 0 16px">Hi ${name},</p>` +
+        `<p style="margin:0 0 16px">Thanks for coming to ${escapeHtml(EVENT.name)}. ` +
+        `Tell us how it went — it's a short evaluation, and it genuinely shapes ` +
+        `the next one.</p>` +
+        `<p style="margin:0">Once you've sent it, your certificate of attendance ` +
+        `is ready to download on the spot.</p>`,
+      "Evaluate and get your certificate",
+      input.url,
+    ),
+    text:
+      `Hi ${input.fullName},\n\n` +
+      `Thanks for coming to ${EVENT.name}. Tell us how it went — it's a short ` +
+      `evaluation, and it genuinely shapes the next one. Once you've sent it, ` +
+      `your certificate of attendance is ready to download on the spot.\n\n` +
+      `${input.url}`,
+  };
+}
+
+/** Sent once the evaluation is in, with the certificate PDF attached. */
+export function buildCertificateEmail(input: EmailInput): BuiltEmail {
+  const name = escapeHtml(input.fullName);
+
+  return {
+    subject: `Your ${EVENT.name} certificate of attendance`,
+    html: wrap(
+      `<p style="margin:0 0 16px">Hi ${name},</p>` +
+        `<p style="margin:0 0 16px">Thanks for the evaluation. Your certificate ` +
+        `of attendance is attached to this email as a PDF.</p>` +
+        `<p style="margin:0">You can also view it, or download it as an image, ` +
+        `at the link below — it stays put, so come back any time.</p>`,
+      "View your certificate",
+      input.url,
+    ),
+    text:
+      `Hi ${input.fullName},\n\n` +
+      `Thanks for the evaluation. Your certificate of attendance is attached ` +
+      `to this email as a PDF. You can also view it, or download it as an ` +
+      `image, at the link below.\n\n` +
+      `${input.url}`,
   };
 }

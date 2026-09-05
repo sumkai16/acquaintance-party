@@ -284,6 +284,37 @@ mockups provided, flagged rather than silently expanded into. No schema,
 server action, or business logic changed; purely visual/interaction-layer,
 and the existing 117-test suite passed unmodified.
 
+### 4.8 Post-event evaluation and certificate of attendance
+
+Added 2026-09-05 at QA's request — the first piece of scope that lives
+entirely *after* the party, and the only one whose audience is students who
+already came.
+
+The flow: an admin presses **Send invites** on `/admin/evaluations` after the
+event; everyone scanned in at the door gets an email with a link to
+`/evaluate/<registration id>`; submitting the evaluation unlocks their
+certificate at `/certificate/<registration id>`, viewable on screen,
+downloadable as a PNG or a PDF, and emailed to them with the PDF attached. The
+certificate carries a QR pointing at `/verify/<ticket code>`, a public page
+that confirms the serial belongs to a real attendee and shows nothing else.
+
+The decisions worth not relitigating:
+- **Only students with an `ok` door scan may evaluate.** The certificate
+  asserts attendance, so it can't be issued off a registration alone. Someone
+  the scanner missed on the night gets sorted out by an organiser, not by
+  loosening the gate.
+- **The certificate is locked behind the evaluation**, which is the point QA
+  raised — the certificate is what makes anyone open the email.
+- **Responses are linked to the registration, but admin sees aggregate.**
+  The link is what rejects a duplicate and gates the certificate;
+  `/admin/evaluations` shows totals and lists the written answers without
+  names.
+- **Questions and artwork are both deliberately provisional.** The draft
+  questionnaire is `src/lib/evaluation/questions.ts` and the certificate art
+  is a drop-in `public/certificate-bg.png`; changing either touches nothing
+  else. Answers are stored as jsonb stamped with a `form_version`, so
+  rewording the questions needs no migration.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later

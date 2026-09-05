@@ -19,4 +19,13 @@ export type Registration = {
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  evaluation_invited_at: string | null;
+};
+
+export type Evaluation = {
+  id: string;
+  registration_id: string;
+  form_version: string;
+  answers: Record<string, number | string | null>;
+  submitted_at: string;
 };

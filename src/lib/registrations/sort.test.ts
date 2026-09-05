@@ -19,6 +19,7 @@ const row = (over: Partial<Registration> = {}): Registration => ({
   created_at: "2026-09-01T10:00:00+08:00",
   reviewed_at: "2026-09-01T10:05:00+08:00",
   reviewed_by: "admin-1",
+  evaluation_invited_at: null,
   ...over,
 });
 
