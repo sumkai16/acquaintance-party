@@ -265,11 +265,11 @@ export default function HomePage() {
             <span className="whitespace-nowrap font-normal">{price}</span>
           </Link>
         </div>
-      </section>
 
-      <footer className="mx-auto w-full max-w-5xl px-5 py-8 text-sm text-ink/70 2xl:max-w-7xl">
-        <p>Something wrong with your ticket? {EVENT.contact}</p>
-      </footer>
+        <footer className="mx-auto w-full max-w-5xl px-5 pb-8 text-sm text-ground/60 2xl:max-w-7xl">
+          <p>Something wrong with your ticket? {EVENT.contact}</p>
+        </footer>
+      </section>
     </main>
   );
 }
