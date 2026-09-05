@@ -34,7 +34,7 @@ export default async function RegistrationsPage({
   const adminEmails = results.length > 0 ? await listAdminEmails() : new Map<string, string>();
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="mx-auto w-full max-w-5xl p-6 2xl:max-w-7xl">
       <header>
         <h1 className="font-display text-3xl uppercase">Find a registration</h1>
         <p className="text-ground/60">

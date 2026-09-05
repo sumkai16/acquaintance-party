@@ -16,7 +16,7 @@ export default function HomePage() {
   return (
     <main className="flex-1">
       <section className="bg-deep text-ground">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-5 py-14 sm:py-20 md:py-28">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-5 py-14 sm:py-20 md:py-28 2xl:max-w-7xl">
           <p className="text-sm uppercase tracking-[0.2em] text-ground/70">
             {EVENT.host} presents
           </p>
@@ -58,7 +58,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-5 py-16">
+      <section className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
         <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
           What you get
         </p>
@@ -80,7 +80,7 @@ export default function HomePage() {
       </section>
 
       <section className="bg-accent-3/15">
-        <div className="mx-auto w-full max-w-5xl px-5 py-16">
+        <div className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
           <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
             How it works
           </p>
@@ -123,7 +123,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-5 py-16">
+      <section className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
         <h2 className="font-display text-4xl uppercase md:text-5xl">
           Questions
         </h2>
@@ -147,7 +147,7 @@ export default function HomePage() {
       </section>
 
       <section className="bg-deep text-ground">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-16 md:flex-row md:items-center md:justify-between">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-5 py-16 md:flex-row md:items-center md:justify-between 2xl:max-w-7xl">
           <div>
             <h2 className="font-display text-4xl uppercase text-accent-2 md:text-5xl">
               See you there
@@ -169,7 +169,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="mx-auto w-full max-w-5xl px-5 py-8 text-sm text-ink/70">
+      <footer className="mx-auto w-full max-w-5xl px-5 py-8 text-sm text-ink/70 2xl:max-w-7xl">
         <p>Something wrong with your ticket? {EVENT.contact}</p>
       </footer>
     </main>

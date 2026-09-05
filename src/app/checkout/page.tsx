@@ -7,7 +7,7 @@ export const metadata = { title: `Get your ticket · ${EVENT.name}` };
 
 export default function CheckoutPage() {
   return (
-    <main className="mx-auto w-full max-w-5xl px-5 py-10 md:py-16">
+    <main className="mx-auto w-full max-w-5xl px-5 py-10 md:py-16 2xl:max-w-7xl">
       <Link
         href="/"
         className="text-sm font-semibold uppercase tracking-wide text-ink/70 hover:text-ink"

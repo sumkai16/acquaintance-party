@@ -67,7 +67,7 @@ export default async function DashboardPage({
     : "/admin/dashboard/export";
 
   return (
-    <main className="mx-auto max-w-5xl p-6">
+    <main className="mx-auto w-full max-w-5xl p-6 2xl:max-w-7xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl uppercase">Attendance</h1>
