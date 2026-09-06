@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { useFlash } from "../flash";
+import { Option } from "../option";
 import { submitWalkIn, type FormState } from "./actions";
 
 const initial: FormState = { status: "idle", attempt: 0 };
@@ -79,13 +80,13 @@ export function WalkInForm() {
           defaultValue={values?.yearLevel ?? ""}
           className={inputClass}
         >
-          <option value="" disabled>
+          <Option value="" disabled>
             Select a year level
-          </option>
+          </Option>
           {YEAR_LEVELS.map((level) => (
-            <option key={level} value={level}>
+            <Option key={level} value={level}>
               {level}
-            </option>
+            </Option>
           ))}
         </select>
       </Field>

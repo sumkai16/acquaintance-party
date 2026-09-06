@@ -1,69 +1,14 @@
 import { formatPeso } from "@/lib/config/event";
 import { listActivity, type ActivityFilters as Filters } from "@/lib/activity/queries";
 import { ACTIVITY_TYPES, describeActivity, type ActivityType } from "@/lib/activity/types";
+import { VALID_RANGES, resolveDateRange } from "@/lib/activity/date-range";
 import { listAllProfiles } from "@/lib/profiles/queries";
-import { formatDatePH, formatTimePH, startOfTodayPH } from "@/lib/format/datetime";
+import { formatDatePH, formatTimePH } from "@/lib/format/datetime";
 import { Table, Th, Tr } from "../table";
 import { ActivityFilters } from "./activity-filters";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Activity" };
-
-const VALID_RANGES = ["today", "yesterday", "week", "month", "custom"] as const;
-
-function phDateOnlyIso(instant: Date): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(instant);
-  const y = parts.find((p) => p.type === "year")!.value;
-  const m = parts.find((p) => p.type === "month")!.value;
-  const d = parts.find((p) => p.type === "day")!.value;
-  return `${y}-${m}-${d}T00:00:00+08:00`;
-}
-
-function addDaysPH(iso: string, days: number): string {
-  return phDateOnlyIso(new Date(new Date(iso).getTime() + days * 86_400_000));
-}
-
-function phWeekdayIndexMondayFirst(iso: string): number {
-  const weekday = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Manila",
-    weekday: "short",
-  }).format(new Date(iso));
-  return ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(weekday);
-}
-
-function resolveDateRange(
-  range: string,
-  from: string,
-  to: string,
-): { fromIso?: string; toIso?: string } {
-  const todayIso = startOfTodayPH();
-  switch (range) {
-    case "today":
-      return { fromIso: todayIso, toIso: addDaysPH(todayIso, 1) };
-    case "yesterday":
-      return { fromIso: addDaysPH(todayIso, -1), toIso: todayIso };
-    case "week": {
-      const mondayOffset = phWeekdayIndexMondayFirst(todayIso);
-      return { fromIso: addDaysPH(todayIso, -mondayOffset), toIso: addDaysPH(todayIso, 1) };
-    }
-    case "month": {
-      const [y, m] = todayIso.split("-");
-      return { fromIso: `${y}-${m}-01T00:00:00+08:00`, toIso: addDaysPH(todayIso, 1) };
-    }
-    case "custom":
-      return {
-        fromIso: from ? `${from}T00:00:00+08:00` : undefined,
-        toIso: to ? addDaysPH(`${to}T00:00:00+08:00`, 1) : undefined,
-      };
-    default:
-      return {};
-  }
-}
 
 export default async function ActivityPage({
   searchParams,

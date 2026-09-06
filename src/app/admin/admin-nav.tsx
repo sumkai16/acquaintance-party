@@ -94,7 +94,12 @@ export function AdminNav({ role }: { role: "admin" | "staff" }) {
         </span>
 
         {LINKS.map((link) => {
-          const active = pathname.startsWith(link.href);
+          // Exact match, not startsWith: "/admin/cashier" is a literal
+          // prefix of "/admin/cashier/activity", so a staff member on My
+          // Activity was seeing both My Dashboard and My Activity lit up at
+          // once. No linked section here nests a page under another
+          // linked section's own path, so exact match loses nothing.
+          const active = pathname === link.href;
           return (
             <Link
               key={link.href}

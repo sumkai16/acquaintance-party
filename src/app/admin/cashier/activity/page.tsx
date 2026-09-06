@@ -1,19 +1,46 @@
 import { redirect } from "next/navigation";
 import { formatPeso } from "@/lib/config/event";
 import { currentProfile } from "@/lib/supabase/server";
-import { listOwnActivity } from "@/lib/activity/queries";
-import { describeActivity } from "@/lib/activity/types";
+import { listActivity } from "@/lib/activity/queries";
+import { ACTIVITY_TYPES, describeActivity, type ActivityType } from "@/lib/activity/types";
+import { VALID_RANGES, resolveDateRange } from "@/lib/activity/date-range";
 import { formatDateTimePH } from "@/lib/format/datetime";
 import { Table, Th, Tr } from "../../table";
+import { ActivityFilters } from "../../activity/activity-filters";
 
 export const metadata = { title: "My Activity" };
 export const dynamic = "force-dynamic";
 
-export default async function CashierActivityPage() {
+export default async function CashierActivityPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    range?: string;
+    from?: string;
+    to?: string;
+    activityType?: string;
+    q?: string;
+  }>;
+}) {
   const profile = await currentProfile();
   if (!profile) redirect("/admin/login");
 
-  const logs = await listOwnActivity(profile.id);
+  const { range: rawRange, from = "", to = "", activityType: rawType, q } = await searchParams;
+  const range = VALID_RANGES.includes(rawRange as (typeof VALID_RANGES)[number])
+    ? (rawRange as (typeof VALID_RANGES)[number])
+    : "";
+  const activityType = ACTIVITY_TYPES.includes(rawType as ActivityType)
+    ? (rawType as ActivityType)
+    : undefined;
+  const { fromIso, toIso } = range ? resolveDateRange(range, from, to) : {};
+
+  const logs = await listActivity({
+    userId: profile.id,
+    activityType,
+    fromIso,
+    toIso,
+    query: q || undefined,
+  });
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
@@ -22,8 +49,13 @@ export default async function CashierActivityPage() {
         A read-only record of your own actions — you can&apos;t edit or delete these.
       </p>
 
-      <div className="mt-6">
-        <Table empty={logs.length === 0 ? "No activity yet." : undefined}>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Log</h2>
+        <ActivityFilters />
+      </div>
+
+      <div className="mt-2">
+        <Table empty={logs.length === 0 ? "No activity matches these filters." : undefined}>
           <thead>
             <tr>
               <Th>Activity</Th>

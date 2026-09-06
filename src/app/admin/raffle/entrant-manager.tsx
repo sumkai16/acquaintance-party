@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { RaffleEntrant } from "@/lib/raffle/types";
 import { useFlash } from "../flash";
+import { Option } from "../option";
 import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
 import { Modal } from "./modal";
 
@@ -175,11 +176,11 @@ function AddEntrantsModal({
           onChange={(e) => setYearLevel(e.target.value)}
           className="rounded border border-ground/25 bg-deep px-3 py-2 [color-scheme:dark]"
         >
-          <option value="">Year level (optional)</option>
+          <Option value="">Year level (optional)</Option>
           {YEAR_LEVELS.map((level) => (
-            <option key={level} value={level}>
+            <Option key={level} value={level}>
               {level}
-            </option>
+            </Option>
           ))}
         </select>
         <input

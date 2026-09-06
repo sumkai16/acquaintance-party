@@ -31,20 +31,6 @@ export async function logActivity(entry: LogEntry): Promise<void> {
   if (error) console.error("logActivity failed", entry.activityType, error);
 }
 
-export async function listOwnActivity(
-  userId: string,
-  limit = 200,
-): Promise<ActivityLog[]> {
-  const { data } = await adminClient()
-    .from("activity_logs")
-    .select("*")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  return (data as ActivityLog[]) ?? [];
-}
-
 export type ActivityFilters = {
   userId?: string;
   activityType?: ActivityType;

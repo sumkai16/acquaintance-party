@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { Option } from "../option";
 
 const NAME_DEBOUNCE_MS = 300;
 
@@ -63,11 +64,11 @@ export function ScanFilters({
         aria-label="Filter by year level"
         className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
-        <option value="">All year levels</option>
+        <Option value="">All year levels</Option>
         {YEAR_LEVELS.map((level) => (
-          <option key={level} value={level}>
+          <Option key={level} value={level}>
             {level}
-          </option>
+          </Option>
         ))}
       </select>
 
@@ -77,11 +78,11 @@ export function ScanFilters({
         aria-label="Filter by section"
         className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
-        <option value="">All sections</option>
+        <Option value="">All sections</Option>
         {sections.map((value) => (
-          <option key={value} value={value}>
+          <Option key={value} value={value}>
             {value}
-          </option>
+          </Option>
         ))}
       </select>
 
@@ -91,11 +92,11 @@ export function ScanFilters({
         aria-label="Filter by door"
         className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
-        <option value="">All doors</option>
+        <Option value="">All doors</Option>
         {doors.map((value) => (
-          <option key={value} value={value}>
+          <Option key={value} value={value}>
             {value}
-          </option>
+          </Option>
         ))}
       </select>
     </div>

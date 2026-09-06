@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ACTIVITY_TYPES, describeActivity } from "@/lib/activity/types";
+import { Option } from "../option";
 
 const QUERY_DEBOUNCE_MS = 300;
 
@@ -17,7 +18,12 @@ const RANGE_OPTIONS = [
 
 type Account = { id: string; fullName: string; role: "admin" | "staff" };
 
-export function ActivityFilters({ accounts }: { accounts: Account[] }) {
+/**
+ * `accounts` is omitted on the staff "My Activity" page — that log is
+ * already scoped to one person server-side, so there's nothing for an
+ * account picker to filter between.
+ */
+export function ActivityFilters({ accounts }: { accounts?: Account[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -55,9 +61,9 @@ export function ActivityFilters({ accounts }: { accounts: Account[] }) {
         className={selectClass}
       >
         {RANGE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
+          <Option key={option.value} value={option.value}>
             {option.label}
-          </option>
+          </Option>
         ))}
       </select>
 
@@ -80,19 +86,21 @@ export function ActivityFilters({ accounts }: { accounts: Account[] }) {
         </>
       ) : null}
 
-      <select
-        value={userId}
-        onChange={(event) => setParam("userId", event.target.value)}
-        aria-label="Filter by account"
-        className={selectClass}
-      >
-        <option value="">All Accounts</option>
-        {accounts.map((person) => (
-          <option key={person.id} value={person.id}>
-            {person.fullName} ({person.role === "admin" ? "Admin" : "Staff"})
-          </option>
-        ))}
-      </select>
+      {accounts ? (
+        <select
+          value={userId}
+          onChange={(event) => setParam("userId", event.target.value)}
+          aria-label="Filter by account"
+          className={selectClass}
+        >
+          <Option value="">All Accounts</Option>
+          {accounts.map((person) => (
+            <Option key={person.id} value={person.id}>
+              {person.fullName} ({person.role === "admin" ? "Admin" : "Staff"})
+            </Option>
+          ))}
+        </select>
+      ) : null}
 
       <select
         value={activityType}
@@ -100,11 +108,11 @@ export function ActivityFilters({ accounts }: { accounts: Account[] }) {
         aria-label="Filter by activity type"
         className={selectClass}
       >
-        <option value="">All Activities</option>
+        <Option value="">All Activities</Option>
         {ACTIVITY_TYPES.map((type) => (
-          <option key={type} value={type}>
+          <Option key={type} value={type}>
             {describeActivity(type)}
-          </option>
+          </Option>
         ))}
       </select>
 

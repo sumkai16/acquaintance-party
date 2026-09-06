@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Badge } from "../badge";
 import { Table, Th, SortHeaderButton, Tr } from "../table";
 import { useFlash } from "../flash";
+import { Option } from "../option";
 import { formatPeso } from "@/lib/config/event";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { Registration } from "@/lib/supabase/types";
@@ -110,11 +111,11 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
             aria-label="Filter by year level"
             className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
           >
-            <option value="">All year levels</option>
+            <Option value="">All year levels</Option>
             {YEAR_LEVELS.map((level) => (
-              <option key={level} value={level}>
+              <Option key={level} value={level}>
                 {level}
-              </option>
+              </Option>
             ))}
           </select>
         </div>
