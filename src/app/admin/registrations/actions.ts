@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminClient } from "@/lib/supabase/admin";
 import { currentAdminId } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity/queries";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -26,8 +27,11 @@ export async function voidRegistration(
 
   const trimmed = reason.trim();
   if (!trimmed) return { ok: false, error: "Give a reason the student can act on." };
+  if (trimmed.length > 300) {
+    return { ok: false, error: "Keep the reason under 300 characters." };
+  }
 
-  const { error } = await adminClient()
+  const { data, error } = await adminClient()
     .from("registrations")
     .update({
       status: "rejected",
@@ -37,11 +41,23 @@ export async function voidRegistration(
       reviewed_by: adminId,
     })
     .eq("id", id)
-    .neq("status", "rejected");
+    .neq("status", "rejected")
+    .select("full_name, student_id, amount");
 
   if (error) {
     console.error("voidRegistration failed", error);
     return { ok: false, error: "Could not void this registration. Try again." };
+  }
+
+  const voided = data?.[0];
+  if (voided) {
+    await logActivity({
+      userId: adminId,
+      activityType: "registration_voided",
+      description: `Voided registration for ${voided.full_name} (${voided.student_id}): ${trimmed}`,
+      registrationId: id,
+      amount: voided.amount,
+    });
   }
 
   revalidatePath("/admin/registrations");

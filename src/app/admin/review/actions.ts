@@ -6,6 +6,7 @@ import { generateTicketCode } from "@/lib/tickets/generate";
 import { adminClient } from "@/lib/supabase/admin";
 import { currentAdminId } from "@/lib/supabase/server";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
+import { logActivity } from "@/lib/activity/queries";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -32,7 +33,7 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
       })
       .eq("id", id)
       .eq("status", "pending") // no-op if another admin already handled it
-      .select("email, full_name");
+      .select("email, full_name, student_id, amount");
 
     if (!error) {
       revalidatePath("/admin/review");
@@ -40,13 +41,28 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
       // row — a no-op race must not fire a second email.
       const approved = data?.[0];
       if (approved) {
-        after(() =>
-          sendTicketApprovedEmail({
+        after(async () => {
+          const status = await sendTicketApprovedEmail({
             to: approved.email,
             fullName: approved.full_name,
             ticketId: id,
-          }),
-        );
+          });
+          if (status === "failed") {
+            await logActivity({
+              userId: adminId,
+              activityType: "email_failed",
+              description: `Approval email to ${approved.email} failed to send for ${approved.full_name}`,
+              registrationId: id,
+            });
+          }
+        });
+        await logActivity({
+          userId: adminId,
+          activityType: "payment_approved",
+          description: `Approved payment for ${approved.full_name} (${approved.student_id})`,
+          registrationId: id,
+          amount: approved.amount,
+        });
       }
       return { ok: true };
     }
@@ -68,8 +84,11 @@ export async function rejectRegistration(
 
   const trimmed = reason.trim();
   if (!trimmed) return { ok: false, error: "Give a reason the student can act on." };
+  if (trimmed.length > 300) {
+    return { ok: false, error: "Keep the reason under 300 characters." };
+  }
 
-  const { error } = await adminClient()
+  const { data, error } = await adminClient()
     .from("registrations")
     .update({
       status: "rejected",
@@ -79,11 +98,23 @@ export async function rejectRegistration(
       reviewed_by: adminId,
     })
     .eq("id", id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .select("full_name, student_id, amount");
 
   if (error) {
     console.error("reject failed", error);
     return { ok: false, error: "Could not reject. Try again." };
+  }
+
+  const rejected = data?.[0];
+  if (rejected) {
+    await logActivity({
+      userId: adminId,
+      activityType: "payment_rejected",
+      description: `Rejected payment for ${rejected.full_name} (${rejected.student_id}): ${trimmed}`,
+      registrationId: id,
+      amount: rejected.amount,
+    });
   }
 
   revalidatePath("/admin/review");

@@ -1,29 +1,30 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
+import { useFlash } from "../flash";
 import { sendEvaluationInvites } from "./actions";
 
 export function SendInvites({ pending }: { pending: number }) {
   const [isSending, startTransition] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
+  const flash = useFlash();
 
   function send() {
-    setMessage(null);
     startTransition(async () => {
       const result = await sendEvaluationInvites();
       if (!result.ok) {
-        setMessage(result.error);
+        flash(result.error, "error");
         return;
       }
       if (result.sent === 0 && result.failed === 0) {
-        setMessage("Nobody left to email.");
+        flash("Nobody left to email.");
         return;
       }
-      setMessage(
+      flash(
         `Sent ${result.sent}.` +
           (result.failed > 0
             ? ` ${result.failed} failed — press again to retry those.`
             : ""),
+        result.failed > 0 ? "error" : "success",
       );
     });
   }
@@ -42,11 +43,6 @@ export function SendInvites({ pending }: { pending: number }) {
             ? "Everyone has been emailed"
             : `Send to ${pending} attendee${pending === 1 ? "" : "s"}`}
       </button>
-      {message ? (
-        <p role="status" className="text-sm text-ground/80">
-          {message}
-        </p>
-      ) : null}
     </div>
   );
 }

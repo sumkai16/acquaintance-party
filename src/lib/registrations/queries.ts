@@ -1,7 +1,7 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { generateTicketCode } from "@/lib/tickets/generate";
-import type { Registration, RegistrationStatus } from "@/lib/supabase/types";
+import type { PaymentMethod, Registration, RegistrationStatus } from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
 
 /** Postgres unique-violation SQLSTATE. */
@@ -165,6 +165,7 @@ export async function countRecentByEmail(
 export async function searchRegistrations(
   query: string,
   status?: "all" | RegistrationStatus,
+  paymentMethod?: "all" | PaymentMethod,
 ): Promise<Registration[]> {
   const trimmed = query.trim();
   // Escape PostgREST's pattern wildcards and its comma/parenthesis
@@ -172,11 +173,12 @@ export async function searchRegistrations(
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  if (!hasQuery && !status) return [];
+  if (!hasQuery && !status && !paymentMethod) return [];
 
   let builder = adminClient().from("registrations").select("*");
   if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
   if (status && status !== "all") builder = builder.eq("status", status);
+  if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
 
   // Rejected rows read newest-rejected-first; everything else reads
   // newest-submitted-first — matches what the old dedicated Rejections
@@ -187,6 +189,53 @@ export async function searchRegistrations(
     .limit(50);
 
   return (data as Registration[]) ?? [];
+}
+
+/**
+ * Every approved registration's year level, section, and amount — no row
+ * limit, unlike searchRegistrations()'s capped 50, since this feeds a
+ * full per-section report rather than a browsable list.
+ */
+export async function listApprovedForSectionReport(): Promise<
+  Pick<Registration, "year_level" | "section" | "amount">[]
+> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("year_level, section, amount")
+    .eq("status", "approved");
+
+  return (data as Pick<Registration, "year_level" | "section" | "amount">[]) ?? [];
+}
+
+export type PaymentMethodSummary = { count: number; totalCentavos: number };
+
+async function paymentMethodSummary(method: PaymentMethod): Promise<PaymentMethodSummary> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("amount")
+    .eq("payment_method", method)
+    .eq("status", "approved");
+
+  const rows = data ?? [];
+  return {
+    count: rows.length,
+    totalCentavos: rows.reduce((sum, row) => sum + (row.amount as number), 0),
+  };
+}
+
+/**
+ * Approved online (GCash) payments only — how many students paid this way,
+ * and how much that's worth. Walk-in cash sales are tracked separately on
+ * the Cash page, since they're a different custody question (who's holding
+ * the cash) rather than "how many people paid online."
+ */
+export async function onlinePaymentsSummary(): Promise<PaymentMethodSummary> {
+  return paymentMethodSummary("online");
+}
+
+/** Approved walk-in (cash) payments only — the counterpart to onlinePaymentsSummary. */
+export async function cashPaymentsSummary(): Promise<PaymentMethodSummary> {
+  return paymentMethodSummary("walk_in");
 }
 
 /**

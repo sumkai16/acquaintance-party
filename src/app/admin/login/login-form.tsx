@@ -1,8 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { browserClient } from "@/lib/supabase/browser";
+import { logLogin } from "../session-actions";
+
+const NOT_PROVISIONED_MESSAGE =
+  "This account isn't set up yet. Ask an admin to add you before signing in.";
 
 const inputClass =
   "rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 " +
@@ -10,7 +14,10 @@ const inputClass =
 
 export function LoginForm() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(
+    searchParams.get("error") === "not_provisioned" ? NOT_PROVISIONED_MESSAGE : null,
+  );
   const [pending, setPending] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -30,7 +37,26 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/admin/review");
+    const { data: profile } = await browserClient()
+      .from("profiles")
+      .select("role")
+      .eq("id", result.data.user.id)
+      .maybeSingle();
+
+    // No matching profiles row: this account isn't provisioned. Sign back
+    // out immediately rather than pushing to /admin/review and letting the
+    // layout gate silently bounce it back here with no explanation — see
+    // docs/superpowers/plans/2026-09-06-staff-cashier-and-remittance.md Task 1.
+    if (!profile) {
+      await browserClient().auth.signOut();
+      setError(NOT_PROVISIONED_MESSAGE);
+      setPending(false);
+      return;
+    }
+
+    await logLogin();
+
+    router.push(profile.role === "staff" ? "/admin/cashier" : "/admin/review");
     router.refresh();
   }
 

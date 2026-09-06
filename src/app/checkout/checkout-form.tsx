@@ -90,7 +90,7 @@ export function CheckoutForm() {
           id="section"
           name="section"
           required
-          placeholder="BSIT-3B"
+          placeholder="e.g A,B,C"
           defaultValue={values?.section ?? ""}
           className={inputClass}
         />

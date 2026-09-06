@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { RaffleEntrant } from "@/lib/raffle/types";
+import { useFlash } from "../flash";
 import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
 import { Modal } from "./modal";
 
@@ -29,16 +30,17 @@ export function EntrantManager({
   onRemove: (id: string) => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+  const flash = useFlash();
 
-  async function handleRemove(id: string) {
-    setRemoveError(null);
+  async function handleRemove(id: string, fullName: string) {
+    if (!window.confirm(`Remove ${fullName} from the raffle pool?`)) return;
     const result = await removeEntrant(id);
     if (!result.ok) {
-      setRemoveError(result.error);
+      flash(result.error, "error");
       return;
     }
     onRemove(id);
+    flash(`Removed ${fullName} from the pool.`);
   }
 
   return (
@@ -64,7 +66,7 @@ export function EntrantManager({
             </span>
             <button
               type="button"
-              onClick={() => handleRemove(entrant.registrationId)}
+              onClick={() => handleRemove(entrant.registrationId, entrant.fullName)}
               className="rounded px-2 py-1 text-accent-2 hover:opacity-80"
               aria-label={`Remove ${entrant.fullName}`}
             >
@@ -73,8 +75,6 @@ export function EntrantManager({
           </li>
         ))}
       </ul>
-
-      {removeError ? <p className="text-sm text-accent-2">{removeError}</p> : null}
 
       <button
         type="button"
@@ -109,14 +109,11 @@ function AddEntrantsModal({
   const [section, setSection] = useState("");
   const [pending, setPending] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const flash = useFlash();
 
   async function handleAdd() {
     setPending(true);
-    setError(null);
-    setNotice(null);
     const result = await addEntrant({
       fullName,
       yearLevel: yearLevel || undefined,
@@ -124,37 +121,38 @@ function AddEntrantsModal({
     });
     setPending(false);
     if (!result.ok) {
-      setError(result.error);
+      flash(result.error, "error");
       return;
     }
     onAdd(result.entrant);
     setFullName("");
     setYearLevel("");
     setSection("");
-    if (result.warning) setNotice(result.warning);
+    flash(result.warning ? `Added ${fullName}. ${result.warning}` : `Added ${fullName}.`);
   }
 
   async function handleImport() {
     const file = fileRef.current?.files?.[0];
-    if (!file) return;
+    if (!file) {
+      flash("Choose a file first.", "error");
+      return;
+    }
 
     setImporting(true);
-    setError(null);
-    setNotice(null);
     const formData = new FormData();
     formData.set("file", file);
     const result = await importEntrants(formData);
     setImporting(false);
 
     if (!result.ok) {
-      setError(result.error);
+      flash(result.error, "error");
       return;
     }
     onAddMany(result.added);
     if (fileRef.current) fileRef.current.value = "";
     const parts = [`Added ${result.added.length}`];
     if (result.skipped > 0) parts.push(`skipped ${result.skipped} blank row(s)`);
-    setNotice([...parts, ...result.warnings].join(". "));
+    flash([...parts, ...result.warnings].join(". "));
   }
 
   return (
@@ -175,7 +173,7 @@ function AddEntrantsModal({
         <select
           value={yearLevel}
           onChange={(e) => setYearLevel(e.target.value)}
-          className="rounded border border-ground/25 bg-deep px-3 py-2"
+          className="rounded border border-ground/25 bg-deep px-3 py-2 [color-scheme:dark]"
         >
           <option value="">Year level (optional)</option>
           {YEAR_LEVELS.map((level) => (
@@ -219,9 +217,6 @@ function AddEntrantsModal({
           and Section are optional.
         </p>
       </div>
-
-      {notice ? <p className="text-sm text-accent-3">{notice}</p> : null}
-      {error ? <p className="text-sm text-accent-2">{error}</p> : null}
     </Modal>
   );
 }

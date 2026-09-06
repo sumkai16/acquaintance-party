@@ -187,11 +187,92 @@ app reads.
 partial unique index on `supersedes` so one draw can be superseded at most
 once — the history stays a chain, not a tree nobody can read back.
 
+## profiles
+
+Added in `0007_staff_roles_and_cash_remittance.sql`. One row per Supabase
+Auth user — the role (`admin` | `staff`) behind every `/admin/*` route gate.
+Accounts are still created by hand in the dashboard (no signup); the
+`profiles` row is a second by-hand insert alongside it — see
+`docs/setup/supabase.md` §5. A signed-in user with no matching `profiles`
+row is treated as unprovisioned, not as admin-by-default — the opposite
+default of the pre-role system, where any signed-in user was an admin.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, FK → `auth.users(id)` ON DELETE CASCADE | |
+| full_name | text | NOT NULL, 2–120 chars trimmed | Displayed everywhere an acting user's name is shown — activity logs, "Added By," the staff dashboard greeting |
+| role | `user_role` enum | NOT NULL, default `staff` | `admin` \| `staff` |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+## cash_remittances
+
+Added in the same migration. A staff member's request to hand their
+collected walk-in cash to Admin. Approving one is the only event that moves
+money from "staff cash on hand" to "admin current collection" — see
+`src/lib/cash/queries.ts` and `src/lib/cash/balances.ts` for how every
+dashboard number derives from this table plus `registrations`, rather than
+a separately maintained balance.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | Displayed truncated (first 8 chars, uppercased) as the "Remittance ID" — no separate human-readable sequence |
+| staff_id | uuid | NOT NULL, FK → `auth.users(id)` | |
+| amount | integer | NOT NULL, `> 0` | Centavos, never a float |
+| status | `remittance_status` enum | NOT NULL, default `pending` | `pending` \| `approved` \| `rejected` |
+| submitted_at | timestamptz | NOT NULL, default `now()` | |
+| approved_at | timestamptz | nullable | |
+| approved_by | uuid | FK → `auth.users(id)`, nullable | The admin who approved it |
+| rejection_reason | text | nullable | |
+
+**Check constraints:**
+- `remittance_rejection_has_reason` — `status = 'rejected'` requires a
+  non-empty `rejection_reason`, same reasoning as
+  `registrations.reject_reason`.
+- `approval_fields_match_status` — `status = 'approved'` requires both
+  `approved_at` and `approved_by`; any other status requires neither.
+  Backstops `approveRemittance()` the same way `ticket_code_matches_status`
+  backstops `approveRegistration()`.
+
+**The double-approval guard is not a constraint — it's the shape of the
+`UPDATE` itself.** `approveRemittance()`/`rejectRemittance()`
+(`src/lib/remittances/queries.ts`) both filter `.eq("status", "pending")` in
+the same statement that sets the new status. Postgres commits this as one
+atomic operation, so two concurrent approve calls can't both match the same
+still-pending row — the second one simply matches nothing, which the app
+reads as "already resolved" rather than a race.
+
+**Indexes:** `cash_remittances_staff_idx` on `(staff_id, status)` (a staff
+member's own balance), `cash_remittances_status_idx` on
+`(status, submitted_at desc)` (Admin's pending queue).
+
+## activity_logs
+
+Added in the same migration. Append-only audit trail — every login, logout,
+walk-in sale, payment approval/rejection, void, and remittance action writes
+one row. No `UPDATE` or `DELETE` policy exists for any role; there is no
+edit or delete affordance anywhere in the UI either.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| user_id | uuid | FK → `auth.users(id)`, nullable | The acting account |
+| activity_type | text | NOT NULL | One of `ACTIVITY_TYPES` in `src/lib/activity/types.ts` — not a DB enum, so a new activity type needs no migration |
+| description | text | NOT NULL | Built at write time, embedding the student's name/ID directly — this is what lets the admin activity log's search box match a student without joining back to `registrations` |
+| registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Added `on delete set null` in `0008` — the log row is the append-only record and must survive the registration it describes being deleted (e.g. voided test data), not block the delete |
+| remittance_id | uuid | FK → `cash_remittances(id)` ON DELETE SET NULL, nullable | Same reasoning as `registration_id` |
+| amount | integer | nullable | Centavos |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+**Indexes:** `activity_logs_user_idx` on `(user_id, created_at desc)` (a
+staff member's own log), `activity_logs_type_idx` on
+`(activity_type, created_at desc)`, `activity_logs_registration_idx` on
+`registration_id`.
+
 ## Row-level security
 
-RLS is **on** for both tables. Every policy targets `authenticated` (i.e.
-admins — public signup is disabled, see `docs/setup/supabase.md` §3) and
-`anon` gets nothing:
+RLS is **on** for every table. Every policy targets `authenticated` (i.e.
+any signed-in user — public signup is disabled, see
+`docs/setup/supabase.md` §3) and `anon` gets nothing:
 
 ```sql
 create policy "admins read registrations" on registrations
@@ -206,7 +287,22 @@ create policy "admins read raffle_extra_entrants" on raffle_extra_entrants
   for select to authenticated using (true);
 create policy "admins read evaluations" on evaluations
   for select to authenticated using (true);
+create policy "authenticated read profiles" on profiles
+  for select to authenticated using (true);
+create policy "authenticated read cash_remittances" on cash_remittances
+  for select to authenticated using (true);
+create policy "authenticated read activity_logs" on activity_logs
+  for select to authenticated using (true);
 ```
+
+**No `insert`/`update` policy exists on `profiles`, `cash_remittances`, or
+`activity_logs` for any role, on purpose.** Staff-vs-admin scoping (a staff
+member seeing only their own remittances and activity log) is enforced in
+`src/lib/*/queries.ts` — filtering by the caller's own id in the query
+itself — not in an RLS policy. A policy that checks `profiles.role` to
+decide who can read `profiles` would also be a recursive-policy trap; see
+`context/RULES.md` for why every write already goes through a server action
+holding the service-role key, which is the actual security boundary here.
 
 No `insert` policy exists for any of these tables on any role — all inserts go
 through the service-role client from server actions, which bypasses RLS

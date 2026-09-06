@@ -1,5 +1,20 @@
 # Confirmation emails via Resend (optional, but worth setting up)
 
+**Status as of 2026-09-06: blocked on a domain.** `RESEND_FROM_EMAIL` is
+currently `onboarding@resend.dev` (no verified domain on the account), which
+means Resend silently rejects every send to anyone but the account's own
+signup address — confirmed by calling the Resend API directly with the
+project's real key. This is not a code bug; step 2 below is the actual fix
+and needs a real domain registered (a `vercel.app` subdomain doesn't
+qualify — only Vercel controls DNS for that). Once a domain is bought:
+Resend → **Domains → Add Domain**, add the DNS records it gives you
+wherever that domain's DNS is hosted (Vercel's own Domains/DNS tab if
+bought through Vercel), wait for verification, then update
+`RESEND_FROM_EMAIL` to an address on it and redeploy. `email_failed`
+activity-log rows (added this session — see `src/lib/activity/types.ts`)
+will keep surfacing this in `/admin/activity` until it's fixed, instead of
+failing silently.
+
 Sends two emails to a student: one right after checkout ("we received this,
 here's your permanent link, keep it"), and one when an admin approves the
 ticket. This is the only copy of the ticket link that reaches the student

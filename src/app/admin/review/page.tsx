@@ -1,8 +1,11 @@
 import {
   findByReference,
   listPending,
+  onlinePaymentsSummary,
   signedReceiptUrl,
 } from "@/lib/registrations/queries";
+import { formatPeso } from "@/lib/config/event";
+import { Stat } from "../stat";
 import { ReviewTable } from "./review-table";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +13,7 @@ export const metadata = { title: "Payments" };
 
 export default async function ReviewPage() {
   const pending = await listPending();
+  const online = await onlinePaymentsSummary();
 
   const rows = await Promise.all(
     pending.map(async (registration) => ({
@@ -34,6 +38,12 @@ export default async function ReviewPage() {
             : `${pending.length} waiting for review.`}
         </p>
       </header>
+
+      <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+        <Stat label="Online payees" value={online.count} />
+        <Stat label="Online amount (GCash)" value={formatPeso(online.totalCentavos)} />
+        <Stat label="Pending" value={pending.length} />
+      </dl>
 
       <ReviewTable rows={rows} />
     </main>

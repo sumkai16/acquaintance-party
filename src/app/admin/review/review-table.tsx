@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Badge } from "../badge";
 import { Table, Th, SortHeaderButton, Tr } from "../table";
+import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import type { Registration } from "@/lib/supabase/types";
@@ -107,7 +108,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
             value={year}
             onChange={(event) => setYear(event.target.value)}
             aria-label="Filter by year level"
-            className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+            className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
           >
             <option value="">All year levels</option>
             {YEAR_LEVELS.map((level) => (
@@ -161,15 +162,18 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
 function ReviewRow({ row }: { row: Row }) {
   const { registration, receiptUrl, duplicateCount } = row;
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const flash = useFlash();
 
-  function run(action: () => Promise<ActionResult>) {
-    setError(null);
+  function run(action: () => Promise<ActionResult>, successText: string) {
     startTransition(async () => {
       const result = await action();
-      if (!result.ok) setError(result.error ?? "Something went wrong.");
+      if (!result.ok) {
+        flash(result.error ?? "Something went wrong.", "error");
+        return;
+      }
+      flash(successText);
     });
   }
 
@@ -233,37 +237,41 @@ function ReviewRow({ row }: { row: Row }) {
       </td>
 
       <td className="py-2 pl-3">
-        <div className="flex flex-col gap-2">
-          {error ? (
-            <p role="alert" className="text-xs font-medium text-red-300">
-              {error}
-            </p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => run(() => approveRegistration(registration.id))}
-              className="rounded-full bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-            >
-              Approve
-            </button>
-            <input
-              value={reason}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder="Reason for rejecting"
-              aria-label={`Reason for rejecting ${registration.full_name}`}
-              className="w-40 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-            />
-            <button
-              type="button"
-              disabled={pending || !reason.trim()}
-              onClick={() => run(() => rejectRegistration(registration.id, reason))}
-              className="rounded-full border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
-            >
-              Reject
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              run(
+                () => approveRegistration(registration.id),
+                `Approved — ticket emailed to ${registration.full_name}.`,
+              )
+            }
+            className="rounded-full bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            Approve
+          </button>
+          <input
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Reason for rejecting"
+            maxLength={300}
+            aria-label={`Reason for rejecting ${registration.full_name}`}
+            className="w-40 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          />
+          <button
+            type="button"
+            disabled={pending || !reason.trim()}
+            onClick={() =>
+              run(
+                () => rejectRegistration(registration.id, reason),
+                `Rejected ${registration.full_name}'s registration.`,
+              )
+            }
+            className="rounded-full border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
+          >
+            Reject
+          </button>
         </div>
       </td>
     </Tr>

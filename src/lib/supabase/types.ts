@@ -1,6 +1,10 @@
+import type { ActivityType } from "@/lib/activity/types";
+
 export type RegistrationStatus = "pending" | "approved" | "rejected";
 export type PaymentMethod = "online" | "walk_in";
 export type ScanResult = "ok" | "duplicate" | "invalid";
+export type UserRole = "admin" | "staff";
+export type RemittanceStatus = "pending" | "approved" | "rejected";
 
 export type Registration = {
   id: string;
@@ -28,4 +32,32 @@ export type Evaluation = {
   form_version: string;
   answers: Record<string, number | string | null>;
   submitted_at: string;
+};
+
+export type Profile = {
+  id: string;
+  fullName: string;
+  role: UserRole;
+};
+
+export type CashRemittance = {
+  id: string;
+  staff_id: string;
+  amount: number;
+  status: RemittanceStatus;
+  submitted_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  rejection_reason: string | null;
+};
+
+export type ActivityLog = {
+  id: string;
+  user_id: string | null;
+  activity_type: ActivityType;
+  description: string;
+  registration_id: string | null;
+  remittance_id: string | null;
+  amount: number | null;
+  created_at: string;
 };

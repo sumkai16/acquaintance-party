@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { latestDraw } from "@/lib/raffle/pool";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { useSetNavHidden } from "../admin-nav";
+import { useFlash } from "../flash";
 import { drawNext, redrawLast } from "./actions";
 import { RaffleSidebar } from "./raffle-sidebar";
 import { RaffleWheel } from "./raffle-wheel";
@@ -40,8 +41,9 @@ export function RaffleProjector({
   const [includeExtraEntrants, setIncludeExtraEntrants] = useState(false);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<"draw" | "redraw" | null>(null);
   const [pending, startTransition] = useTransition();
+  const flash = useFlash();
 
   const animating = stage === "wheel";
   useSetNavHidden(animating);
@@ -51,13 +53,12 @@ export function RaffleProjector({
     : pool.filter((entrant) => entrant.source === "ticket");
 
   function run(action: () => Promise<{ ok: true; draw: RaffleDrawRow } | { ok: false; error: string }>) {
-    setError(null);
     startTransition(async () => {
       const result = await action();
 
       if (!result.ok) {
         // Never animate an outcome that was not actually decided.
-        setError(result.error);
+        flash(result.error, "error");
         return;
       }
 
@@ -136,12 +137,13 @@ export function RaffleProjector({
                 <button
                   type="button"
                   disabled={pending || effectivePool.length === 0}
-                  onClick={() =>
-                    run(() => drawNext({ excludePreviousWinners, includeExtraEntrants }))
-                  }
+                  onClick={() => {
+                    setLastAction("draw");
+                    run(() => drawNext({ excludePreviousWinners, includeExtraEntrants }));
+                  }}
                   className="rounded-full bg-accent-2 px-8 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
                 >
-                  {pending ? "Drawing…" : "Draw"}
+                  {pending && lastAction === "draw" ? "Drawing…" : "Draw"}
                 </button>
 
                 {standing ? (
@@ -154,6 +156,7 @@ export function RaffleProjector({
                           `Redraw the last name? ${standing.winner.fullName} will be recorded as replaced, not erased.`,
                         )
                       ) {
+                        setLastAction("redraw");
                         run(() =>
                           redrawLast({
                             supersedesDrawId: standing.id,
@@ -165,16 +168,10 @@ export function RaffleProjector({
                     }}
                     className="rounded-full bg-accent-4 px-8 py-3 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
                   >
-                    {pending ? "Drawing…" : "Redraw last"}
+                    {pending && lastAction === "redraw" ? "Redrawing…" : "Redraw last"}
                   </button>
                 ) : null}
               </div>
-
-              {error ? (
-                <p className="rounded border border-accent-4/50 bg-accent-4/10 px-4 py-3 text-sm">
-                  {error}
-                </p>
-              ) : null}
             </div>
           ) : null}
         </div>

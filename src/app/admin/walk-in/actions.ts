@@ -1,12 +1,12 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
 import { walkInSchema } from "@/lib/registrations/schema";
 import { createWalkInRegistration } from "@/lib/registrations/queries";
-import { currentAdminId } from "@/lib/supabase/server";
+import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
+import { logActivity } from "@/lib/activity/queries";
 
 export type SubmittedValues = {
   fullName: string;
@@ -17,7 +17,7 @@ export type SubmittedValues = {
 };
 
 export type FormState = {
-  status: "idle" | "error";
+  status: "idle" | "error" | "success";
   message?: string;
   fieldErrors?: Record<string, string>;
   // Same reset-on-error problem as checkout's FormState.values — see the
@@ -102,13 +102,34 @@ export async function submitWalkIn(
     };
   }
 
-  after(() =>
-    sendTicketApprovedEmail({
+  after(async () => {
+    const status = await sendTicketApprovedEmail({
       to: parsed.data.email,
       fullName: parsed.data.fullName,
       ticketId: created.id,
-    }),
-  );
+    });
+    if (status === "failed") {
+      await logActivity({
+        userId: adminId,
+        activityType: "email_failed",
+        description: `Walk-in ticket email to ${parsed.data.email} failed to send for ${parsed.data.fullName}`,
+        registrationId: created.id,
+      });
+    }
+  });
 
-  redirect(`/ticket/${created.id}`);
+  const profile = await currentProfile();
+  await logActivity({
+    userId: adminId,
+    activityType: "walk_in_payment_added",
+    description: `${profile?.fullName ?? "Someone"} recorded a walk-in payment for ${parsed.data.fullName} (${parsed.data.studentId})`,
+    registrationId: created.id,
+    amount: EVENT.ticketPriceCentavos,
+  });
+
+  return {
+    status: "success",
+    message: `Recorded ${parsed.data.fullName}'s walk-in sale — ticket emailed to ${parsed.data.email}.`,
+    attempt,
+  };
 }

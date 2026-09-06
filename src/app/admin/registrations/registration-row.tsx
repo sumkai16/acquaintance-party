@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Badge } from "../badge";
 import { Tr } from "../table";
+import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
@@ -14,28 +15,25 @@ const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as 
 export function RegistrationRow({
   registration,
   reviewerEmail,
+  addedByName,
 }: {
   registration: Registration;
   reviewerEmail: string | null;
+  addedByName: string | null;
 }) {
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState("");
+  const flash = useFlash();
 
   function handleVoid() {
-    const reason = window.prompt(
-      `Void ${registration.full_name}'s registration so they can submit again? ` +
-        "This does not affect a ticket already scanned at the door. Give a " +
-        "reason:",
-    );
-    if (reason === null) return; // cancelled
-    if (!reason.trim()) {
-      setError("Give a reason.");
-      return;
-    }
-    setError(null);
     startTransition(async () => {
       const result = await voidRegistration(registration.id, reason);
-      if (!result.ok) setError(result.error ?? "Something went wrong.");
+      if (!result.ok) {
+        flash(result.error ?? "Something went wrong.", "error");
+        return;
+      }
+      setReason("");
+      flash(`Voided ${registration.full_name}'s registration.`);
     });
   }
 
@@ -60,6 +58,8 @@ export function RegistrationRow({
         )}
       </td>
 
+      <td className="py-2 pr-3 whitespace-nowrap text-ground/70">{addedByName ?? "—"}</td>
+
       <td className="py-2 pr-3 whitespace-nowrap text-ground/70">
         {new Date(registration.created_at).toLocaleString("en-PH")}
       </td>
@@ -77,9 +77,6 @@ export function RegistrationRow({
             {registration.reject_reason ? ` — ${registration.reject_reason}` : ""}
           </p>
         ) : null}
-        {error ? (
-          <p className="mt-1 font-medium text-accent">{error}</p>
-        ) : null}
       </td>
 
       <td className="py-2 pr-3 font-mono whitespace-nowrap">
@@ -95,14 +92,25 @@ export function RegistrationRow({
             Open ticket
           </Link>
           {registration.status !== "rejected" ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={handleVoid}
-              className="font-semibold text-accent underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent"
-            >
-              Void
-            </button>
+            <>
+              <input
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder="Reason for voiding"
+                maxLength={300}
+                aria-label={`Reason for voiding ${registration.full_name}'s registration`}
+                className="w-36 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              />
+              <button
+                type="button"
+                disabled={pending || !reason.trim()}
+                onClick={handleVoid}
+                title="Lets them submit again. Does not affect a ticket already scanned at the door."
+                className="font-semibold text-accent underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent"
+              >
+                Void
+              </button>
+            </>
           ) : null}
         </div>
       </td>

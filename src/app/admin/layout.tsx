@@ -1,7 +1,16 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { serverClient } from "@/lib/supabase/server";
+import { currentProfile } from "@/lib/supabase/server";
 import { AdminNav, NavVisibilityProvider } from "./admin-nav";
+import { FlashProvider } from "./flash";
+
+// Staff gets an explicit allowlist; everything else under /admin/* is
+// admin-only. A signed-in user with no matching `profiles` row (an account
+// created before this role system existed, or misprovisioned) is treated
+// as unauthenticated rather than defaulting to admin — the opposite
+// default of the pre-role system, and deliberate: see
+// docs/superpowers/plans/2026-09-06-staff-cashier-and-remittance.md Task 1.
+const STAFF_ALLOWED_PREFIXES = ["/admin/cashier", "/admin/walk-in"];
 
 // Sunset Soiree, throughout — see context/DESIGN.md §3. The one carve-out
 // is the scanner's live scan result screens (full-screen green/red/amber,
@@ -17,10 +26,18 @@ export default async function AdminLayout({
   const pathname = (await headers()).get("x-pathname") ?? "";
 
   const isLogin = pathname.endsWith("/admin/login");
+  let role: "admin" | "staff" = "admin";
   if (!isLogin) {
-    const supabase = await serverClient();
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) redirect("/admin/login");
+    const profile = await currentProfile();
+    if (!profile) redirect("/admin/login?error=not_provisioned");
+    role = profile.role;
+
+    if (
+      role === "staff" &&
+      !STAFF_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
+      redirect("/admin/cashier");
+    }
   }
 
   // AdminNav shows on every non-login route now — a full-screen surface
@@ -38,10 +55,12 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-screen flex-col bg-deep text-ground">
       {!isLogin ? (
-        <NavVisibilityProvider>
-          <AdminNav />
-          {children}
-        </NavVisibilityProvider>
+        <FlashProvider>
+          <NavVisibilityProvider>
+            <AdminNav role={role} />
+            {children}
+          </NavVisibilityProvider>
+        </FlashProvider>
       ) : (
         children
       )}

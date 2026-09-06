@@ -61,7 +61,7 @@ export function ScanFilters({
         value={year}
         onChange={(event) => setParam("year", event.target.value)}
         aria-label="Filter by year level"
-        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         <option value="">All year levels</option>
         {YEAR_LEVELS.map((level) => (
@@ -75,7 +75,7 @@ export function ScanFilters({
         value={section}
         onChange={(event) => setParam("section", event.target.value)}
         aria-label="Filter by section"
-        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         <option value="">All sections</option>
         {sections.map((value) => (
@@ -89,7 +89,7 @@ export function ScanFilters({
         value={door}
         onChange={(event) => setParam("door", event.target.value)}
         aria-label="Filter by door"
-        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         <option value="">All doors</option>
         {doors.map((value) => (

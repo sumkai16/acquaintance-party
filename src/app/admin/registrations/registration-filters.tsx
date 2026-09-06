@@ -12,6 +12,12 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rejected" },
 ] as const;
 
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "", label: "All payments" },
+  { value: "walk_in", label: "Walk-in only" },
+  { value: "online", label: "Online only" },
+] as const;
+
 /**
  * Search plus a status dropdown, same pattern as Attendance's ScanFilters —
  * URL-param driven, the text field debounced and the dropdown instant. No
@@ -24,9 +30,10 @@ export function RegistrationFilters() {
   const searchParams = useSearchParams();
 
   const status = searchParams.get("status") ?? "";
+  const paymentMethod = searchParams.get("paymentMethod") ?? "";
   const [q, setQ] = useState(searchParams.get("q") ?? "");
 
-  function setParam(key: "q" | "status", value: string) {
+  function setParam(key: "q" | "status" | "paymentMethod", value: string) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
@@ -54,9 +61,22 @@ export function RegistrationFilters() {
         value={status}
         onChange={(event) => setParam("status", event.target.value)}
         aria-label="Filter by status"
-        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         {STATUS_OPTIONS.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+
+      <select
+        value={paymentMethod}
+        onChange={(event) => setParam("paymentMethod", event.target.value)}
+        aria-label="Filter by payment method"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
+      >
+        {PAYMENT_METHOD_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

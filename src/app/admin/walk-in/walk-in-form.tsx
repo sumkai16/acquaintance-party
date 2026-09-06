@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { useFlash } from "../flash";
 import { submitWalkIn, type FormState } from "./actions";
 
 const initial: FormState = { status: "idle", attempt: 0 };
@@ -9,12 +10,21 @@ const initial: FormState = { status: "idle", attempt: 0 };
 const inputClass =
   "w-full rounded border border-ground/25 bg-deep px-3 py-2.5 text-ground " +
   "placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 " +
-  "focus:outline-offset-2 focus:outline-accent-2";
+  "focus:outline-offset-2 focus:outline-accent-2 [color-scheme:dark]";
 
 export function WalkInForm() {
   const [state, action, pending] = useActionState(submitWalkIn, initial);
   const errors = state.fieldErrors ?? {};
   const values = state.values;
+  const flash = useFlash();
+
+  // Recording a walk-in stays on this page — no ticket-page redirect — so
+  // the next sale can be entered right away. A flash is the only signal
+  // that it worked; fires once per successful attempt, not on first mount.
+  useEffect(() => {
+    if (state.status === "success" && state.message) flash(state.message);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.attempt, state.status]);
 
   // Same remount-on-attempt trick as checkout-form.tsx — see the comment on
   // FormState.values in actions.ts.
@@ -26,7 +36,7 @@ export function WalkInForm() {
     // field instead of letting submitWalkIn report every invalid field at
     // once.
     <form action={action} noValidate className="flex flex-col gap-5">
-      {state.message ? (
+      {state.status === "error" && state.message ? (
         <p
           role="alert"
           className="rounded border border-accent/30 bg-accent/10 px-4 py-3 text-accent"
@@ -86,7 +96,7 @@ export function WalkInForm() {
           id="section"
           name="section"
           required
-          placeholder="BSIT-3B"
+          placeholder="e.g A,B,C"
           defaultValue={values?.section ?? ""}
           className={inputClass}
         />
@@ -120,7 +130,8 @@ export function WalkInForm() {
 
       <p className="text-sm text-ground/60">
         Approved immediately — only enter this once you have the cash in
-        hand. The next page shows their QR ticket.
+        hand. Their ticket link is emailed to them, and this form clears so
+        you can enter the next sale.
       </p>
     </form>
   );

@@ -13,6 +13,7 @@ import {
 import { adminClient } from "@/lib/supabase/admin";
 import { notifyNewRegistration } from "@/lib/notify/discord";
 import { sendTicketSubmittedEmail } from "@/lib/notify/email";
+import { logActivity } from "@/lib/activity/queries";
 
 export type SubmittedValues = {
   fullName: string;
@@ -179,8 +180,8 @@ export async function submitRegistration(
   // response, and a plain fire-and-forget fetch can be killed mid-flight on
   // Vercel's serverless runtime once the response is sent. after() runs it
   // once the response has gone out and is guaranteed to complete.
-  after(() =>
-    Promise.all([
+  after(async () => {
+    const [, status] = await Promise.all([
       notifyNewRegistration({
         fullName: parsed.data.fullName,
         yearLevel: parsed.data.yearLevel,
@@ -196,8 +197,16 @@ export async function submitRegistration(
         fullName: parsed.data.fullName,
         ticketId: created.id,
       }),
-    ]),
-  );
+    ]);
+    if (status === "failed") {
+      await logActivity({
+        userId: null,
+        activityType: "email_failed",
+        description: `Submission email to ${parsed.data.email} failed to send for ${parsed.data.fullName}`,
+        registrationId: created.id,
+      });
+    }
+  });
 
   redirect(`/ticket/${created.id}`);
 }

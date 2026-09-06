@@ -18,6 +18,14 @@ type SendInput = {
 };
 
 /**
+ * "skipped" — not configured, the deliberate no-op (see below), not a
+ * failure worth surfacing anywhere. "failed" — configured but Resend
+ * rejected or couldn't be reached; callers that can identify who was
+ * waiting on the email should log this so it doesn't fail silently forever.
+ */
+export type SendStatus = "sent" | "skipped" | "failed";
+
+/**
  * Best-effort confirmation emails. Never allowed to throw or block the
  * caller, matching src/lib/notify/discord.ts — a missing key, a network
  * error, or Resend being down must never stop checkout or an approval.
@@ -25,13 +33,13 @@ type SendInput = {
 async function send(
   input: SendInput,
   build: (args: EmailInput) => BuiltEmail,
-): Promise<void> {
+): Promise<SendStatus> {
   const apiKey = process.env.RESEND_API_KEY;
   // NEXT_PUBLIC_SITE_URL specifically gates sending here, not just link
   // quality: an email whose only purpose is a working link back to the
   // ticket is worse than no email if that link can't be absolute.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (!apiKey || !siteUrl) return; // Not configured — skip silently, not an error.
+  if (!apiKey || !siteUrl) return "skipped"; // Not configured — skip silently, not an error.
 
   const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
   const built = build({
@@ -50,18 +58,21 @@ async function send(
     });
     if (result.error) {
       console.error("Resend responded with an error", result.error);
+      return "failed";
     }
   } catch (error) {
     console.error("Resend request failed", error);
+    return "failed";
   }
+  return "sent";
 }
 
 type TicketInput = { to: string; fullName: string; ticketId: string };
 
 export async function sendTicketSubmittedEmail(
   input: TicketInput,
-): Promise<void> {
-  await send(
+): Promise<SendStatus> {
+  return send(
     { to: input.to, fullName: input.fullName, path: `/ticket/${input.ticketId}` },
     buildTicketSubmittedEmail,
   );
@@ -69,8 +80,8 @@ export async function sendTicketSubmittedEmail(
 
 export async function sendTicketApprovedEmail(
   input: TicketInput,
-): Promise<void> {
-  await send(
+): Promise<SendStatus> {
+  return send(
     { to: input.to, fullName: input.fullName, path: `/ticket/${input.ticketId}` },
     buildTicketApprovedEmail,
   );

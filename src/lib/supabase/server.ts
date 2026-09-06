@@ -1,10 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getProfile } from "@/lib/profiles/queries";
+import type { Profile } from "@/lib/supabase/types";
 
 /** The signed-in admin's id, or null. Every admin write gates on this. */
 export async function currentAdminId(): Promise<string | null> {
   const { data } = await (await serverClient()).auth.getUser();
   return data.user?.id ?? null;
+}
+
+/** The signed-in user's role and name, or null if not signed in or not provisioned. */
+export async function currentProfile(): Promise<Profile | null> {
+  const id = await currentAdminId();
+  if (!id) return null;
+  return getProfile(id);
 }
 
 /** Request-scoped client carrying the signed-in admin's session. */

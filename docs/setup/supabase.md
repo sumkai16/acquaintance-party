@@ -38,11 +38,26 @@ doesn't. Admin accounts are created by hand instead — see step 5.
 create. If it shows a "Public" badge, payment screenshots are readable by
 anyone with the URL — fix this before any real submission.
 
-## 5. Creating an admin account
+## 5. Creating an admin or staff account
 
 **Authentication → Users → Add user** → email + password → tick **Auto
-Confirm User**. Repeat for each admin/volunteer who needs to review receipts
-or run the scanner.
+Confirm User**. Repeat for each admin/volunteer who needs to review receipts,
+run the scanner, or record walk-in cash sales.
+
+Then, in **SQL Editor**, insert the matching `profiles` row — this is what
+actually decides the account's role (`admin` or `staff`) and what shows up
+as their name everywhere in the app. An `auth.users` row with no matching
+`profiles` row can sign in but goes nowhere: every `/admin/*` route treats a
+missing profile as "not provisioned yet," never as "admin by default."
+
+```sql
+insert into profiles (id, full_name, role)
+values ('<the new user's id, from Authentication → Users>', 'Juan Dela Cruz', 'staff');
+```
+
+Use `role = 'admin'` for anyone who needs Payments, the scanner, the raffle,
+or the full activity log; `role = 'staff'` for someone who should only
+record walk-in cash sales and remit them.
 
 ## 6. Apply the schema
 
@@ -132,6 +147,37 @@ migrations are pasted by hand rather than run via `supabase db push`:
    delete from registrations where student_id = 'sid-test-1';
    ```
 
+8. Paste the contents of
+   `supabase/migrations/0007_staff_roles_and_cash_remittance.sql`, run it.
+   Adds `profiles` (the role — admin/staff — behind every `/admin/*` route
+   gate), `cash_remittances` (a staff member's request to hand collected
+   cash to Admin), and `activity_logs` (the immutable audit trail). Verify
+   both money-safety constraints are live — each of these should **fail**:
+   ```sql
+   insert into cash_remittances (staff_id, amount, status)
+   values ('00000000-0000-0000-0000-000000000000', 100000, 'rejected');
+   ```
+   Expected: `violates check constraint "remittance_rejection_has_reason"`.
+   ```sql
+   insert into cash_remittances (staff_id, amount, status, approved_by)
+   values ('00000000-0000-0000-0000-000000000000', 100000, 'approved',
+           '00000000-0000-0000-0000-000000000000');
+   ```
+   Expected: `violates check constraint "approval_fields_match_status"`
+   (`approved_at` is missing). Both inserts should have failed, so there's
+   nothing to clean up.
+
+   Then, in the SQL Editor, insert a `profiles` row for every existing admin
+   account (see step 5) — an account created before this migration has no
+   profile row yet, and without one it can sign in but reach nothing under
+   `/admin/*`.
+
+9. Paste the contents of `supabase/migrations/0008_activity_log_fk_set_null.sql`,
+   run it. Fixes a bug: `activity_logs.registration_id`/`remittance_id` had
+   no `ON DELETE` action, so deleting a registration or remittance that had
+   any activity log entry failed with a foreign key violation instead of
+   just clearing the link on that log row.
+
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
@@ -166,3 +212,6 @@ Placeholder values that must be replaced before real money moves:
 - [ ] `public/icon-192.png` and `public/icon-512.png` — solid black
       placeholders for the scanner's home-screen icon (plan 2), not an org
       logo
+- [ ] Every real staff member needs both an `auth.users` row and a matching
+      `profiles` row (`role = 'staff'`) created by hand before event day —
+      see step 5. There's no self-service signup for this either.

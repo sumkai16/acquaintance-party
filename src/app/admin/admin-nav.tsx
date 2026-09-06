@@ -5,15 +5,24 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { EVENT } from "@/lib/config/event";
 import { browserClient } from "@/lib/supabase/browser";
+import { logLogout } from "./session-actions";
 
-const LINKS = [
+const ADMIN_LINKS = [
   { href: "/admin/review", label: "Payments" },
   { href: "/admin/walk-in", label: "Walk-in" },
   { href: "/admin/scan", label: "Scanner" },
   { href: "/admin/dashboard", label: "Attendance" },
+  { href: "/admin/cash", label: "Cash" },
+  { href: "/admin/activity", label: "Activity" },
   { href: "/admin/raffle", label: "Raffle" },
   { href: "/admin/evaluations", label: "Evaluation" },
   { href: "/admin/registrations", label: "Find a registration" },
+] as const;
+
+const STAFF_LINKS = [
+  { href: "/admin/cashier", label: "My Dashboard" },
+  { href: "/admin/walk-in", label: "Walk-in" },
+  { href: "/admin/cashier/activity", label: "My Activity" },
 ] as const;
 
 type NavVisibility = { hidden: boolean; setHidden: (hidden: boolean) => void };
@@ -53,14 +62,16 @@ export function useSetNavHidden(hidden: boolean) {
  * raffle routes outright via usePathname(), which also hid their setup/idle
  * states that had no reason to lose the nav.
  */
-export function AdminNav() {
+export function AdminNav({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useContext(NavVisibilityContext)?.hidden ?? false;
+  const LINKS = role === "admin" ? ADMIN_LINKS : STAFF_LINKS;
 
   if (hidden) return null;
 
   async function signOut() {
+    await logLogout(); // while the session cookie is still valid
     await browserClient().auth.signOut();
     router.push("/admin/login");
     router.refresh();
