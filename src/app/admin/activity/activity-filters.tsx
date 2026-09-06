@@ -39,6 +39,11 @@ export function ActivityFilters({ accounts }: { accounts?: Account[] }) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
+    // Any filter change starts back at page 1 — the current page number
+    // almost never still makes sense against a newly narrowed (or widened)
+    // result set, and staying on, say, page 5 of a now-3-page list would
+    // just render empty.
+    params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   }
 

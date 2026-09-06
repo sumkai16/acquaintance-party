@@ -1,10 +1,15 @@
 import { formatPeso } from "@/lib/config/event";
-import { listActivity, type ActivityFilters as Filters } from "@/lib/activity/queries";
+import {
+  ACTIVITY_PAGE_SIZE,
+  listActivity,
+  type ActivityFilters as Filters,
+} from "@/lib/activity/queries";
 import { ACTIVITY_TYPES, describeActivity, type ActivityType } from "@/lib/activity/types";
 import { VALID_RANGES, resolveDateRange } from "@/lib/activity/date-range";
 import { listAllProfiles } from "@/lib/profiles/queries";
 import { formatDatePH, formatTimePH } from "@/lib/format/datetime";
 import { Table, Th, Tr } from "../table";
+import { Pagination } from "../pagination";
 import { ActivityFilters } from "./activity-filters";
 
 export const dynamic = "force-dynamic";
@@ -20,16 +25,18 @@ export default async function ActivityPage({
     userId?: string;
     activityType?: string;
     q?: string;
+    page?: string;
   }>;
 }) {
-  const { range: rawRange, from = "", to = "", userId, activityType: rawType, q } =
-    await searchParams;
+  const params = await searchParams;
+  const { range: rawRange, from = "", to = "", userId, activityType: rawType, q } = params;
   const range = VALID_RANGES.includes(rawRange as (typeof VALID_RANGES)[number])
     ? (rawRange as (typeof VALID_RANGES)[number])
     : "";
   const activityType = ACTIVITY_TYPES.includes(rawType as ActivityType)
     ? (rawType as ActivityType)
     : undefined;
+  const page = Math.max(1, Number(params.page) || 1);
 
   const { fromIso, toIso } = range ? resolveDateRange(range, from, to) : {};
 
@@ -41,9 +48,26 @@ export default async function ActivityPage({
     query: q || undefined,
   };
 
-  const [logs, profiles] = await Promise.all([listActivity(filters), listAllProfiles()]);
+  const [{ logs, total }, profiles] = await Promise.all([
+    listActivity(filters, page),
+    listAllProfiles(),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / ACTIVITY_PAGE_SIZE));
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
+
+  function buildHref(targetPage: number) {
+    const next = new URLSearchParams();
+    if (range) next.set("range", range);
+    if (from) next.set("from", from);
+    if (to) next.set("to", to);
+    if (userId) next.set("userId", userId);
+    if (activityType) next.set("activityType", activityType);
+    if (q) next.set("q", q);
+    if (targetPage > 1) next.set("page", String(targetPage));
+    const qs = next.toString();
+    return qs ? `/admin/activity?${qs}` : "/admin/activity";
+  }
 
   return (
     <main className="mx-auto w-full max-w-6xl p-6 2xl:max-w-7xl">
@@ -101,6 +125,7 @@ export default async function ActivityPage({
             })}
           </tbody>
         </Table>
+        <Pagination page={page} totalPages={totalPages} buildHref={buildHref} />
       </div>
     </main>
   );

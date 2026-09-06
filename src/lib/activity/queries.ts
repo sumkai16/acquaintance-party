@@ -40,11 +40,20 @@ export type ActivityFilters = {
   query?: string;
 };
 
+export const ACTIVITY_PAGE_SIZE = 25;
+
+export type ActivityPage = { logs: ActivityLog[]; total: number };
+
+/**
+ * One page of the log, newest first, plus the total matching-row count a
+ * pagination control needs — a flat `.limit(200)` was dumping the whole
+ * log onto one page regardless of how much history had built up.
+ */
 export async function listActivity(
   filters: ActivityFilters,
-  limit = 200,
-): Promise<ActivityLog[]> {
-  let builder = adminClient().from("activity_logs").select("*");
+  page = 1,
+): Promise<ActivityPage> {
+  let builder = adminClient().from("activity_logs").select("*", { count: "exact" });
 
   if (filters.userId) builder = builder.eq("user_id", filters.userId);
   if (filters.activityType) builder = builder.eq("activity_type", filters.activityType);
@@ -56,6 +65,10 @@ export async function listActivity(
     if (safe.length >= 2) builder = builder.ilike("description", `%${safe}%`);
   }
 
-  const { data } = await builder.order("created_at", { ascending: false }).limit(limit);
-  return (data as ActivityLog[]) ?? [];
+  const offset = (Math.max(1, page) - 1) * ACTIVITY_PAGE_SIZE;
+  const { data, count } = await builder
+    .order("created_at", { ascending: false })
+    .range(offset, offset + ACTIVITY_PAGE_SIZE - 1);
+
+  return { logs: (data as ActivityLog[]) ?? [], total: count ?? 0 };
 }
