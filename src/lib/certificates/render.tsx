@@ -17,7 +17,7 @@ export const CERTIFICATE_SIZE = { width: 2000, height: 1414 };
 const BACKGROUND_FILE = join(process.cwd(), "public", "certificate-bg.png");
 
 /** First-pass estimate — nudge to sit just above the artwork's underline. */
-const NAME_TOP = 660;
+const NAME_TOP = 655;
 
 const { deep, accent2, ground, ink } = THEME.colors;
 
