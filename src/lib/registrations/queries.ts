@@ -105,6 +105,23 @@ export async function createWalkInRegistration(
   return { ok: false, error: "failed" };
 }
 
+/**
+ * Which of these student IDs already have an active (non-rejected)
+ * registration — one batched check backing the bulk walk-in import's
+ * duplicate-in-database flag, instead of one lookup per row.
+ */
+export async function findActiveStudentIds(ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("student_id")
+    .in("student_id", ids)
+    .neq("status", "rejected");
+
+  return new Set((data ?? []).map((row) => row.student_id as string));
+}
+
 export async function getRegistration(id: string): Promise<Registration | null> {
   const { data } = await adminClient()
     .from("registrations")

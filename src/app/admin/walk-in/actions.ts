@@ -1,12 +1,11 @@
 "use server";
 
-import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
 import { walkInSchema } from "@/lib/registrations/schema";
 import { createWalkInRegistration } from "@/lib/registrations/queries";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
-import { sendTicketApprovedEmail } from "@/lib/notify/email";
 import { logActivity } from "@/lib/activity/queries";
+import { scheduleWalkInTicketEmail } from "./notify";
 
 export type SubmittedValues = {
   fullName: string;
@@ -102,20 +101,10 @@ export async function submitWalkIn(
     };
   }
 
-  after(async () => {
-    const status = await sendTicketApprovedEmail({
-      to: parsed.data.email,
-      fullName: parsed.data.fullName,
-      ticketId: created.id,
-    });
-    if (status === "failed") {
-      await logActivity({
-        userId: adminId,
-        activityType: "email_failed",
-        description: `Walk-in ticket email to ${parsed.data.email} failed to send for ${parsed.data.fullName}`,
-        registrationId: created.id,
-      });
-    }
+  scheduleWalkInTicketEmail(adminId, {
+    to: parsed.data.email,
+    fullName: parsed.data.fullName,
+    ticketId: created.id,
   });
 
   const profile = await currentProfile();
