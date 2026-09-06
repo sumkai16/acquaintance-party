@@ -2,11 +2,6 @@ import "server-only";
 import { evaluationContext } from "@/lib/evaluation/queries";
 import type { CertificateData } from "./render";
 
-/** The absolute site origin, or null when it isn't configured. */
-export function siteUrl(): string | null {
-  return process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? null;
-}
-
 /**
  * The certificate for one registration, or null when there isn't one to give.
  *
@@ -23,13 +18,10 @@ export async function certificateFor(
   const { registration, checkedInAt, evaluation } = context;
   if (!checkedInAt || !evaluation || !registration.ticket_code) return null;
 
-  const base = siteUrl();
-
   return {
     fullName: registration.full_name,
     yearLevel: registration.year_level,
     section: registration.section,
     serial: registration.ticket_code,
-    verifyUrl: base ? `${base}/verify/${registration.ticket_code}` : null,
   };
 }

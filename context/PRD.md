@@ -14,6 +14,11 @@ wifi, record attendance for a raffle, and run the raffle draw itself.
 Building.** The project was originally scoped assuming under two weeks of
 runway from 2026-08-30 — the actual gap turned out to be about five weeks.
 
+**Corrected 2026-09-06: the event moved to Saturday, 2026-10-03**, 4–8 PM,
+same venue — two days earlier than the date above. Runway math elsewhere in
+this doc ("~5 weeks") still holds at this precision; nothing else in §3's
+reasoning changes.
+
 ## 2. Target users
 - **Student** — buys a ticket, pays via GCash, uploads a receipt, gets a QR.
   Mobile-first; this is filled out on a phone.
@@ -321,8 +326,9 @@ group purchasing, discount codes, a native mobile app. All addable later
 without a schema rewrite, none needed for this event.
 
 ## 6. Key constraints that shape every decision
-- **600+ attendees, ~5 weeks runway to 2026-10-05** (revised 2026-08-31 from
-  an original under-two-weeks assumption — see §3). The build order still
+- **600+ attendees, ~5 weeks runway to 2026-10-03** (revised 2026-08-31 from
+  an original under-two-weeks assumption, date corrected 2026-09-06 from
+  2026-10-05 — see §1, §3). The build order still
   lands cuts on the last items (raffle, Sheets sync, landing polish) rather
   than checkout/review/scanner, since that priority never depended on the
   timeline being tight, only on which pieces are load-bearing at the door.

@@ -2,34 +2,24 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
-import { EVENT } from "@/lib/config/event";
 import { THEME } from "@/lib/config/theme";
-import { formatTicketCode } from "@/lib/tickets/code";
-import { qrDataUrl } from "@/lib/tickets/qr";
 
 /** A4 landscape at print resolution — the ratio a student's printer expects. */
 export const CERTIFICATE_SIZE = { width: 2000, height: 1414 };
 
 /**
- * Where the finished artwork goes.
- *
- * Drop the design in as `public/certificate-bg.png` at 2000×1414 (or larger,
- * same ratio) and it becomes the full-bleed background, with the name and
- * details composited on top at the offsets in LAYOUT below. Until then the
- * placeholder frame in this file stands in. Nudging those four numbers to fit
- * the artwork is the whole handover — nothing else moves.
+ * The finished artwork, `public/certificate-bg.png` at 2000×1414 — the
+ * school header, title, event details, quote, and signature lines are all
+ * baked into it. The recipient's name is the one thing still composited at
+ * request time, at NAME_TOP, over the blank underline the artwork already
+ * has. Until the file exists the placeholder frame below stands in.
  */
 const BACKGROUND_FILE = join(process.cwd(), "public", "certificate-bg.png");
 
-/** Vertical offsets from the top edge, in px. Tune these to the artwork. */
-const LAYOUT = {
-  heading: 190,
-  name: 560,
-  details: 830,
-  footer: 1080,
-};
+/** First-pass estimate — nudge to sit just above the artwork's underline. */
+const NAME_TOP = 660;
 
-const { accent, accent2, deep, ground, ink } = THEME.colors;
+const { deep, accent2, ground, ink } = THEME.colors;
 
 const fontDir = join(process.cwd(), "assets", "fonts");
 
@@ -57,19 +47,14 @@ const fonts = [
 
 export type CertificateData = {
   fullName: string;
+  /** Not shown on the certificate artwork — kept for /verify/[code], which
+   * looks a certificate up by yearLevel/section/serial independently of
+   * however the printed design renders. */
   yearLevel: string;
   section: string;
   /** The registration's ticket code, doubling as the certificate serial. */
   serial: string;
-  /** Public page the QR points at. Null when the site URL isn't configured. */
-  verifyUrl: string | null;
 };
-
-const eventDate = EVENT.startsAt.toLocaleDateString("en-PH", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 
 /** A filesystem-safe name for the download, e.g. `certificate-juan-dela-cruz`. */
 export function certificateFilename(fullName: string): string {
@@ -84,9 +69,7 @@ export function certificateFilename(fullName: string): string {
 export async function renderCertificatePng(
   data: CertificateData,
 ): Promise<Uint8Array<ArrayBuffer>> {
-  const qr = data.verifyUrl ? await qrDataUrl(data.verifyUrl) : null;
-
-  const image = new ImageResponse(<Certificate data={data} qr={qr} />, {
+  const image = new ImageResponse(<Certificate data={data} />, {
     ...CERTIFICATE_SIZE,
     fonts,
   });
@@ -94,13 +77,7 @@ export async function renderCertificatePng(
   return new Uint8Array(await image.arrayBuffer());
 }
 
-function Certificate({
-  data,
-  qr,
-}: {
-  data: CertificateData;
-  qr: string | null;
-}) {
+function Certificate({ data }: { data: CertificateData }) {
   return (
     <div
       style={{
@@ -128,100 +105,20 @@ function Certificate({
         <PlaceholderFrame />
       )}
 
-      <Row top={LAYOUT.heading}>
-        <span
-          style={{
-            fontSize: 30,
-            letterSpacing: 14,
-            color: accent,
-            fontWeight: 700,
-          }}
-        >
-          {`${EVENT.host} presents`.toUpperCase()}
-        </span>
-      </Row>
-      <Row top={LAYOUT.heading + 70}>
-        <span style={{ fontFamily: "Anton", fontSize: 108, color: deep }}>
-          CERTIFICATE OF ATTENDANCE
-        </span>
-      </Row>
-
-      <Row top={LAYOUT.name - 80}>
-        <span style={{ fontSize: 36, color: `${ink}` }}>
-          This certifies that
-        </span>
-      </Row>
-      <Row top={LAYOUT.name}>
+      <Row top={NAME_TOP}>
         <span
           style={{
             fontFamily: "Anton",
-            fontSize: 132,
-            color: accent,
+            fontSize: 120,
+            lineHeight: 1,
+            color: "#FFFFFF",
+            textShadow: "0 3px 10px rgba(0,0,0,0.45)",
             textAlign: "center",
           }}
         >
           {data.fullName.toUpperCase()}
         </span>
       </Row>
-      <Row top={LAYOUT.name + 165}>
-        <span style={{ fontSize: 34, letterSpacing: 6, color: deep }}>
-          {`${data.yearLevel} · Section ${data.section}`.toUpperCase()}
-        </span>
-      </Row>
-
-      <Row top={LAYOUT.details}>
-        <span style={{ fontSize: 38, textAlign: "center", lineHeight: 1.5 }}>
-          {`attended ${EVENT.name}: ${EVENT.tagline}, held on`}
-        </span>
-      </Row>
-      <Row top={LAYOUT.details + 62}>
-        <span style={{ fontSize: 38, textAlign: "center", lineHeight: 1.5 }}>
-          {`${eventDate} at ${EVENT.venue}.`}
-        </span>
-      </Row>
-
-      <div
-        style={{
-          position: "absolute",
-          top: LAYOUT.footer,
-          left: 0,
-          width: CERTIFICATE_SIZE.width,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          paddingLeft: 190,
-          paddingRight: 190,
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <span style={{ fontSize: 26, letterSpacing: 6, color: `${ink}99` }}>
-            CERTIFICATE NO.
-          </span>
-          <span style={{ fontSize: 40, letterSpacing: 8, fontWeight: 700 }}>
-            {formatTicketCode(data.serial)}
-          </span>
-        </div>
-
-        {qr ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <span
-              style={{
-                fontSize: 24,
-                color: `${ink}99`,
-                width: 220,
-                textAlign: "right",
-                lineHeight: 1.4,
-              }}
-            >
-              Scan to verify this certificate
-            </span>
-            {/* Black on white, no tint — the same camera constraint as the
-                door ticket. See context/DESIGN.md §4. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} width={170} height={170} alt="" />
-          </div>
-        ) : null}
-      </div>
     </div>
   );
 }
