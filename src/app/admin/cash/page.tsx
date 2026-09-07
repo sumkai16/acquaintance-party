@@ -1,9 +1,10 @@
 import { formatPeso } from "@/lib/config/event";
-import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import {
   adminCurrentCollectionCentavos,
+  cashPaymentCount,
   pendingRemittancesCentavos,
   staffCashOnHandCentavos,
+  totalCashCollectedCentavos,
 } from "@/lib/cash/queries";
 import { listAllRemittances } from "@/lib/remittances/queries";
 import { formatDateTimePH } from "@/lib/format/datetime";
@@ -22,15 +23,15 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function CashPage() {
   const [
-    totalEventCollection,
-    totalPayments,
+    totalCashCollection,
+    cashPayments,
     adminCurrent,
     staffOnHand,
     pendingRemit,
     remittances,
   ] = await Promise.all([
-    totalCollectedCentavos(),
-    approvedCount(),
+    totalCashCollectedCentavos(),
+    cashPaymentCount(),
     adminCurrentCollectionCentavos(),
     staffCashOnHandCentavos(),
     pendingRemittancesCentavos(),
@@ -41,15 +42,17 @@ export default async function CashPage() {
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
       <h1 className="font-display text-3xl uppercase">Cash Remittance Management</h1>
       <p className="mt-1 text-ground/70">
-        Money currently held by Admin and by Staff — a transfer, never counted twice.
+        Walk-in cash only — GCash never passes through anyone&rsquo;s hands, so
+        it is left to Find a registration. Remitting moves money from Staff to
+        Admin; it is never counted twice.
       </p>
 
       <dl className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Stat label="Total event collection" value={formatPeso(totalEventCollection)} />
+        <Stat label="Total cash collection" value={formatPeso(totalCashCollection)} />
         <Stat label="Admin current collection" value={formatPeso(adminCurrent)} />
         <Stat label="Staff cash on hand" value={formatPeso(staffOnHand)} />
         <Stat label="Pending remittances" value={formatPeso(pendingRemit)} />
-        <Stat label="Total payments" value={totalPayments} />
+        <Stat label="Total cash payments" value={cashPayments} />
       </dl>
 
       <section className="mt-8">

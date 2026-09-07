@@ -120,6 +120,34 @@ export async function staffCashOnHandCentavos(): Promise<number> {
   return currentCollectionCentavos(collected, remitted);
 }
 
+/**
+ * Every approved walk-in sale, admin's and staff's alike — the cash side of
+ * the event only. Deliberately not totalCollectedCentavos(), which also
+ * counts GCash: nobody is *holding* a GCash payment, so mixing it in leaves
+ * a total that the two "who has it" cards below can never add up to. In
+ * normal operation this equals adminCurrentCollection + staffCashOnHand.
+ * The all-payment-methods total is still the right figure on the Attendance
+ * dashboard and Find a registration; it just isn't a cash figure.
+ */
+export async function totalCashCollectedCentavos(): Promise<number> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("amount")
+    .eq("payment_method", "walk_in")
+    .eq("status", "approved");
+  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+}
+
+/** How many approved walk-in sales that total is made of. */
+export async function cashPaymentCount(): Promise<number> {
+  const { count } = await adminClient()
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("payment_method", "walk_in")
+    .eq("status", "approved");
+  return count ?? 0;
+}
+
 export async function pendingRemittancesCentavos(): Promise<number> {
   const { data } = await adminClient()
     .from("cash_remittances")
