@@ -1,14 +1,9 @@
-import { YEAR_LEVELS } from "./schema";
-import { SECTIONS_BY_YEAR } from "./sections";
+import { normalizeSection, SECTIONS_BY_YEAR, YEAR_LEVELS } from "./sections";
 
 export type SectionSummary = { section: string; count: number; totalCentavos: number };
 export type YearSectionReport = { yearLevel: string; sections: SectionSummary[] };
 
 type RegistrationLike = { year_level: string; section: string; amount: number };
-
-function normalizeSection(value: string): string {
-  return value.trim().toUpperCase();
-}
 
 /**
  * Groups approved registrations into a per-year, per-section payee count

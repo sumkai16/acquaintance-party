@@ -60,6 +60,49 @@ describe("checkoutSchema", () => {
     );
   });
 
+  it("normalizes a section so one section is one string in the report", () => {
+    const parsed = checkoutSchema.parse({ ...valid, section: "  b  " });
+    expect(parsed.section).toBe("B");
+  });
+
+  it("rejects a section the chosen year level does not have", () => {
+    // 4th year stops at D; G is a 1st/2nd year section.
+    const result = checkoutSchema.safeParse({
+      ...valid,
+      yearLevel: "4th year",
+      section: "G",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues[0];
+      expect(issue.path).toEqual(["section"]);
+      expect(issue.message).toBe("4th year has no section G.");
+    }
+  });
+
+  it("accepts the same section under a year level that does have it", () => {
+    expect(
+      checkoutSchema.safeParse({ ...valid, yearLevel: "1st year", section: "G" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("rejects a section outside the lettered scheme entirely", () => {
+    expect(
+      checkoutSchema.safeParse({ ...valid, section: "BSIT-3Z" }).success,
+    ).toBe(false);
+  });
+
+  it("reports a missing year level rather than the pair mismatch", () => {
+    const result = checkoutSchema.safeParse({ ...valid, yearLevel: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.message)).toEqual([
+        "Choose your year level.",
+      ]);
+    }
+  });
+
   it("rejects a reference that is not thirteen digits", () => {
     expect(
       checkoutSchema.safeParse({ ...valid, gcashReference: "12345" }).success,
@@ -114,5 +157,22 @@ describe("walkInSchema", () => {
     expect(
       walkInSchema.safeParse({ ...walkInValid, studentId: "" }).success,
     ).toBe(false);
+  });
+
+  // This is also what guards the Excel bulk import — every row goes through
+  // walkInSchema in import-actions.ts, at parse and again at confirm.
+  it("rejects a section the year level does not have", () => {
+    expect(
+      walkInSchema.safeParse({
+        ...walkInValid,
+        yearLevel: "4th year",
+        section: "F",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a lowercase section from a spreadsheet cell", () => {
+    const parsed = walkInSchema.parse({ ...walkInValid, section: "c" });
+    expect(parsed.section).toBe("C");
   });
 });

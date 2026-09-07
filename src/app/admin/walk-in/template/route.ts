@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { SECTIONS_BY_YEAR, YEAR_LEVELS } from "@/lib/registrations/sections";
 import { currentAdminId } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -24,6 +25,22 @@ export async function GET() {
     section: "A",
     email: "juan@example.com",
   });
+
+  // Section is validated against the year level on import, so a row with a
+  // section that year doesn't have is rejected at review. Spelling the
+  // allowed values out here saves a round trip of failed uploads.
+  const reference = workbook.addWorksheet("Valid sections");
+  reference.columns = [
+    { header: "Year level", key: "yearLevel", width: 14 },
+    { header: "Sections", key: "sections", width: 32 },
+  ];
+  reference.getRow(1).font = { bold: true };
+  for (const yearLevel of YEAR_LEVELS) {
+    reference.addRow({
+      yearLevel,
+      sections: SECTIONS_BY_YEAR[yearLevel].join(", "),
+    });
+  }
 
   const buffer = await workbook.xlsx.writeBuffer();
 

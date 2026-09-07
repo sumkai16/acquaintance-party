@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { sectionsFor } from "@/lib/registrations/sections";
 import { useFlash } from "../flash";
 import { Option } from "../option";
 import { submitWalkIn, type FormState } from "./actions";
@@ -71,37 +72,13 @@ export function WalkInForm() {
         />
       </Field>
 
-      <Field label="Year level" name="yearLevel" error={errors.yearLevel}>
-        <select
-          key={keyed("yearLevel")}
-          id="yearLevel"
-          name="yearLevel"
-          required
-          defaultValue={values?.yearLevel ?? ""}
-          className={inputClass}
-        >
-          <Option value="" disabled>
-            Select a year level
-          </Option>
-          {YEAR_LEVELS.map((level) => (
-            <Option key={level} value={level}>
-              {level}
-            </Option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Section" name="section" error={errors.section}>
-        <input
-          key={keyed("section")}
-          id="section"
-          name="section"
-          required
-          placeholder="e.g A,B,C"
-          defaultValue={values?.section ?? ""}
-          className={inputClass}
-        />
-      </Field>
+      <YearAndSection
+        key={keyed("yearAndSection")}
+        defaultYearLevel={values?.yearLevel ?? ""}
+        defaultSection={values?.section ?? ""}
+        yearLevelError={errors.yearLevel}
+        sectionError={errors.section}
+      />
 
       <Field
         label="Email"
@@ -135,6 +112,81 @@ export function WalkInForm() {
         you can enter the next sale.
       </p>
     </form>
+  );
+}
+
+/**
+ * Year level and Section together — Section's options come from the chosen
+ * year. Same shape and same reasoning as checkout-form.tsx's copy of this,
+ * minus the theming: `<Option>` keeps the popup readable on dark. The
+ * attempt key both restores a failed submission and clears the pair after a
+ * successful sale, so the next one starts blank.
+ */
+function YearAndSection({
+  defaultYearLevel,
+  defaultSection,
+  yearLevelError,
+  sectionError,
+}: {
+  defaultYearLevel: string;
+  defaultSection: string;
+  yearLevelError?: string;
+  sectionError?: string;
+}) {
+  // Only the year level is tracked, and only to pick the Section options.
+  // Both selects stay uncontrolled on `defaultValue`, like every other field
+  // here: a controlled <select> that remounts gets its value applied before
+  // its <option> children exist, and silently falls back to the first one.
+  const [yearLevel, setYearLevel] = useState(defaultYearLevel);
+  const sections = sectionsFor(yearLevel);
+
+  return (
+    <>
+      <Field label="Year level" name="yearLevel" error={yearLevelError}>
+        <select
+          id="yearLevel"
+          name="yearLevel"
+          required
+          defaultValue={defaultYearLevel}
+          onChange={(event) => setYearLevel(event.target.value)}
+          className={inputClass}
+        >
+          <Option value="" disabled>
+            Select a year level
+          </Option>
+          {YEAR_LEVELS.map((level) => (
+            <Option key={level} value={level}>
+              {level}
+            </Option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Section" name="section" error={sectionError}>
+        <select
+          id="section"
+          name="section"
+          required
+          // Remounts on every year change, which is what clears a stale pick:
+          // 4th year has no G, so carrying one over would submit a section
+          // that year doesn't have. The restored value only applies on the
+          // first render, before the student has touched the year level.
+          key={yearLevel}
+          defaultValue={yearLevel === defaultYearLevel ? defaultSection : ""}
+          disabled={sections.length === 0}
+          className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <Option value="" disabled>
+            {sections.length === 0 ? "Pick a year level first" : "Select a section"}
+          </Option>
+          {sections.map((name) => (
+            <Option key={name} value={name}>
+              {name}
+            </Option>
+          ))}
+        </select>
+      </Field>
+    </>
   );
 }
 

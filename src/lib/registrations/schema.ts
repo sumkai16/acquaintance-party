@@ -3,13 +3,16 @@ import {
   isValidGcashReference,
   normalizeGcashReference,
 } from "@/lib/tickets/reference";
+import {
+  normalizeSection,
+  sectionsFor,
+  YEAR_LEVELS,
+} from "./sections";
 
-export const YEAR_LEVELS = [
-  "1st year",
-  "2nd year",
-  "3rd year",
-  "4th year",
-] as const;
+// Re-exported so the forms, the report, and the Excel import can keep
+// importing it from here; it lives in ./sections next to the section list
+// it pairs with — see the comment on SECTIONS_BY_YEAR.
+export { YEAR_LEVELS };
 
 const fullName = z
   .string()
@@ -38,13 +41,26 @@ const yearLevel = z.enum(YEAR_LEVELS, { error: "Choose your year level." });
 
 const section = z
   .string()
-  .transform((value) => value.trim())
-  .pipe(
-    z
-      .string()
-      .min(1, "Enter your section.")
-      .max(40, "That section is too long."),
-  );
+  .transform(normalizeSection)
+  .pipe(z.string().min(1, "Choose your section."));
+
+// Section is only meaningful against a year level — 4th year stops at D
+// while 1st year runs to G — so the pair is checked here rather than on the
+// field. `path: ["section"]` puts the message under the Section dropdown:
+// both server actions key fieldErrors off issue.path[0]. Zod runs an
+// object-level check only once every field passed, so a missing year level
+// still reports "Choose your year level." instead of this.
+function checkSectionMatchesYear(
+  data: { yearLevel: string; section: string },
+  ctx: z.RefinementCtx,
+) {
+  if (sectionsFor(data.yearLevel).includes(data.section)) return;
+  ctx.addIssue({
+    code: "custom",
+    path: ["section"],
+    message: `${data.yearLevel} has no section ${data.section}.`,
+  });
+}
 
 const email = z
   .string()
@@ -63,7 +79,7 @@ export const checkoutSchema = z.object({
     .string()
     .refine(isValidGcashReference, "The GCash reference number is 13 digits.")
     .transform(normalizeGcashReference),
-});
+}).superRefine(checkSectionMatchesYear);
 
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
@@ -75,6 +91,6 @@ export const walkInSchema = z.object({
   yearLevel,
   section,
   email,
-});
+}).superRefine(checkSectionMatchesYear);
 
 export type WalkInInput = z.infer<typeof walkInSchema>;

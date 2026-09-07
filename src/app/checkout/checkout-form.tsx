@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { sectionsFor } from "@/lib/registrations/sections";
 import { submitRegistration, type FormState } from "./actions";
 
 const initial: FormState = { status: "idle", attempt: 0 };
@@ -64,37 +65,13 @@ export function CheckoutForm() {
         />
       </Field>
 
-      <Field label="Year level" name="yearLevel" error={errors.yearLevel}>
-        <select
-          key={keyed("yearLevel")}
-          id="yearLevel"
-          name="yearLevel"
-          required
-          defaultValue={values?.yearLevel ?? ""}
-          className={inputClass}
-        >
-          <option value="" disabled>
-            Select your year level
-          </option>
-          {YEAR_LEVELS.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field label="Section" name="section" error={errors.section}>
-        <input
-          key={keyed("section")}
-          id="section"
-          name="section"
-          required
-          placeholder="e.g A,B,C"
-          defaultValue={values?.section ?? ""}
-          className={inputClass}
-        />
-      </Field>
+      <YearAndSection
+        key={keyed("yearAndSection")}
+        defaultYearLevel={values?.yearLevel ?? ""}
+        defaultSection={values?.section ?? ""}
+        yearLevelError={errors.yearLevel}
+        sectionError={errors.section}
+      />
 
       <Field
         label="Personal email"
@@ -162,6 +139,82 @@ export function CheckoutForm() {
         once an organiser approves it.
       </p>
     </form>
+  );
+}
+
+/**
+ * Year level and Section, together, because Section's options come from the
+ * chosen year — 1st year runs A–G, 4th year stops at D. Pulled into its own
+ * component so the caller can key it on the attempt number, which restores
+ * both picks after a failed submit the same way `keyed()` does elsewhere.
+ */
+function YearAndSection({
+  defaultYearLevel,
+  defaultSection,
+  yearLevelError,
+  sectionError,
+}: {
+  defaultYearLevel: string;
+  defaultSection: string;
+  yearLevelError?: string;
+  sectionError?: string;
+}) {
+  // Only the year level is tracked, and only to pick the Section options.
+  // Both selects stay uncontrolled on `defaultValue`, like every other field
+  // here: a controlled <select> that remounts gets its value applied before
+  // its <option> children exist, and silently falls back to the first one.
+  const [yearLevel, setYearLevel] = useState(defaultYearLevel);
+  const sections = sectionsFor(yearLevel);
+
+  return (
+    <>
+      <Field label="Year level" name="yearLevel" error={yearLevelError}>
+        <select
+          id="yearLevel"
+          name="yearLevel"
+          required
+          defaultValue={defaultYearLevel}
+          onChange={(event) => setYearLevel(event.target.value)}
+          className={inputClass}
+        >
+          <option value="" disabled>
+            Select your year level
+          </option>
+          {YEAR_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </Field>
+
+      <Field label="Section" name="section" error={sectionError}>
+        <select
+          id="section"
+          name="section"
+          required
+          // Remounts on every year change, which is what clears a stale pick:
+          // 4th year has no G, so carrying one over would submit a section
+          // that year doesn't have. The restored value only applies on the
+          // first render, before the student has touched the year level.
+          key={yearLevel}
+          defaultValue={yearLevel === defaultYearLevel ? defaultSection : ""}
+          disabled={sections.length === 0}
+          className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          <option value="" disabled>
+            {sections.length === 0
+              ? "Pick a year level first"
+              : "Select your section"}
+          </option>
+          {sections.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </>
   );
 }
 
