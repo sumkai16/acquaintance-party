@@ -1,28 +1,46 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, Fragment, useContext, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { EVENT } from "@/lib/config/event";
 import { browserClient } from "@/lib/supabase/browser";
 import { logLogout } from "./session-actions";
 
-const ADMIN_LINKS = [
-  { href: "/admin/review", label: "Payments" },
-  { href: "/admin/walk-in", label: "Walk-in" },
-  { href: "/admin/scan", label: "Scanner" },
-  { href: "/admin/dashboard", label: "Attendance" },
-  { href: "/admin/cash", label: "Cash" },
-  { href: "/admin/activity", label: "Activity" },
-  { href: "/admin/raffle", label: "Raffle" },
-  { href: "/admin/evaluations", label: "Evaluation" },
-  { href: "/admin/registrations", label: "Find a registration" },
+/**
+ * Grouped, not one flat run of nine, and ordered the way the event actually
+ * runs: the overview, then taking money, then the door, then the night's
+ * own screens, then the audit trail. A second admin handed this bar should
+ * be able to find the cluster they need without having learned it. The
+ * groups are separated visually but carry no headings — a label per group
+ * would cost more room in the bar than the grouping saves.
+ */
+const ADMIN_GROUPS = [
+  [{ href: "/admin/dashboard", label: "Dashboard" }],
+  [
+    { href: "/admin/review", label: "Payments" },
+    { href: "/admin/walk-in", label: "Walk-in" },
+    { href: "/admin/cash", label: "Cash" },
+  ],
+  [
+    { href: "/admin/scan", label: "Scanner" },
+    { href: "/admin/attendance", label: "Attendance" },
+  ],
+  [
+    { href: "/admin/raffle", label: "Raffle" },
+    { href: "/admin/evaluations", label: "Evaluation" },
+  ],
+  [{ href: "/admin/activity", label: "Activity" }],
 ] as const;
 
-const STAFF_LINKS = [
-  { href: "/admin/cashier", label: "My Dashboard" },
-  { href: "/admin/walk-in", label: "Walk-in" },
-  { href: "/admin/cashier/activity", label: "My Activity" },
+// Three links is already scannable, so staff get one group — same shape as
+// ADMIN_GROUPS purely so both roles render through the same loop below.
+const STAFF_GROUPS = [
+  [
+    { href: "/admin/cashier", label: "My Dashboard" },
+    { href: "/admin/walk-in", label: "Walk-in" },
+    { href: "/admin/cashier/activity", label: "My Activity" },
+  ],
 ] as const;
 
 type NavVisibility = { hidden: boolean; setHidden: (hidden: boolean) => void };
@@ -66,7 +84,7 @@ export function AdminNav({ role }: { role: "admin" | "staff" }) {
   const pathname = usePathname();
   const router = useRouter();
   const hidden = useContext(NavVisibilityContext)?.hidden ?? false;
-  const LINKS = role === "admin" ? ADMIN_LINKS : STAFF_LINKS;
+  const GROUPS = role === "admin" ? ADMIN_GROUPS : STAFF_GROUPS;
 
   if (hidden) return null;
 
@@ -93,27 +111,42 @@ export function AdminNav({ role }: { role: "admin" | "staff" }) {
           {EVENT.name}
         </span>
 
-        {LINKS.map((link) => {
-          // Exact match, not startsWith: "/admin/cashier" is a literal
-          // prefix of "/admin/cashier/activity", so a staff member on My
-          // Activity was seeing both My Dashboard and My Activity lit up at
-          // once. No linked section here nests a page under another
-          // linked section's own path, so exact match loses nothing.
-          const active = pathname === link.href;
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:px-3.5 ${
-                active
-                  ? "bg-accent text-white"
-                  : "text-ground/70 hover:bg-ground/10 hover:text-ground"
-              }`}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
+        {GROUPS.map((group, index) => (
+          <Fragment key={group[0].href}>
+            {/* Hidden below sm on purpose: this bar wraps, and on a phone the
+                pills run to several lines where a divider can strand itself
+                at the start of a row. The grouping is a desktop-scanning
+                aid; on mobile the order alone carries it. */}
+            {index > 0 ? (
+              <span
+                aria-hidden
+                className="mx-1.5 hidden h-5 w-px shrink-0 bg-ground/15 sm:block"
+              />
+            ) : null}
+
+            {group.map((link) => {
+              // Exact match, not startsWith: "/admin/cashier" is a literal
+              // prefix of "/admin/cashier/activity", so a staff member on My
+              // Activity was seeing both My Dashboard and My Activity lit up at
+              // once. No linked section here nests a page under another
+              // linked section's own path, so exact match loses nothing.
+              const active = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:px-3.5 ${
+                    active
+                      ? "bg-accent text-white"
+                      : "text-ground/70 hover:bg-ground/10 hover:text-ground"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+          </Fragment>
+        ))}
 
         <button
           type="button"

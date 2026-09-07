@@ -44,7 +44,7 @@ export function LoginForm() {
       .maybeSingle();
 
     // No matching profiles row: this account isn't provisioned. Sign back
-    // out immediately rather than pushing to /admin/review and letting the
+    // out immediately rather than pushing to /admin/dashboard and letting the
     // layout gate silently bounce it back here with no explanation — see
     // docs/superpowers/plans/2026-09-06-staff-cashier-and-remittance.md Task 1.
     if (!profile) {
@@ -56,7 +56,7 @@ export function LoginForm() {
 
     await logLogin();
 
-    router.push(profile.role === "staff" ? "/admin/cashier" : "/admin/review");
+    router.push(profile.role === "staff" ? "/admin/cashier" : "/admin/dashboard");
     router.refresh();
   }
 

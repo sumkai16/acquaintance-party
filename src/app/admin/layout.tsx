@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { currentProfile } from "@/lib/supabase/server";
+import { getProfile } from "@/lib/profiles/queries";
+import { currentAdminId } from "@/lib/supabase/server";
 import { AdminNav, NavVisibilityProvider } from "./admin-nav";
 import { FlashProvider } from "./flash";
 
@@ -28,7 +29,16 @@ export default async function AdminLayout({
   const isLogin = pathname.endsWith("/admin/login");
   let role: "admin" | "staff" = "admin";
   if (!isLogin) {
-    const profile = await currentProfile();
+    // Two different failures, two different messages. Nobody signed in at
+    // all is the ordinary case — someone typed /admin, or their session
+    // expired — and gets a plain login page. Only a real session with no
+    // `profiles` row is "not provisioned"; telling a merely-signed-out
+    // visitor their account isn't set up sends them to ask an admin to fix
+    // an account that is already fine.
+    const userId = await currentAdminId();
+    if (!userId) redirect("/admin/login");
+
+    const profile = await getProfile(userId);
     if (!profile) redirect("/admin/login?error=not_provisioned");
     role = profile.role;
 

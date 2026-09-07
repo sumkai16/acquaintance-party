@@ -1,180 +1,220 @@
-import { Badge } from "../badge";
+import { Table, Th, Tr, SortHeaderLink } from "../table";
 import { Stat } from "../stat";
-import { Table, Th, SortHeaderLink, Tr } from "../table";
-import { formatPeso } from "@/lib/config/event";
-import { allScans, approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import {
-  filterScans,
-  findDoubleScans,
-  sortScans,
-  summarize,
-  type SortColumn,
-} from "@/lib/scans/report";
-import { ScanFilters } from "./scan-filters";
+  cashPaymentsSummary,
+  listAdminEmails,
+  listApprovedForSectionReport,
+  onlinePaymentsSummary,
+  searchRegistrations,
+} from "@/lib/registrations/queries";
+import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
+import { listAllProfileNames } from "@/lib/profiles/queries";
+import { sortRegistrations, type RegistrationSortColumn } from "@/lib/registrations/sort";
+import { buildSectionReport } from "@/lib/registrations/section-report";
+import { formatPeso } from "@/lib/config/event";
+import { RegistrationRow } from "./registration-row";
+import { RegistrationFilters } from "./registration-filters";
 
-export const metadata = { title: "Attendance" };
-// Attendance changes every few seconds during the event; never serve a cached
-// count to someone deciding whether to open the doors wider.
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Dashboard" };
 
-const COLUMNS: { key: SortColumn; label: string }[] = [
-  { key: "time", label: "Time" },
-  { key: "name", label: "Name" },
-  { key: "result", label: "Result" },
-  { key: "door", label: "Door" },
-];
+const VALID_STATUSES = ["pending", "approved", "rejected"] as const;
+const VALID_PAYMENT_METHODS = ["walk_in", "online"] as const;
+const SORT_COLUMNS: readonly RegistrationSortColumn[] = ["name", "amount", "submitted"];
 
-const RESULT_TONE = { ok: "green", duplicate: "amber", invalid: "red" } as const;
-
-export default async function DashboardPage({
+export default async function RegistrationsPage({
   searchParams,
 }: {
   searchParams: Promise<{
+    q?: string;
+    status?: string;
+    paymentMethod?: string;
     sort?: string;
     dir?: string;
-    name?: string;
-    year?: string;
-    section?: string;
-    door?: string;
   }>;
 }) {
-  const { sort, dir, name, year, section, door } = await searchParams;
-  const [rawScans, sold, collectedCentavos] = await Promise.all([
-    allScans(),
+  const { q = "", status: rawStatus, paymentMethod: rawPaymentMethod, sort, dir } =
+    await searchParams;
+  // No status in the URL means "all" — populated by default, same as
+  // Attendance's Recent Scans needing no filter picked to show something.
+  const status = VALID_STATUSES.includes(rawStatus as (typeof VALID_STATUSES)[number])
+    ? (rawStatus as (typeof VALID_STATUSES)[number])
+    : "all";
+  const paymentMethod = VALID_PAYMENT_METHODS.includes(
+    rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number],
+  )
+    ? (rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number])
+    : "all";
+
+  const rawResults = await searchRegistrations(q, status, paymentMethod);
+  const sortColumn = SORT_COLUMNS.includes(sort as RegistrationSortColumn)
+    ? (sort as RegistrationSortColumn)
+    : null;
+  const direction = dir === "asc" ? "asc" : "desc";
+  const results = sortColumn ? sortRegistrations(rawResults, sortColumn, direction) : rawResults;
+
+  // Only needed to label a rejected row with who rejected it, or a walk-in
+  // row with who added it — skip both lookups entirely on an empty page.
+  const adminEmails = results.length > 0 ? await listAdminEmails() : new Map<string, string>();
+  const profileNames = results.length > 0 ? await listAllProfileNames() : new Map<string, string>();
+
+  // Event-wide totals, independent of whatever search/filter is active on
+  // the page — same "always show the real number" reasoning as the
+  // Attendance and Cash pages' own stat cards.
+  const [totalPayees, totalCentavos, cash, online, approvedForReport] = await Promise.all([
     approvedCount(),
     totalCollectedCentavos(),
+    cashPaymentsSummary(),
+    onlinePaymentsSummary(),
+    listApprovedForSectionReport(),
   ]);
-  // Counts and the double-scan alert describe the whole night, not the
-  // filtered table view — a filter narrowing to one section shouldn't make
-  // "Checked in" look like fewer people showed up.
-  const summary = summarize(rawScans, sold);
-  const doubles = findDoubleScans(rawScans);
-  const sections = [...new Set(rawScans.map((s) => s.section).filter((s): s is string => !!s))].sort();
-  const doors = [...new Set(rawScans.map((s) => s.deviceLabel))].sort();
-
-  const sortColumn = COLUMNS.some((c) => c.key === sort) ? (sort as SortColumn) : null;
-  const direction = dir === "asc" ? "asc" : "desc";
-  const filtered = filterScans(rawScans, { name, year, section, door });
-  // No sort param: today's default, newest-first from the query itself.
-  const scans = sortColumn ? sortScans(filtered, sortColumn, direction) : filtered;
-
-  const exportParams = new URLSearchParams();
-  if (name) exportParams.set("name", name);
-  if (year) exportParams.set("year", year);
-  if (section) exportParams.set("section", section);
-  if (door) exportParams.set("door", door);
-  const exportHref = exportParams.toString()
-    ? `/admin/dashboard/export?${exportParams.toString()}`
-    : "/admin/dashboard/export";
+  const sectionReport = buildSectionReport(approvedForReport);
 
   return (
     <main className="mx-auto w-full max-w-5xl p-6 2xl:max-w-7xl">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-3xl uppercase">Attendance</h1>
-          <p className="text-ground/60">Live counts from every door scanner.</p>
-        </div>
-        <a
-          href={exportHref}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-        >
-          Download .xlsx
-        </a>
-      </div>
+      <header>
+        <h1 className="font-display text-3xl uppercase">Dashboard</h1>
+        <p className="text-ground/60">
+          Where the money and the payees stand. Search by name or email, or
+          filter by status.
+        </p>
+      </header>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Checked in" value={summary.checkedIn} />
-        <Stat label="Tickets sold" value={sold} />
-        <Stat label="Not yet arrived" value={summary.notYetArrived} />
-        <Stat label="Total collected" value={formatPeso(collectedCentavos)} />
+        <Stat label="Total payees" value={totalPayees} />
+        <Stat label="Total amount" value={formatPeso(totalCentavos)} />
+        <Stat label="Total cash" value={formatPeso(cash.totalCentavos)} />
+        <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
 
-      {doubles.length > 0 ? (
-        <section className="mt-8 rounded-lg border border-accent-4/40 bg-accent-4/10 p-4">
-          <h2 className="font-bold text-accent-4">
-            {doubles.length} ticket{doubles.length === 1 ? "" : "s"} admitted at
-            more than one door
-          </h2>
-          <p className="mt-1 text-sm text-ground/80">
-            This can happen when devices are offline and cannot see each
-            other&apos;s scans. Check these students in person.
-          </p>
-          <ul className="mt-3 space-y-1 text-sm text-ground/90">
-            {doubles.map((double) => (
-              <li key={double.registrationId}>
-                <strong>{double.fullName ?? "Unknown"}</strong> —{" "}
-                {double.devices.join(", ")}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Recent scans</h2>
-        <ScanFilters sections={sections} doors={doors} />
+        <h2 className="text-lg font-semibold">Results</h2>
+        <RegistrationFilters />
       </div>
+
       <div className="mt-2">
         <Table
           empty={
-            scans.length === 0
-              ? rawScans.length === 0
-                ? "No scans yet. They appear here as soon as a scanner syncs."
-                : "No scans match this filter."
+            results.length === 0
+              ? q.trim().length >= 2
+                ? `Nothing matches “${q}”.`
+                : status === "all"
+                  ? "No registrations yet."
+                  : `No ${status} registrations.`
               : undefined
           }
         >
           <thead>
             <tr className="text-left">
-              {COLUMNS.map((col) => {
-                const isActive = sortColumn === col.key;
-                const nextDir = isActive && direction === "asc" ? "desc" : "asc";
-                const params = new URLSearchParams();
-                params.set("sort", col.key);
-                params.set("dir", nextDir);
-                if (name) params.set("name", name);
-                if (year) params.set("year", year);
-                if (section) params.set("section", section);
-                if (door) params.set("door", door);
+              {(() => {
+                const sortHref = (col: RegistrationSortColumn) => {
+                  const active = sortColumn === col;
+                  const nextDir = active && direction === "asc" ? "desc" : "asc";
+                  const params = new URLSearchParams();
+                  params.set("sort", col);
+                  params.set("dir", nextDir);
+                  if (q) params.set("q", q);
+                  if (status !== "all") params.set("status", status);
+                  return { href: `?${params.toString()}`, active };
+                };
+                // Header order matches RegistrationRow's <td> order exactly —
+                // Payment/Status/Ticket code/Actions aren't sortable, so
+                // they're interleaved as plain Th rather than following one
+                // contiguous sortable block.
                 return (
-                  <SortHeaderLink
-                    key={col.key}
-                    label={col.label}
-                    href={`?${params.toString()}`}
-                    active={isActive}
-                    direction={direction}
-                  />
+                  <>
+                    <SortHeaderLink label="Name" {...sortHref("name")} direction={direction} />
+                    <SortHeaderLink label="Amount" {...sortHref("amount")} direction={direction} />
+                    <Th>Payment</Th>
+                    <Th>Added by</Th>
+                    <SortHeaderLink
+                      label="Submitted"
+                      {...sortHref("submitted")}
+                      direction={direction}
+                    />
+                    <Th>Status</Th>
+                    <Th>Ticket code</Th>
+                    <Th>Actions</Th>
+                  </>
                 );
-              })}
-              <Th>Year level</Th>
-              <Th>Section</Th>
-              <Th>Code</Th>
+              })()}
             </tr>
           </thead>
           <tbody>
-            {scans.slice(0, 100).map((scan, i) => (
-              <Tr key={`${scan.codeScanned}-${i}`}>
-                <td className="py-2 pr-3 pl-4 whitespace-nowrap">
-                  {new Date(scan.scannedAt).toLocaleTimeString("en-PH", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </td>
-                <td className="py-2 pr-3">{scan.fullName ?? "—"}</td>
-                <td className="py-2 pr-3">
-                  <Badge tone={RESULT_TONE[scan.result]}>{scan.result}</Badge>
-                </td>
-                <td className="py-2 pr-3">{scan.deviceLabel}</td>
-                <td className="py-2 pr-3 text-ground/70">{scan.yearLevel ?? "—"}</td>
-                <td className="py-2 pr-3 text-ground/70">{scan.section ?? "—"}</td>
-                <td className="py-2 pl-3 font-mono text-xs text-ground/50">
-                  {scan.codeScanned}
-                </td>
-              </Tr>
+            {results.map((registration) => (
+              <RegistrationRow
+                key={registration.id}
+                registration={registration}
+                reviewerEmail={
+                  registration.reviewed_by
+                    ? (adminEmails.get(registration.reviewed_by) ?? null)
+                    : null
+                }
+                addedByName={
+                  registration.payment_method === "walk_in" && registration.reviewed_by
+                    ? (profileNames.get(registration.reviewed_by) ?? null)
+                    : null
+                }
+              />
             ))}
           </tbody>
         </Table>
       </div>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">By year level &amp; section</h2>
+        <p className="text-sm text-ground/60">
+          Approved payees only. A section not on the school&apos;s list shows up under
+          &ldquo;Other&rdquo; instead of being left out of the count.
+        </p>
+
+        <div className="mt-3 grid gap-6 md:grid-cols-2">
+          {sectionReport.map((year) => {
+            const yearTotal = year.sections.reduce(
+              (acc, s) => ({
+                count: acc.count + s.count,
+                totalCentavos: acc.totalCentavos + s.totalCentavos,
+              }),
+              { count: 0, totalCentavos: 0 },
+            );
+
+            return (
+              <div key={year.yearLevel}>
+                <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-ground/70">
+                  {year.yearLevel}
+                </h3>
+                <Table>
+                  <thead>
+                    <tr className="text-left">
+                      <Th>Section</Th>
+                      <Th>Payees</Th>
+                      <Th>Amount</Th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {year.sections.map((section) => (
+                      <Tr key={section.section}>
+                        <td className="py-2 pr-3 pl-4 font-medium">{section.section}</td>
+                        <td className="py-2 pr-3 tabular-nums">{section.count}</td>
+                        <td className="py-2 pr-3 tabular-nums">
+                          {formatPeso(section.totalCentavos)}
+                        </td>
+                      </Tr>
+                    ))}
+                    <Tr>
+                      <td className="py-2 pr-3 pl-4 font-semibold">Total</td>
+                      <td className="py-2 pr-3 font-semibold tabular-nums">{yearTotal.count}</td>
+                      <td className="py-2 pr-3 font-semibold tabular-nums">
+                        {formatPeso(yearTotal.totalCentavos)}
+                      </td>
+                    </Tr>
+                  </tbody>
+                </Table>
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </main>
   );
 }

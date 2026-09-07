@@ -78,18 +78,20 @@ src/
 │   ├── admin/
 │   │   ├── layout.tsx            # auth gate, reads x-pathname
 │   │   ├── table.tsx             # shared Table/Th/SortHeaderLink/SortHeaderButton/Tr —
-│   │   │                         # every admin table (Attendance, Payments, Find a
-│   │   │                         # registration) is built from these
+│   │   │                         # every admin table (Dashboard, Attendance,
+│   │   │                         # Payments) is built from these
 │   │   ├── login/
 │   │   ├── review/               # "Payments" in the nav — approve/reject queue
-│   │   ├── registrations/        # search + status browse (All/Pending/Approved/
-│   │   │                         # Rejected) + Void, one page for both use cases
+│   │   ├── dashboard/            # "Dashboard" — the admin landing page: event
+│   │   │                         # totals, per-section breakdown, and search +
+│   │   │                         # status browse (All/Pending/Approved/Rejected)
+│   │   │                         # + Void, one page for all of it
 │   │   ├── walk-in/              # admin-entered cash sale, approved on the spot
 │   │   ├── scan/                 # door scanner: page.tsx + scanner.tsx (client)
 │   │   ├── raffle/               # projector: page.tsx, actions.ts (draw),
 │   │   │                         # entrant-actions.ts, entrant-manager.tsx (Setup),
 │   │   │                         # raffle-sidebar.tsx, raffle-wheel.tsx
-│   │   └── dashboard/            # attendance + double-scan alerts
+│   │   └── attendance/           # attendance + double-scan alerts
 │   │       └── export/route.ts   # GET, streams .xlsx
 │   ├── api/scan/
 │   │   ├── manifest/route.ts     # GET, authenticated — approved tickets + check-in state

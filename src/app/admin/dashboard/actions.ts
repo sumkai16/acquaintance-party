@@ -60,6 +60,6 @@ export async function voidRegistration(
     });
   }
 
-  revalidatePath("/admin/registrations");
+  revalidatePath("/admin/dashboard");
   return { ok: true };
 }

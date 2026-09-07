@@ -55,7 +55,7 @@ purchasing means there's no separate orders table.
   it never blocks a resubmission. There are two ways a row ends up
   rejected — the normal Payments reject (still pending-only, in
   `admin/review/actions.ts`), or `voidRegistration` in
-  `admin/registrations/actions.ts`, which does the same update but also
+  `admin/dashboard/actions.ts`, which does the same update but also
   accepts an *approved* row, for the case where a student legitimately
   needs a do-over after their ticket already went through. Both paths land
   on the same `rejected` state, so the index needs no separate concept of

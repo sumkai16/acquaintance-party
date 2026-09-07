@@ -5,7 +5,7 @@ organisers can leave the Sheet open and watch attendance fill in during the
 event.
 
 **This is a projection, not the record.** Postgres is the source of truth and
-`/admin/dashboard/export` produces the same data as `.xlsx` on demand. If any
+`/admin/attendance/export` produces the same data as `.xlsx` on demand. If any
 of the three environment variables is missing, the sync is skipped silently —
 the door, the dashboard, and the export all behave exactly the same. Set it up
 if it is useful; skip it if the account approval drags.
