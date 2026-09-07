@@ -83,6 +83,22 @@ export const EVENT = {
         "Yes — a screenshot scans exactly like the live page, which is useful if the venue signal is bad. Do not share it: a ticket is admitted once, and the second scan is flagged as a duplicate.",
     },
   ],
+
+  /**
+   * Who signs the attendance certificate. Only the names are rendered — the
+   * roles are already printed in `public/certificate-bg.png` beneath the
+   * three gold rules, so `role` is carried purely to document which column
+   * each name belongs over and stop the order being silently shuffled.
+   * Order matches SIGNATORY_COLUMNS in src/lib/certificates/render.tsx,
+   * left to right.
+   */
+  certificate: {
+    signatories: [
+      { name: "Kenneth Canon", role: "Treasurer" },
+      { name: "Brendon Benitez", role: "BSIT Department Governor" },
+      { name: "Axcee F. Cabusas", role: "Technology Officer" },
+    ],
+  },
 } as const;
 
 const withDecimals = new Intl.NumberFormat("en-PH", {

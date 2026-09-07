@@ -54,6 +54,20 @@ describe("checkoutSchema", () => {
     ).toBe(false);
   });
 
+  // The cap exists so the certificate renderer never has to shrink a name
+  // past legibility — see fullName in schema.ts.
+  it("accepts a 60-character name", () => {
+    expect(
+      checkoutSchema.safeParse({ ...valid, fullName: "a".repeat(60) }).success,
+    ).toBe(true);
+  });
+
+  it("rejects a name past 60 characters", () => {
+    expect(
+      checkoutSchema.safeParse({ ...valid, fullName: "a".repeat(61) }).success,
+    ).toBe(false);
+  });
+
   it("rejects an empty section", () => {
     expect(checkoutSchema.safeParse({ ...valid, section: "   " }).success).toBe(
       false,

@@ -2,7 +2,9 @@ import "server-only";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import { EVENT } from "@/lib/config/event";
 import { THEME } from "@/lib/config/theme";
+import { ANTON, CORMORANT, fitFontSize } from "./fit-text";
 
 /** A4 landscape at print resolution — the ratio a student's printer expects. */
 export const CERTIFICATE_SIZE = { width: 2000, height: 1414 };
@@ -16,8 +18,35 @@ export const CERTIFICATE_SIZE = { width: 2000, height: 1414 };
  */
 const BACKGROUND_FILE = join(process.cwd(), "public", "certificate-bg.png");
 
-/** First-pass estimate — nudge to sit just above the artwork's underline. */
-const NAME_TOP = 655;
+/**
+ * Everything below is measured off `public/certificate-bg.png` itself, not
+ * guessed: the name's underline is a 1123px rule at y=778, and the three
+ * signature rules are 396px each at y=1286, centred on 511 / 1011 / 1512.
+ *
+ * Each is a *bottom* edge, not a top. Both the recipient's name and the
+ * officers' names shrink to fit (see fitFontSize), and anchoring by the top
+ * would leave a shrunk name floating above its rule by however much it shrank
+ * — the taller the name, the closer it sat. Anchoring the bottom keeps every
+ * name resting on its line at any size.
+ */
+const NAME_BOTTOM = 773;
+const NAME_MAX_WIDTH = 1120;
+
+const SIGNATORY_COLUMNS = [511, 1002, 1512];
+const SIGNATORY_WIDTH = 396;
+const SIGNATORY_BOTTOM = 1276;
+
+/**
+ * Warm cream, matched to the reference the organisers signed off on, and
+ * close to the artwork's own "TREASURER" lettering so a composited name and
+ * its printed role read as one block. An early attempt used the `ink` token,
+ * which is nearly invisible here — this strip is the darkest part of the
+ * background, not the lightest.
+ */
+const SIGNATORY_COLOR = "#F3E2B8";
+
+/** Tracking, in px. A serif set in caps needs air to stop looking cramped. */
+const SIGNATORY_TRACKING = 2;
 
 const { deep, accent2, ground, ink } = THEME.colors;
 
@@ -28,10 +57,11 @@ const fontDir = join(process.cwd(), "assets", "fonts");
  * registration being rendered. next/font's output isn't reachable from here,
  * so the same two families the site uses are committed under assets/fonts.
  */
-const [anton, dmSans, dmSansBold, background] = await Promise.all([
+const [anton, dmSans, dmSansBold, cormorant, background] = await Promise.all([
   readFile(join(fontDir, "Anton-Regular.ttf")),
   readFile(join(fontDir, "DMSans-Regular.ttf")),
   readFile(join(fontDir, "DMSans-Bold.ttf")),
+  readFile(join(fontDir, "Cormorant-Bold.ttf")),
   readFile(BACKGROUND_FILE)
     .then((buffer) => `data:image/png;base64,${buffer.toString("base64")}`)
     // No artwork yet — the placeholder frame renders instead. Never fatal:
@@ -43,6 +73,7 @@ const fonts = [
   { name: "Anton", data: anton, weight: 400 as const, style: "normal" as const },
   { name: "DM Sans", data: dmSans, weight: 400 as const, style: "normal" as const },
   { name: "DM Sans", data: dmSansBold, weight: 700 as const, style: "normal" as const },
+  { name: "Cormorant", data: cormorant, weight: 700 as const, style: "normal" as const },
 ];
 
 export type CertificateData = {
@@ -78,6 +109,13 @@ export async function renderCertificatePng(
 }
 
 function Certificate({ data }: { data: CertificateData }) {
+  const name = data.fullName.toUpperCase();
+  const nameSize = fitFontSize(name, NAME_MAX_WIDTH, {
+    max: 120,
+    min: 44,
+    profile: ANTON,
+  });
+
   return (
     <div
       style={{
@@ -105,20 +143,79 @@ function Certificate({ data }: { data: CertificateData }) {
         <PlaceholderFrame />
       )}
 
-      <Row top={NAME_TOP}>
+      <Row top={NAME_BOTTOM - nameSize}>
         <span
           style={{
             fontFamily: "Anton",
-            fontSize: 120,
+            fontSize: nameSize,
             lineHeight: 1,
             color: "#FFFFFF",
             textShadow: "0 3px 10px rgba(0,0,0,0.45)",
             textAlign: "center",
+            // Never wrap. If the width estimate is ever wrong the name
+            // overhangs, which is obvious on sight; wrapping would look
+            // almost right while sitting on top of the artwork's own text.
+            whiteSpace: "nowrap",
           }}
         >
-          {data.fullName.toUpperCase()}
+          {name}
         </span>
       </Row>
+
+      {EVENT.certificate.signatories.map((signatory, index) => (
+        <Signature
+          key={signatory.role}
+          name={signatory.name}
+          centerX={SIGNATORY_COLUMNS[index]}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One officer's name, centred over its printed rule and resting on it.
+ * Uppercase, because the role printed directly beneath it is — the pair has
+ * to read as one block, not a name with a caption in a different voice.
+ */
+function Signature({ name: rawName, centerX }: { name: string; centerX: number }) {
+  const name = rawName.toUpperCase();
+  // A hair of padding either side, so a name that fills its column doesn't
+  // touch the ends of the rule it sits on.
+  const size = fitFontSize(name, SIGNATORY_WIDTH - 20, {
+    max: 38,
+    min: 20,
+    profile: CORMORANT,
+    letterSpacing: SIGNATORY_TRACKING,
+  });
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: SIGNATORY_BOTTOM - size,
+        left: centerX - SIGNATORY_WIDTH / 2,
+        width: SIGNATORY_WIDTH,
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
+      <span
+        style={{
+          fontFamily: "Cormorant",
+          fontWeight: 700,
+          fontSize: size,
+          letterSpacing: SIGNATORY_TRACKING,
+          lineHeight: 1,
+          color: SIGNATORY_COLOR,
+          // The strip behind these runs from near-black to bright gold, so
+          // the fill alone can't carry every one of the three.
+          textShadow: "0 2px 6px rgba(0,0,0,0.55)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {name}
+      </span>
     </div>
   );
 }

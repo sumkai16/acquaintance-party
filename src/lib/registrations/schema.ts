@@ -21,7 +21,11 @@ const fullName = z
     z
       .string()
       .min(2, "Enter your full name.")
-      .max(120, "That name is too long."),
+      // 60, not an arbitrary 120: this is the name printed on the
+      // certificate, and below roughly this length fitFontSize() stops being
+      // able to keep it on one line at a readable size. Every real name
+      // clears it comfortably.
+      .max(60, "That name is too long."),
   );
 
 // The actual identity key behind the one-registration-per-student cap —
