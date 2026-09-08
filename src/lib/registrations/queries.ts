@@ -212,6 +212,30 @@ export async function searchRegistrations(
 }
 
 /**
+ * Every registration, newest first — the whole table, for the backup export.
+ *
+ * Throws rather than returning an empty list on error, unlike the queries
+ * that feed a screen. A page that renders no rows is obviously wrong to
+ * whoever is looking at it; a *backup file* containing no rows looks exactly
+ * like a successful download and is discovered to be empty on the one day it
+ * is needed. Failing loudly is the whole point of this function.
+ *
+ * The explicit range is there for the same reason: PostgREST silently caps
+ * an unbounded select at 1,000 rows, comfortably above the event's 700
+ * capacity but not once rejected and resubmitted rows are counted too.
+ */
+export async function allRegistrations(): Promise<Registration[]> {
+  const { data, error } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .range(0, 9999);
+
+  if (error) throw new Error(`allRegistrations failed: ${error.message}`);
+  return (data as Registration[]) ?? [];
+}
+
+/**
  * Every approved registration's year level, section, and amount — no row
  * limit, unlike searchRegistrations()'s capped 50, since this feeds a
  * full per-section report rather than a browsable list.

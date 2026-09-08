@@ -94,12 +94,26 @@ export default async function RegistrationsPage({
 
   return (
     <main className="mx-auto w-full max-w-5xl p-6 2xl:max-w-7xl">
-      <header>
-        <h1 className="font-display text-3xl uppercase">Dashboard</h1>
-        <p className="text-ground/60">
-          Where the money and the payees stand. Search by name or email, or
-          filter by status.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-3xl uppercase">Dashboard</h1>
+          <p className="text-ground/60">
+            Where the money and the payees stand. Search by name or email, or
+            filter by status.
+          </p>
+        </div>
+        {/*
+          Always the whole table, never the filtered view — the opposite of
+          Attendance's export, which deliberately matches whatever is on
+          screen. A backup that quietly inherited an active search filter
+          would be the most dangerous kind of file: it looks complete.
+        */}
+        <a
+          href="/admin/dashboard/export"
+          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+        >
+          Download backup
+        </a>
       </header>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">

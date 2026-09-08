@@ -10,8 +10,11 @@
  * Deliberately generic, because it stands in for pages of different shapes
  * (a table on Dashboard, cards on Cash, a log on Activity). Getting the
  * heading and the first block roughly right is enough to make the transition
- * read as "loading" rather than "broken". Neutral greys only — admin screens
- * are function-first, no theme accent (context/DESIGN.md).
+ * read as "loading" rather than "broken".
+ *
+ * Neutral greys over the themed `bg-deep` shell, not accent-tinted: these
+ * blocks stand in for content that hasn't loaded, and colouring them would
+ * assert something about data nobody has read yet.
  */
 export default function AdminLoading() {
   return (
