@@ -147,6 +147,14 @@ describe("checkoutSchema", () => {
     expect(parsed.studentId).toBe("2023-00451");
   });
 
+  it("uppercases the student ID, so case can't split one student into two", () => {
+    // registrations_student_id_active_key matches exactly — a lowercase
+    // submission would otherwise sit beside the uppercase one in the index
+    // and earn a second ticket.
+    const parsed = checkoutSchema.parse({ ...valid, studentId: " scc-25-00025380 " });
+    expect(parsed.studentId).toBe("SCC-25-00025380");
+  });
+
   it("rejects an empty student ID", () => {
     expect(checkoutSchema.safeParse({ ...valid, studentId: "   " }).success).toBe(
       false,

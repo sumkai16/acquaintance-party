@@ -28,12 +28,27 @@ const fullName = z
       .max(60, "That name is too long."),
   );
 
+/**
+ * Uppercased, not just trimmed, and that isn't cosmetic: `student_id` is
+ * matched exactly by `registrations_student_id_active_key`, so
+ * `scc-25-00025380` and `SCC-25-00025380` would sit in the index as two
+ * different students and both get a ticket. Every ID issued by the school
+ * is uppercase anyway, so folding case only ever closes that hole.
+ *
+ * The forms also render the field in uppercase (a CSS transform, so the
+ * caret never jumps mid-word), which makes what a student sees while typing
+ * match what actually gets stored.
+ */
+export function normalizeStudentId(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 // The actual identity key behind the one-registration-per-student cap —
 // email alone isn't reliable, since a student can just use a new address
 // per submission.
 const studentId = z
   .string()
-  .transform((value) => value.trim())
+  .transform(normalizeStudentId)
   .pipe(
     z
       .string()

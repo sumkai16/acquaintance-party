@@ -61,7 +61,16 @@ export function CheckoutForm() {
           required
           placeholder="SCC-00-0000000"
           defaultValue={values?.studentId ?? ""}
-          className={inputClass}
+          // Shown in caps as it's typed, and stored that way too — the
+          // schema uppercases the value (normalizeStudentId), so this is
+          // the display half of the same rule. A CSS transform rather than
+          // rewriting the input's value on each keystroke, which would
+          // throw the caret to the end when someone corrects a character
+          // mid-ID. autoCapitalize gets a phone keyboard to start in caps.
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          className={`${inputClass} uppercase`}
         />
       </Field>
 
