@@ -15,6 +15,17 @@ activity-log rows (added this session — see `src/lib/activity/types.ts`)
 will keep surfacing this in `/admin/activity` until it's fixed, instead of
 failing silently.
 
+**Nobody emailed in the meantime is lost.** Every approval since sales opened
+is queued rather than forgotten: `registrations.ticket_email_sent_at`
+(migration `0009`) stays null until a send is actually accepted, and the
+Dashboard carries a **Ticket emails — Send to N** button that mails the QR to
+everyone still null, oldest first. It refuses to run while
+`RESEND_FROM_EMAIL` is still an `@resend.dev` address, because that sender
+can have a send *accepted* and dropped afterwards — which would mark hundreds
+of students as emailed when nothing arrived. So the order is: buy the domain,
+verify it, set `RESEND_FROM_EMAIL`, redeploy, then press the button. On the
+free plan it sends 100 a day; press it again the next day for the rest.
+
 Sends two emails to a student: one right after checkout ("we received this,
 here's your permanent link, keep it"), and one when an admin approves the
 ticket. This is the only copy of the ticket link that reaches the student

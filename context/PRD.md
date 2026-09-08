@@ -289,6 +289,33 @@ mockups provided, flagged rather than silently expanded into. No schema,
 server action, or business logic changed; purely visual/interaction-layer,
 and the existing 117-test suite passed unmodified.
 
+**The ticket email carries the QR itself, and there's a button to send the
+backlog** (2026-09-08). Confirmation emails have been failing since sales
+opened — `RESEND_FROM_EMAIL` is still `onboarding@resend.dev`, which drops
+mail to everyone but the account owner (`docs/setup/resend.md`) — so a
+growing set of approved payees hold a paid ticket nobody has ever emailed
+them. Two changes, both aimed at the moment the domain lands:
+- `registrations.ticket_email_sent_at` (`0009`) records what actually went
+  out, the same "null is the queue" shape as `evaluation_invited_at`. The
+  Dashboard's **Ticket emails** card sends to everyone still null, oldest
+  first, in batches of 100, stamping a batch only after Resend accepts it —
+  so pressing it again retries exactly what failed. A per-row **Email QR** /
+  **Resend QR** action covers the individual "it went to spam" case, and is
+  deliberately *not* gated on the stamp.
+- The approval email now shows the QR, not just a link to it, via a new
+  public `GET /ticket/<id>/qr` PNG route (approved-and-coded only). An
+  attachment would have been the obvious choice and is the wrong one:
+  Resend's batch endpoint rejects attachments, and batching is the only way
+  600 students get emailed inside one request. The link stays under the
+  image for clients that block remote content.
+
+The bulk send **refuses to run while `RESEND_FROM_EMAIL` ends in
+`@resend.dev`** (`sendingDomainReady()`). That guard is the load-bearing
+part: on the placeholder sender Resend can accept a batch call and discard
+the mail afterwards, which would stamp hundreds of rows as emailed and bury
+the very backlog the button exists to clear. Pending students were left out
+of the backfill by choice — they get their email automatically on approval.
+
 ### 4.8 Post-event evaluation and certificate of attendance
 
 Added 2026-09-05 at QA's request — the first piece of scope that lives

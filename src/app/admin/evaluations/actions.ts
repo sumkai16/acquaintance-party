@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { markInvited, pendingInviteRecipients } from "@/lib/evaluation/queries";
 import {
-  INVITE_BATCH_LIMIT,
+  EMAIL_BATCH_LIMIT,
   sendEvaluationInviteBatch,
 } from "@/lib/notify/email";
 import { currentAdminId } from "@/lib/supabase/server";
@@ -31,8 +31,8 @@ export async function sendEvaluationInvites(): Promise<SendResult> {
   let sent = 0;
   let failed = 0;
 
-  for (let start = 0; start < recipients.length; start += INVITE_BATCH_LIMIT) {
-    const chunk = recipients.slice(start, start + INVITE_BATCH_LIMIT);
+  for (let start = 0; start < recipients.length; start += EMAIL_BATCH_LIMIT) {
+    const chunk = recipients.slice(start, start + EMAIL_BATCH_LIMIT);
     const delivered = await sendEvaluationInviteBatch(
       chunk.map((recipient) => ({
         to: recipient.email,

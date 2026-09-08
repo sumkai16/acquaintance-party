@@ -5,6 +5,7 @@ import {
   listAdminEmails,
   listApprovedForSectionReport,
   onlinePaymentsSummary,
+  pendingTicketEmailCount,
   searchRegistrations,
 } from "@/lib/registrations/queries";
 import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
@@ -14,6 +15,7 @@ import { buildSectionReport } from "@/lib/registrations/section-report";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
+import { SendTicketEmails } from "./send-ticket-emails";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };
@@ -46,7 +48,32 @@ export default async function RegistrationsPage({
     ? (rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number])
     : "all";
 
-  const rawResults = await searchRegistrations(q, status, paymentMethod);
+  // One round trip, not four. The row search and the event-wide totals do
+  // not depend on each other, and awaiting them in sequence meant the page
+  // paid Singapore's latency once per query — see the reviewer lookups below
+  // for the one dependency that genuinely has to come second.
+  //
+  // The totals are independent of whatever search/filter is active, the same
+  // "always show the real number" reasoning as the Attendance and Cash
+  // pages' own stat cards.
+  const [
+    rawResults,
+    totalPayees,
+    totalCentavos,
+    cash,
+    online,
+    approvedForReport,
+    unemailed,
+  ] = await Promise.all([
+    searchRegistrations(q, status, paymentMethod),
+    approvedCount(),
+    totalCollectedCentavos(),
+    cashPaymentsSummary(),
+    onlinePaymentsSummary(),
+    listApprovedForSectionReport(),
+    pendingTicketEmailCount(),
+  ]);
+
   const sortColumn = SORT_COLUMNS.includes(sort as RegistrationSortColumn)
     ? (sort as RegistrationSortColumn)
     : null;
@@ -54,20 +81,15 @@ export default async function RegistrationsPage({
   const results = sortColumn ? sortRegistrations(rawResults, sortColumn, direction) : rawResults;
 
   // Only needed to label a rejected row with who rejected it, or a walk-in
-  // row with who added it — skip both lookups entirely on an empty page.
-  const adminEmails = results.length > 0 ? await listAdminEmails() : new Map<string, string>();
-  const profileNames = results.length > 0 ? await listAllProfileNames() : new Map<string, string>();
-
-  // Event-wide totals, independent of whatever search/filter is active on
-  // the page — same "always show the real number" reasoning as the
-  // Attendance and Cash pages' own stat cards.
-  const [totalPayees, totalCentavos, cash, online, approvedForReport] = await Promise.all([
-    approvedCount(),
-    totalCollectedCentavos(),
-    cashPaymentsSummary(),
-    onlinePaymentsSummary(),
-    listApprovedForSectionReport(),
-  ]);
+  // row with who added it. Both are keyed on `reviewed_by`, so a page where
+  // no row has one — every row still pending, the common case early on —
+  // needs neither. That is a sharper test than "are there any rows at all",
+  // and it matters most for listAdminEmails: it calls the Supabase Auth
+  // admin API, the slowest single call on this page.
+  const needsReviewers = results.some((registration) => registration.reviewed_by);
+  const [adminEmails, profileNames] = needsReviewers
+    ? await Promise.all([listAdminEmails(), listAllProfileNames()])
+    : [new Map<string, string>(), new Map<string, string>()];
   const sectionReport = buildSectionReport(approvedForReport);
 
   return (
@@ -86,6 +108,8 @@ export default async function RegistrationsPage({
         <Stat label="Total cash" value={formatPeso(cash.totalCentavos)} />
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
+
+      <SendTicketEmails pending={unemailed} />
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Results</h2>

@@ -1,6 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
+import { markTicketEmailSent } from "@/lib/registrations/queries";
 import { logActivity } from "@/lib/activity/queries";
 
 /**
@@ -18,10 +19,13 @@ import { logActivity } from "@/lib/activity/queries";
  */
 export function scheduleWalkInTicketEmail(
   adminId: string,
-  ticket: { to: string; fullName: string; ticketId: string },
+  ticket: { to: string; fullName: string; ticketId: string; ticketCode?: string },
 ) {
   after(async () => {
     const status = await sendTicketApprovedEmail(ticket);
+    // Same reason the review path stamps: the Dashboard's not-yet-emailed
+    // queue is only as good as what gets recorded here.
+    if (status === "sent") await markTicketEmailSent([ticket.ticketId]);
     if (status === "failed") {
       await logActivity({
         userId: adminId,

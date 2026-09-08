@@ -2,7 +2,12 @@
 
 import ExcelJS from "exceljs";
 import { EVENT } from "@/lib/config/event";
-import { walkInSchema, YEAR_LEVELS, type WalkInInput } from "@/lib/registrations/schema";
+import {
+  normalizeStudentId,
+  walkInSchema,
+  YEAR_LEVELS,
+  type WalkInInput,
+} from "@/lib/registrations/schema";
 import {
   createWalkInRegistration,
   findActiveStudentIds,
@@ -139,7 +144,11 @@ export async function parseWalkInImport(formData: FormData): Promise<ParseImport
     if (rowNumber === 1) return;
     const raw = {
       fullName: cellText(row, nameCol),
-      studentId: cellText(row, studentIdCol),
+      // Normalized here, not just in the schema: the duplicate-in-file
+      // count and the findActiveStudentIds() lookup below both compare this
+      // raw value, and an ID typed in lowercase in the spreadsheet would
+      // miss both checks and then fail at insert instead.
+      studentId: normalizeStudentId(cellText(row, studentIdCol)),
       yearLevel: normalizeYearLevel(cellText(row, yearCol)),
       section: cellText(row, sectionCol),
       email: cellText(row, emailCol),
@@ -228,6 +237,7 @@ export async function confirmWalkInImport(rows: WalkInInput[]): Promise<ConfirmI
       to: parsed.data.email,
       fullName: parsed.data.fullName,
       ticketId: result.id,
+      ticketCode: result.ticketCode,
     });
     await logActivity({
       userId: adminId,

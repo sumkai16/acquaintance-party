@@ -1,0 +1,13 @@
+-- Whether the ticket QR email has actually gone out for a registration.
+--
+-- Every approval already tries to send one, but with no verified sending
+-- domain Resend rejected them all (docs/setup/resend.md) — so a backlog of
+-- approved payees is holding a ticket nobody ever emailed. Nothing recorded
+-- that, because the send was fire-and-forget.
+--
+-- Null is the queue, the same shape as evaluation_invited_at in 0006: the
+-- admin send picks recipients by this being null and stamps a batch only
+-- after Resend accepts it, so pressing the button again retries exactly what
+-- failed and emails nobody twice. Every existing row starting null is
+-- correct — none of them have been emailed.
+alter table registrations add column ticket_email_sent_at timestamptz;

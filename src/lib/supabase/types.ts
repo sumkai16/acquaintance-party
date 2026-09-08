@@ -24,6 +24,7 @@ export type Registration = {
   reviewed_at: string | null;
   reviewed_by: string | null;
   evaluation_invited_at: string | null;
+  ticket_email_sent_at: string | null;
 };
 
 export type Evaluation = {

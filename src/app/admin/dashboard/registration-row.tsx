@@ -8,7 +8,7 @@ import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
-import { voidRegistration } from "./actions";
+import { sendTicketEmail, voidRegistration } from "./actions";
 
 const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
 
@@ -24,6 +24,17 @@ export function RegistrationRow({
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
   const flash = useFlash();
+
+  function handleEmail() {
+    startTransition(async () => {
+      const result = await sendTicketEmail(registration.id);
+      if (!result.ok) {
+        flash(result.error ?? "Something went wrong.", "error");
+        return;
+      }
+      flash(`Emailed the QR to ${registration.email}.`);
+    });
+  }
 
   function handleVoid() {
     startTransition(async () => {
@@ -91,6 +102,23 @@ export function RegistrationRow({
           >
             Open ticket
           </Link>
+          {registration.status === "approved" ? (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={handleEmail}
+              // Works on someone already emailed on purpose — this is the
+              // answer to "it went to spam" / "I mistyped my address."
+              title={
+                registration.ticket_email_sent_at
+                  ? `Last sent ${new Date(registration.ticket_email_sent_at).toLocaleString("en-PH")}. Sends again.`
+                  : "Not emailed yet. Sends the QR to their address."
+              }
+              className="font-semibold text-accent-2 underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            >
+              {registration.ticket_email_sent_at ? "Resend QR" : "Email QR"}
+            </button>
+          ) : null}
           {registration.status !== "rejected" ? (
             <>
               <input

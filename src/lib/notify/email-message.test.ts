@@ -55,6 +55,30 @@ describe("buildTicketApprovedEmail", () => {
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("A &amp; B &lt;script&gt;");
   });
+
+  it("shows the QR itself, and the code with it, when given one", () => {
+    const email = buildTicketApprovedEmail({
+      ...base,
+      qrUrl: "https://it2026.vercel.app/ticket/abc-123/qr",
+      ticketCode: "A1B2C3D4E5F6",
+    });
+    expect(email.html).toContain(
+      '<img src="https://it2026.vercel.app/ticket/abc-123/qr"',
+    );
+    // Dashed, the same grouping the ticket page prints — a volunteer reads
+    // this aloud when a camera won't focus.
+    expect(email.html).toContain("A1B2-C3D4-E5F6");
+    expect(email.text).toContain("A1B2-C3D4-E5F6");
+    // The link never goes away: a client that blocks remote images has to
+    // leave the student somewhere to go.
+    expect(email.html).toContain(base.url);
+  });
+
+  it("falls back to the link-only message when there's no QR URL", () => {
+    const email = buildTicketApprovedEmail(base);
+    expect(email.html).not.toContain("<img");
+    expect(email.html).toContain(base.url);
+  });
 });
 
 describe("buildEvaluationInviteEmail", () => {

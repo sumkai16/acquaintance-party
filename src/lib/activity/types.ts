@@ -14,6 +14,7 @@ export const ACTIVITY_TYPES = [
   "remittance_approved",
   "remittance_rejected",
   "email_failed",
+  "ticket_email_sent",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -29,6 +30,7 @@ const LABELS: Record<ActivityType, string> = {
   remittance_approved: "Remittance Approved",
   remittance_rejected: "Remittance Rejected",
   email_failed: "Email Failed",
+  ticket_email_sent: "Ticket Email Sent",
 };
 
 export function describeActivity(type: ActivityType): string {

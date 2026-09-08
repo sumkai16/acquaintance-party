@@ -105,6 +105,7 @@ export async function submitWalkIn(
     to: parsed.data.email,
     fullName: parsed.data.fullName,
     ticketId: created.id,
+    ticketCode: created.ticketCode,
   });
 
   const profile = await currentProfile();

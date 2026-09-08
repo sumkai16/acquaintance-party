@@ -1,10 +1,19 @@
 import { EVENT } from "@/lib/config/event";
 import { THEME } from "@/lib/config/theme";
+import { formatTicketCode } from "@/lib/tickets/code";
 
 export type EmailInput = {
   fullName: string;
   /** Absolute URL the email's button points at. */
   url: string;
+  /**
+   * Absolute URL of the hosted ticket QR PNG. Optional: without it the
+   * approval email is exactly the link-only message it has always been,
+   * which is what an unconfigured `NEXT_PUBLIC_SITE_URL` leaves us with.
+   */
+  qrUrl?: string;
+  /** The bare 12-character code, printed under the QR. */
+  ticketCode?: string;
 };
 
 export type BuiltEmail = {
@@ -99,17 +108,48 @@ export function buildTicketSubmittedEmail(input: EmailInput): BuiltEmail {
   };
 }
 
+/**
+ * The QR itself, on plain white, with the code in text underneath.
+ *
+ * A hosted `<img>` rather than an attachment or a data URL: Gmail strips
+ * data URLs outright, and Resend's batch endpoint — the only way to email
+ * hundreds of students in one request — refuses attachments. Mail clients
+ * that block remote images by default show the code and the link instead,
+ * which is why neither is optional.
+ *
+ * The white block is the same door constraint the ticket page carries
+ * (see src/lib/tickets/qr.ts): a phone camera needs black on white, so
+ * this never picks up the theme even though everything around it does.
+ */
+function qrBlock(qrUrl: string, ticketCode?: string): string {
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;background:#ffffff;border:1px solid ${ink}22;border-radius:8px">` +
+    `<tr><td align="center" style="padding:20px">` +
+    `<img src="${qrUrl}" width="240" height="240" alt="Your ticket QR code" style="display:block;width:240px;height:240px;border:0" />` +
+    (ticketCode
+      ? `<div style="margin-top:12px;font-family:'Courier New',Courier,monospace;font-size:15px;letter-spacing:0.15em;color:${ink}cc">${escapeHtml(formatTicketCode(ticketCode))}</div>`
+      : "") +
+    `</td></tr></table>`
+  );
+}
+
 /** Sent the moment an admin approves a registration. */
 export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
   const name = escapeHtml(input.fullName);
+  const hasQr = Boolean(input.qrUrl);
 
   return {
     subject: `Your ${EVENT.name} ticket is approved`,
     html: wrap(
       `<p style="margin:0 0 16px">Hi ${name},</p>` +
-        `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. Your QR ` +
-        `code is ready at the link below — screenshot it or keep the page ` +
-        `bookmarked for the door.</p>`,
+        (hasQr
+          ? `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. ` +
+            `Here is your QR code — screenshot it, or open the link below at ` +
+            `the door.</p>` +
+            qrBlock(input.qrUrl!, input.ticketCode)
+          : `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. Your QR ` +
+            `code is ready at the link below — screenshot it or keep the page ` +
+            `bookmarked for the door.</p>`),
       "View your QR ticket",
       input.url,
     ),
@@ -117,6 +157,9 @@ export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
       `Hi ${input.fullName},\n\n` +
       `Your ${EVENT.name} ticket is approved. Your QR code is ready at the ` +
       `link below — screenshot it or keep the page bookmarked.\n\n` +
+      (input.ticketCode
+        ? `Ticket code: ${formatTicketCode(input.ticketCode)}\n\n`
+        : "") +
       `${input.url}`,
   };
 }

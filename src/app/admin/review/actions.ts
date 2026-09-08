@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { generateTicketCode } from "@/lib/tickets/generate";
 import { adminClient } from "@/lib/supabase/admin";
 import { currentAdminId } from "@/lib/supabase/server";
+import { markTicketEmailSent } from "@/lib/registrations/queries";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
 import { logActivity } from "@/lib/activity/queries";
 
@@ -19,6 +20,10 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
   // Retry on the vanishingly unlikely ticket-code collision rather than
   // failing the approval. The unique index is what makes this safe.
   for (let attempt = 0; attempt < 5; attempt++) {
+    // Held in a variable, not inlined: the email needs the same code to draw
+    // the QR it carries.
+    const ticketCode = generateTicketCode();
+
     // Array form, not .single(): a no-op (another admin already handled it)
     // matches zero rows, which .single() treats as an error rather than the
     // harmless race it actually is.
@@ -26,7 +31,7 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
       .from("registrations")
       .update({
         status: "approved",
-        ticket_code: generateTicketCode(),
+        ticket_code: ticketCode,
         reject_reason: null,
         reviewed_at: new Date().toISOString(),
         reviewed_by: adminId,
@@ -46,7 +51,13 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
             to: approved.email,
             fullName: approved.full_name,
             ticketId: id,
+            ticketCode,
           });
+          // Recording what actually left keeps the Dashboard's "hasn't been
+          // emailed" queue honest — that queue is what a later bulk send
+          // works from, and a send it never hears about would strand this
+          // student in it forever, or email them twice.
+          if (status === "sent") await markTicketEmailSent([id]);
           if (status === "failed") {
             await logActivity({
               userId: adminId,

@@ -32,6 +32,7 @@ purchasing means there's no separate orders table.
 | reviewed_at | timestamptz | nullable | |
 | reviewed_by | uuid | FK → `auth.users(id)`, nullable | The admin who approved/rejected |
 | evaluation_invited_at | timestamptz | nullable | Added in `0006_evaluation.sql`. When the post-event evaluation email went out. `NULL` is the queue: the admin send picks recipients by this being null, so pressing the button again retries failures and catches late-syncing scans without emailing anyone twice |
+| ticket_email_sent_at | timestamptz | nullable | Added in `0009_ticket_email.sql`. When the ticket QR email actually reached Resend. Same "null is the queue" shape as `evaluation_invited_at` — the Dashboard's **Send to N** button emails approved payees where this is null, and stamps a batch only after Resend accepts it. Exists because every approval email failed silently for weeks (no verified sending domain, see `docs/setup/resend.md`) with nothing recording who was missed |
 
 **Check constraints — do not work around these from application code:**
 - `ticket_code_matches_status` — `status = 'approved'` requires

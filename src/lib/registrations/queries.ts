@@ -57,7 +57,10 @@ export async function createRegistration(
 }
 
 export type CreateWalkInResult =
-  | { ok: true; id: string }
+  // The code comes back out because the confirmation email draws the QR from
+  // it — a walk-in is approved on the spot, so this is the only moment it is
+  // in hand without a second read.
+  | { ok: true; id: string; ticketCode: string }
   | { ok: false; error: "duplicate_student_id" | "failed" };
 
 /**
@@ -87,10 +90,10 @@ export async function createWalkInRegistration(
         reviewed_at: new Date().toISOString(),
         reviewed_by: input.reviewedBy,
       })
-      .select("id")
+      .select("id, ticket_code")
       .single();
 
-    if (!error) return { ok: true, id: data.id };
+    if (!error) return { ok: true, id: data.id, ticketCode: data.ticket_code };
 
     if (error.code === UNIQUE_VIOLATION) {
       if (isStudentIdViolation(error.message)) {
@@ -281,4 +284,86 @@ export async function listAdminEmails(): Promise<Map<string, string>> {
     return new Map();
   }
   return new Map(data.users.map((user) => [user.id, user.email ?? user.id]));
+}
+
+export type TicketEmailRecipient = {
+  id: string;
+  fullName: string;
+  email: string;
+  ticketCode: string;
+};
+
+/**
+ * Approved payees whose ticket email has never gone out.
+ *
+ * Filtering on `ticket_email_sent_at is null` rather than a flag on the send
+ * is what makes the button safe to press twice: a second run picks up only
+ * whoever is left — the ones a failed batch missed, plus anyone approved in
+ * the meantime — instead of emailing the whole event again.
+ *
+ * Oldest first: if a day's sending quota runs out partway through, it runs
+ * out on the students who have been waiting the least.
+ */
+export async function pendingTicketEmailRecipients(): Promise<
+  TicketEmailRecipient[] | null
+> {
+  const { data, error } = await adminClient()
+    .from("registrations")
+    .select("id, full_name, email, ticket_code")
+    .eq("status", "approved")
+    .is("ticket_email_sent_at", null)
+    .order("created_at", { ascending: true });
+
+  // Null, not an empty list: before migration 0009 is pasted into the hosted
+  // project this column doesn't exist and the query 400s. "Couldn't read the
+  // queue" and "the queue is empty" have to stay distinguishable — reporting
+  // the second when the first is true tells an admin every student has their
+  // ticket while the whole event is still waiting.
+  if (error) {
+    console.error("pendingTicketEmailRecipients failed", error);
+    return null;
+  }
+
+  return (data ?? [])
+    // An approved row always has a code (the ticket_code_matches_status
+    // check constraint), so this filter is belt-and-braces — but it also
+    // narrows the type, and a code-less email would be a blank QR.
+    .filter((row) => Boolean(row.ticket_code))
+    .map((row) => ({
+      id: row.id as string,
+      fullName: row.full_name as string,
+      email: row.email as string,
+      ticketCode: row.ticket_code as string,
+    }));
+}
+
+/**
+ * How many are still waiting — for the Dashboard's send card. Null carries
+ * the same "couldn't read it" meaning as above, so the card can say that
+ * rather than render a confident 0.
+ */
+export async function pendingTicketEmailCount(): Promise<number | null> {
+  const { count, error } = await adminClient()
+    .from("registrations")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "approved")
+    .is("ticket_email_sent_at", null);
+
+  if (error) {
+    console.error("pendingTicketEmailCount failed", error);
+    return null;
+  }
+  return count ?? 0;
+}
+
+/** Stamped only after Resend accepts the send — never before. */
+export async function markTicketEmailSent(registrationIds: string[]): Promise<void> {
+  if (registrationIds.length === 0) return;
+
+  const { error } = await adminClient()
+    .from("registrations")
+    .update({ ticket_email_sent_at: new Date().toISOString() })
+    .in("id", registrationIds);
+
+  if (error) console.error("markTicketEmailSent failed", error);
 }
