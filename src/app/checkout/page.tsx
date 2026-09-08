@@ -35,7 +35,17 @@ export default function CheckoutPage() {
               Send to
             </dt>
             <dd className="font-display text-2xl">{EVENT.gcash.name}</dd>
-            <dd className="font-mono text-lg">{EVENT.gcash.number}</dd>
+            {/* Rendered only when it's actually known — see the comment on
+                gcash.number. A wrong number here sends real money to a
+                stranger, so no number beats a placeholder one. */}
+            {EVENT.gcash.number ? (
+              <dd className="font-mono text-lg">{EVENT.gcash.number}</dd>
+            ) : (
+              <dd className="text-sm text-ink/70">
+                Scan the QR code to pay — it fills in the account and the
+                amount for you.
+              </dd>
+            )}
 
             <dt className="mt-4 text-sm uppercase tracking-wide text-ink/70">
               Amount

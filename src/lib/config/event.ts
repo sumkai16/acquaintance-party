@@ -22,8 +22,24 @@ export const EVENT = {
 
   /** The GCash account students send payment to. */
   gcash: {
-    name: "JUAN D. CRUZ",
-    number: "09171234567",
+    /**
+     * Deliberately the masked form, because it is exactly what GCash itself
+     * shows when a student scans the QR — the mask is in the QR payload
+     * (EMV tag 59), not just the app's display. Page and app matching
+     * character for character is what makes verifyNote below actionable.
+     */
+    name: "EM**N B.",
+    /**
+     * Spaced the way GCash itself displays it, for the same reason as `name`
+     * above — a student comparing the page against the app should not have
+     * to mentally re-group digits.
+     *
+     * Null is a supported value and renders no number at all. That matters:
+     * a wrong number here is worse than none, because it is a real dialable
+     * number that someone else owns, sitting under the words "SEND TO", and
+     * ₱495 sent to it is gone. Never park a placeholder in this field.
+     */
+    number: "0993 004 9671" as string | null,
     /** Path under /public to the payee's GCash QR screenshot. */
     qrImage: "/gcash-qr.png",
     /**
