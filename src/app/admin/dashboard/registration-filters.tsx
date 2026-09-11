@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { Option } from "../option";
 
 const QUERY_DEBOUNCE_MS = 300;
@@ -20,10 +21,11 @@ const PAYMENT_METHOD_OPTIONS = [
 ] as const;
 
 /**
- * Search plus a status dropdown, same pattern as Attendance's ScanFilters —
- * URL-param driven, the text field debounced and the dropdown instant. No
- * submit button, so this behaves exactly like Attendance's filters instead
- * of the page's old standalone hero search form.
+ * Search plus status, year-level and payment dropdowns, same pattern as
+ * Attendance's ScanFilters — URL-param driven, the text field debounced and
+ * the dropdowns instant. No submit button, so this behaves exactly like
+ * Attendance's filters instead of the page's old standalone hero search
+ * form.
  */
 export function RegistrationFilters() {
   const router = useRouter();
@@ -32,12 +34,18 @@ export function RegistrationFilters() {
 
   const status = searchParams.get("status") ?? "";
   const paymentMethod = searchParams.get("paymentMethod") ?? "";
+  const year = searchParams.get("year") ?? "";
   const [q, setQ] = useState(searchParams.get("q") ?? "");
 
-  function setParam(key: "q" | "status" | "paymentMethod", value: string) {
+  function setParam(key: "q" | "status" | "paymentMethod" | "year", value: string) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
+    // Any filter change re-shapes the result set, so the page number that
+    // came with the old one is meaningless — narrowing to 1st year while
+    // sitting on page 4 would otherwise land on an empty table that looks
+    // like "nobody matched".
+    params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
   }
 
@@ -67,6 +75,20 @@ export function RegistrationFilters() {
         {STATUS_OPTIONS.map((option) => (
           <Option key={option.value} value={option.value}>
             {option.label}
+          </Option>
+        ))}
+      </select>
+
+      <select
+        value={year}
+        onChange={(event) => setParam("year", event.target.value)}
+        aria-label="Filter by year level"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
+      >
+        <Option value="">All years</Option>
+        {YEAR_LEVELS.map((level) => (
+          <Option key={level} value={level}>
+            {level}
           </Option>
         ))}
       </select>

@@ -13,6 +13,7 @@ import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import { listAllProfileNames } from "@/lib/profiles/queries";
 import { SORT_COLUMNS, type RegistrationSortColumn } from "@/lib/registrations/sort";
 import { buildSectionReport } from "@/lib/registrations/section-report";
+import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
@@ -35,6 +36,7 @@ export default async function RegistrationsPage({
     sort?: string;
     dir?: string;
     page?: string;
+    year?: string;
   }>;
 }) {
   const {
@@ -44,6 +46,7 @@ export default async function RegistrationsPage({
     sort,
     dir,
     page: rawPage,
+    year: rawYear,
   } = await searchParams;
   // No status in the URL means "all" — populated by default, same as
   // Attendance's Recent Scans needing no filter picked to show something.
@@ -51,6 +54,12 @@ export default async function RegistrationsPage({
     ? (rawStatus as (typeof VALID_STATUSES)[number])
     : "all";
   const page = Math.max(1, Number(rawPage) || 1);
+  // Anything not in YEAR_LEVELS is dropped rather than passed through, so a
+  // hand-edited URL narrows to nothing instead of filtering on a value the
+  // column can never hold.
+  const yearLevel = YEAR_LEVELS.includes(rawYear as (typeof YEAR_LEVELS)[number])
+    ? rawYear
+    : undefined;
   const paymentMethod = VALID_PAYMENT_METHODS.includes(
     rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number],
   )
@@ -85,6 +94,7 @@ export default async function RegistrationsPage({
       page,
       sort: sortColumn,
       direction,
+      yearLevel,
     }),
     approvedCount(),
     totalCollectedCentavos(),
@@ -103,6 +113,7 @@ export default async function RegistrationsPage({
     if (q) next.set("q", q);
     if (rawStatus) next.set("status", rawStatus);
     if (rawPaymentMethod) next.set("paymentMethod", rawPaymentMethod);
+    if (yearLevel) next.set("year", yearLevel);
     if (sort) next.set("sort", sort);
     if (dir) next.set("dir", dir);
     if (targetPage > 1) next.set("page", String(targetPage));

@@ -209,6 +209,8 @@ export async function searchRegistrations(
     page?: number;
     sort?: RegistrationSortColumn | null;
     direction?: "asc" | "desc";
+    /** One of YEAR_LEVELS, already validated by the caller. */
+    yearLevel?: string;
   } = {},
 ): Promise<RegistrationsPage> {
   const trimmed = query.trim();
@@ -217,12 +219,17 @@ export async function searchRegistrations(
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  if (!hasQuery && !status && !paymentMethod) return { rows: [], total: 0 };
+  const { sort = null, direction = "desc", yearLevel } = options;
+
+  if (!hasQuery && !status && !paymentMethod && !yearLevel) {
+    return { rows: [], total: 0 };
+  }
 
   let builder = adminClient().from("registrations").select("*", { count: "exact" });
   if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
   if (status && status !== "all") builder = builder.eq("status", status);
   if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
+  if (yearLevel) builder = builder.eq("year_level", yearLevel);
 
   // Ordering moved into the query once only one page comes back. Sorting the
   // fetched rows in JS would reorder only the rows on screen out of every
@@ -231,11 +238,19 @@ export async function searchRegistrations(
   // With no column picked, rejected rows read newest-rejected-first and
   // everything else newest-submitted-first, matching what the old dedicated
   // Rejections page did before it was folded into this search.
-  const { sort = null, direction = "desc" } = options;
   if (sort) {
     builder = builder.order(REGISTRATION_SORT_COLUMNS[sort], {
       ascending: direction === "asc",
     });
+  } else if (yearLevel) {
+    // Narrowing to one year is how you read a year *by section* — which
+    // sections have paid, who is missing from D. Newest-first scatters those
+    // sections down the list, so a year filter brings its own default order:
+    // A, B, C…, then by name inside each section. An explicit column click
+    // still wins, which is why this sits in the else branch.
+    builder = builder
+      .order("section", { ascending: true })
+      .order("full_name", { ascending: true });
   } else {
     builder = builder.order(status === "rejected" ? "reviewed_at" : "created_at", {
       ascending: false,
