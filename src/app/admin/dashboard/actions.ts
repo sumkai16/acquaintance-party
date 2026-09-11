@@ -9,7 +9,9 @@ import {
   getRegistration,
   markTicketEmailSent,
   pendingTicketEmailRecipients,
+  updateRegistrationIdentity,
 } from "@/lib/registrations/queries";
+import { walkInSchema } from "@/lib/registrations/schema";
 import {
   EMAIL_BATCH_LIMIT,
   sendTicketApprovedBatch,
@@ -210,6 +212,79 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
     userId: adminId,
     activityType: "ticket_email_sent",
     description: `Sent the ticket QR to ${registration.email} for ${registration.full_name}`,
+    registrationId: id,
+  });
+
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
+
+/** Which identity fields an edit may touch, and what to call them in the log. */
+const EDITABLE_FIELDS = [
+  ["full_name", "fullName", "name"],
+  ["student_id", "studentId", "student ID"],
+  ["year_level", "yearLevel", "year level"],
+  ["section", "section", "section"],
+  ["email", "email", "email"],
+] as const;
+
+export type EditRegistrationResult = { ok: boolean; error?: string };
+
+/**
+ * Corrects a typo in someone's identity fields.
+ *
+ * Validated through walkInSchema — the same schema a walk-in is created
+ * with — so a correction cannot introduce what the original entry couldn't:
+ * the student ID is uppercased and shape-checked, the section is checked
+ * against the year, the email has to look like one. Anything else would let
+ * the fix be worse than the mistake.
+ *
+ * Admin-only. Staff enter walk-ins but don't amend a row after the fact —
+ * that is the same line voidRegistration draws.
+ *
+ * Logs the fields that actually changed, old value to new, rather than
+ * "edited". A record saying only that something was touched is the kind of
+ * audit trail that answers no question anybody later asks.
+ */
+export async function editRegistration(
+  id: string,
+  input: { fullName: string; studentId: string; yearLevel: string; section: string; email: string },
+): Promise<EditRegistrationResult> {
+  const adminId = await currentAdmin();
+  if (!adminId) return { ok: false, error: "Sign in as an admin again." };
+
+  const before = await getRegistration(id);
+  if (!before) return { ok: false, error: "Registration not found." };
+
+  const parsed = walkInSchema.safeParse(input);
+  if (!parsed.success) {
+    // One message, the first problem — this is a five-field inline form, not
+    // the full checkout form with per-field errors underneath.
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the details." };
+  }
+
+  const changes = EDITABLE_FIELDS.flatMap(([column, key, label]) => {
+    const next = parsed.data[key];
+    const previous = before[column];
+    return previous === next ? [] : [`${label} ${previous || "(blank)"} → ${next}`];
+  });
+  if (changes.length === 0) return { ok: true };
+
+  const result = await updateRegistrationIdentity(id, parsed.data);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error:
+        result.error === "duplicate_student_id"
+          ? "Another active registration already uses that student ID."
+          : "Could not save the change.",
+    };
+  }
+
+  await logActivity({
+    userId: adminId,
+    activityType: "registration_edited",
+    description: `Edited ${parsed.data.fullName}: ${changes.join(", ")}`,
     registrationId: id,
   });
 

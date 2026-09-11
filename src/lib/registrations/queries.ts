@@ -57,6 +57,51 @@ export async function createRegistration(
   return { ok: true, id: data.id };
 }
 
+export type UpdateIdentityResult =
+  | { ok: true }
+  | { ok: false; error: "duplicate_student_id" | "failed" };
+
+/**
+ * Corrects the identity fields on an existing registration — the fix for a
+ * staff typo, which until now could only be done by hand in the Supabase
+ * table editor, with no validation and no trace.
+ *
+ * Identity only. `amount`, `status`, `ticket_code` and `gcash_reference` are
+ * deliberately not writable here: each already has a flow that keeps the
+ * money and the door in step (approve, reject, void), and a quiet edit to
+ * any of them is how a cash box stops reconciling with the dashboard.
+ *
+ * A corrected student_id can still collide with a row that already holds it,
+ * which is the same partial unique index that guards checkout — reported
+ * back rather than swallowed, because the admin needs to know they're
+ * looking at two registrations for one student.
+ */
+export async function updateRegistrationIdentity(
+  id: string,
+  input: WalkInInput,
+): Promise<UpdateIdentityResult> {
+  const { error } = await adminClient()
+    .from("registrations")
+    .update({
+      full_name: input.fullName,
+      student_id: input.studentId,
+      year_level: input.yearLevel,
+      section: input.section,
+      email: input.email,
+    })
+    .eq("id", id);
+
+  if (error) {
+    if (error.code === UNIQUE_VIOLATION && isStudentIdViolation(error.message)) {
+      return { ok: false, error: "duplicate_student_id" };
+    }
+    console.error("updateRegistrationIdentity failed", error);
+    return { ok: false, error: "failed" };
+  }
+
+  return { ok: true };
+}
+
 export type CreateWalkInResult =
   // The code comes back out because the confirmation email draws the QR from
   // it — a walk-in is approved on the spot, so this is the only moment it is

@@ -9,6 +9,7 @@ import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
 import { sendTicketEmail, voidRegistration } from "./actions";
+import { EditRegistration } from "./edit-registration";
 
 const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
 
@@ -23,6 +24,7 @@ export function RegistrationRow({
 }) {
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
+  const [editing, setEditing] = useState(false);
   const flash = useFlash();
 
   function handleEmail() {
@@ -51,12 +53,21 @@ export function RegistrationRow({
   return (
     <Tr>
       <td className="py-2 pr-3 pl-4">
-        <p className="font-semibold">{registration.full_name}</p>
-        <p className="text-ground/60">
-          {registration.year_level} · Section {registration.section} ·{" "}
-          {registration.email}
-        </p>
-        <p className="text-ground/60">ID: {registration.student_id}</p>
+        {editing ? (
+          <EditRegistration
+            registration={registration}
+            onDone={() => setEditing(false)}
+          />
+        ) : (
+          <>
+            <p className="font-semibold">{registration.full_name}</p>
+            <p className="text-ground/60">
+              {registration.year_level} · Section {registration.section} ·{" "}
+              {registration.email}
+            </p>
+            <p className="text-ground/60">ID: {registration.student_id}</p>
+          </>
+        )}
       </td>
 
       <td className="py-2 pr-3 whitespace-nowrap">{formatPeso(registration.amount)}</td>
@@ -96,6 +107,15 @@ export function RegistrationRow({
 
       <td className="py-2 pl-3 whitespace-nowrap">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={pending || editing}
+            onClick={() => setEditing(true)}
+            title="Correct a mistyped name, student ID, year, section or email. Amount and status are not editable."
+            className="font-semibold text-accent-2 underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            Edit
+          </button>
           <Link
             href={`/ticket/${registration.id}`}
             className="font-semibold text-accent-2 underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
