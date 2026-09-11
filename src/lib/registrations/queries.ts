@@ -3,6 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { generateTicketCode } from "@/lib/tickets/generate";
 import type { PaymentMethod, Registration, RegistrationStatus } from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
+import { REGISTRATION_SORT_COLUMNS, type RegistrationSortColumn } from "./sort";
 
 /** Postgres unique-violation SQLSTATE. */
 const UNIQUE_VIOLATION = "23505";
@@ -173,9 +174,27 @@ export async function countRecentByEmail(
 }
 
 /**
+ * Rows per page on the Dashboard.
+ *
+ * Much smaller than the Activity log's 25 because the rows aren't
+ * comparable: a registration row is four lines tall — name, year and
+ * section, email, student ID — where a log row is one. Ten of these is
+ * roughly a screen, which is the point; twenty would have left the table
+ * running off the bottom exactly as before.
+ *
+ * Raise it here if browsing beats scrolling — it's the only place the
+ * number appears.
+ */
+export const REGISTRATIONS_PAGE_SIZE = 10;
+
+export type RegistrationsPage = { rows: Registration[]; total: number };
+
+/**
  * Finds registrations by partial name or email, for a student at the door
- * who has lost their ticket link. Capped at 50 so a one-letter search cannot
- * drag the whole table down mid-event.
+ * who has lost their ticket link. One page at a time, with the total count
+ * a pagination control needs — the old flat cap of 50 both hid rows past
+ * the fiftieth and made the table taller than the screen once sales picked
+ * up.
  *
  * `status` also lets this browse without a query at all — "all" (or a
  * specific status) with an empty query lists registrations directly,
@@ -186,29 +205,51 @@ export async function searchRegistrations(
   query: string,
   status?: "all" | RegistrationStatus,
   paymentMethod?: "all" | PaymentMethod,
-): Promise<Registration[]> {
+  options: {
+    page?: number;
+    sort?: RegistrationSortColumn | null;
+    direction?: "asc" | "desc";
+  } = {},
+): Promise<RegistrationsPage> {
   const trimmed = query.trim();
   // Escape PostgREST's pattern wildcards and its comma/parenthesis
   // separators so a search for "a,b" cannot break out of the filter.
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  if (!hasQuery && !status && !paymentMethod) return [];
+  if (!hasQuery && !status && !paymentMethod) return { rows: [], total: 0 };
 
-  let builder = adminClient().from("registrations").select("*");
+  let builder = adminClient().from("registrations").select("*", { count: "exact" });
   if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
   if (status && status !== "all") builder = builder.eq("status", status);
   if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
 
-  // Rejected rows read newest-rejected-first; everything else reads
-  // newest-submitted-first — matches what the old dedicated Rejections
-  // page did before it was folded into this search.
-  const orderColumn = status === "rejected" ? "reviewed_at" : "created_at";
-  const { data } = await builder
-    .order(orderColumn, { ascending: false })
-    .limit(50);
+  // Ordering moved into the query once only one page comes back. Sorting the
+  // fetched rows in JS would reorder only the rows on screen out of every
+  // match — which looks right and is not.
+  //
+  // With no column picked, rejected rows read newest-rejected-first and
+  // everything else newest-submitted-first, matching what the old dedicated
+  // Rejections page did before it was folded into this search.
+  const { sort = null, direction = "desc" } = options;
+  if (sort) {
+    builder = builder.order(REGISTRATION_SORT_COLUMNS[sort], {
+      ascending: direction === "asc",
+    });
+  } else {
+    builder = builder.order(status === "rejected" ? "reviewed_at" : "created_at", {
+      ascending: false,
+    });
+  }
 
-  return (data as Registration[]) ?? [];
+  const page = Math.max(1, options.page ?? 1);
+  const offset = (page - 1) * REGISTRATIONS_PAGE_SIZE;
+  const { data, count } = await builder.range(
+    offset,
+    offset + REGISTRATIONS_PAGE_SIZE - 1,
+  );
+
+  return { rows: (data as Registration[]) ?? [], total: count ?? 0 };
 }
 
 /**

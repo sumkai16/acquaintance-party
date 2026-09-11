@@ -6,23 +6,24 @@ import {
   listApprovedForSectionReport,
   onlinePaymentsSummary,
   pendingTicketEmailCount,
+  REGISTRATIONS_PAGE_SIZE,
   searchRegistrations,
 } from "@/lib/registrations/queries";
 import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import { listAllProfileNames } from "@/lib/profiles/queries";
-import { sortRegistrations, type RegistrationSortColumn } from "@/lib/registrations/sort";
+import { SORT_COLUMNS, type RegistrationSortColumn } from "@/lib/registrations/sort";
 import { buildSectionReport } from "@/lib/registrations/section-report";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
 import { SendTicketEmails } from "./send-ticket-emails";
+import { Pagination } from "../pagination";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };
 
 const VALID_STATUSES = ["pending", "approved", "rejected"] as const;
 const VALID_PAYMENT_METHODS = ["walk_in", "online"] as const;
-const SORT_COLUMNS: readonly RegistrationSortColumn[] = ["name", "amount", "submitted"];
 
 export default async function RegistrationsPage({
   searchParams,
@@ -33,15 +34,23 @@ export default async function RegistrationsPage({
     paymentMethod?: string;
     sort?: string;
     dir?: string;
+    page?: string;
   }>;
 }) {
-  const { q = "", status: rawStatus, paymentMethod: rawPaymentMethod, sort, dir } =
-    await searchParams;
+  const {
+    q = "",
+    status: rawStatus,
+    paymentMethod: rawPaymentMethod,
+    sort,
+    dir,
+    page: rawPage,
+  } = await searchParams;
   // No status in the URL means "all" — populated by default, same as
   // Attendance's Recent Scans needing no filter picked to show something.
   const status = VALID_STATUSES.includes(rawStatus as (typeof VALID_STATUSES)[number])
     ? (rawStatus as (typeof VALID_STATUSES)[number])
     : "all";
+  const page = Math.max(1, Number(rawPage) || 1);
   const paymentMethod = VALID_PAYMENT_METHODS.includes(
     rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number],
   )
@@ -56,8 +65,15 @@ export default async function RegistrationsPage({
   // The totals are independent of whatever search/filter is active, the same
   // "always show the real number" reasoning as the Attendance and Cash
   // pages' own stat cards.
+  // Resolved before the fetch now, because the database does the ordering
+  // and the paging — the page can no longer sort what it was handed.
+  const sortColumn = SORT_COLUMNS.includes(sort as RegistrationSortColumn)
+    ? (sort as RegistrationSortColumn)
+    : null;
+  const direction = dir === "asc" ? "asc" : "desc";
+
   const [
-    rawResults,
+    { rows: results, total: totalResults },
     totalPayees,
     totalCentavos,
     cash,
@@ -65,7 +81,11 @@ export default async function RegistrationsPage({
     approvedForReport,
     unemailed,
   ] = await Promise.all([
-    searchRegistrations(q, status, paymentMethod),
+    searchRegistrations(q, status, paymentMethod, {
+      page,
+      sort: sortColumn,
+      direction,
+    }),
     approvedCount(),
     totalCollectedCentavos(),
     cashPaymentsSummary(),
@@ -74,11 +94,21 @@ export default async function RegistrationsPage({
     pendingTicketEmailCount(),
   ]);
 
-  const sortColumn = SORT_COLUMNS.includes(sort as RegistrationSortColumn)
-    ? (sort as RegistrationSortColumn)
-    : null;
-  const direction = dir === "asc" ? "asc" : "desc";
-  const results = sortColumn ? sortRegistrations(rawResults, sortColumn, direction) : rawResults;
+  const totalPages = Math.max(1, Math.ceil(totalResults / REGISTRATIONS_PAGE_SIZE));
+
+  // Every other param rides along unchanged, so paging out of a filtered,
+  // sorted view keeps that view.
+  function buildHref(targetPage: number) {
+    const next = new URLSearchParams();
+    if (q) next.set("q", q);
+    if (rawStatus) next.set("status", rawStatus);
+    if (rawPaymentMethod) next.set("paymentMethod", rawPaymentMethod);
+    if (sort) next.set("sort", sort);
+    if (dir) next.set("dir", dir);
+    if (targetPage > 1) next.set("page", String(targetPage));
+    const qs = next.toString();
+    return qs ? `/admin/dashboard?${qs}` : "/admin/dashboard";
+  }
 
   // Only needed to label a rejected row with who rejected it, or a walk-in
   // row with who added it. Both are keyed on `reviewed_by`, so a page where
@@ -197,6 +227,7 @@ export default async function RegistrationsPage({
             ))}
           </tbody>
         </Table>
+        <Pagination page={page} totalPages={totalPages} buildHref={buildHref} />
       </div>
 
       <section className="mt-10">
