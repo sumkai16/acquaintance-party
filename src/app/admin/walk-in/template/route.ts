@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { STUDENT_ID_PLACEHOLDER } from "@/lib/registrations/schema";
 import { SECTIONS_BY_YEAR, YEAR_LEVELS } from "@/lib/registrations/sections";
 import { currentAdminId } from "@/lib/supabase/server";
 
@@ -20,7 +21,7 @@ export async function GET() {
   sheet.getRow(1).font = { bold: true };
   sheet.addRow({
     fullName: "Juan Dela Cruz",
-    studentId: "SCC-00-0000000",
+    studentId: STUDENT_ID_PLACEHOLDER,
     yearLevel: "1st year",
     section: "A",
     email: "juan@example.com",

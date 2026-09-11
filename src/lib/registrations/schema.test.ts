@@ -3,7 +3,7 @@ import { checkoutSchema, walkInSchema } from "./schema";
 
 const valid = {
   fullName: "Juan Miguel Dela Cruz",
-  studentId: "2023-00451",
+  studentId: "SCC-23-00000451",
   yearLevel: "3rd year",
   section: "B",
   email: "juan@example.com",
@@ -143,8 +143,11 @@ describe("checkoutSchema", () => {
   });
 
   it("trims the student ID", () => {
-    const parsed = checkoutSchema.parse({ ...valid, studentId: "  2023-00451  " });
-    expect(parsed.studentId).toBe("2023-00451");
+    const parsed = checkoutSchema.parse({
+      ...valid,
+      studentId: "  SCC-23-00000451  ",
+    });
+    expect(parsed.studentId).toBe("SCC-23-00000451");
   });
 
   it("uppercases the student ID, so case can't split one student into two", () => {
@@ -159,6 +162,35 @@ describe("checkoutSchema", () => {
     expect(checkoutSchema.safeParse({ ...valid, studentId: "   " }).success).toBe(
       false,
     );
+  });
+
+  it("rejects an ID missing the year segment", () => {
+    // The real one that got through and was approved before anyone noticed:
+    // SCC-00025420, eight digits but no two-digit entry year. It collides
+    // with nothing, so it neither duplicates the student's real ID nor
+    // reserves it.
+    expect(
+      checkoutSchema.safeParse({ ...valid, studentId: "SCC-00025420" }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["a three-digit year", "SCC-253-00025380"],
+    ["a seven-digit serial", "SCC-25-0002538"],
+    ["a nine-digit serial", "SCC-25-000253800"],
+    ["no dashes at all", "SCC2500025380"],
+    ["a different school prefix", "ABC-25-00025380"],
+    ["trailing characters", "SCC-25-00025380X"],
+  ])("rejects %s", (_label, studentId) => {
+    expect(checkoutSchema.safeParse({ ...valid, studentId }).success).toBe(false);
+  });
+
+  it("accepts the shape every real registration uses", () => {
+    // 17 of the 18 registrations taken before this rule existed matched
+    // exactly this; the eighteenth was the typo above.
+    expect(
+      checkoutSchema.safeParse({ ...valid, studentId: "SCC-25-00025380" }).success,
+    ).toBe(true);
   });
 });
 

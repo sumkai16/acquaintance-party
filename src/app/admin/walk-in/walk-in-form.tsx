@@ -1,7 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import {
+  STUDENT_ID_INPUT_PATTERN,
+  STUDENT_ID_PLACEHOLDER,
+  YEAR_LEVELS,
+} from "@/lib/registrations/schema";
 import { sectionsFor } from "@/lib/registrations/sections";
 import { useFlash } from "../flash";
 import { Option } from "../option";
@@ -66,7 +70,7 @@ export function WalkInForm() {
           id="studentId"
           name="studentId"
           required
-          placeholder="SCC-00-0000000"
+          placeholder={STUDENT_ID_PLACEHOLDER}
           defaultValue={values?.studentId ?? ""}
           // Shown in caps as it's typed, and stored that way too — the
           // schema uppercases the value (normalizeStudentId), so this is
@@ -74,6 +78,10 @@ export function WalkInForm() {
           // rewriting the input's value on each keystroke, which would
           // throw the caret to the end when someone corrects a character
           // mid-ID. autoCapitalize gets a phone keyboard to start in caps.
+          // Native check before the round trip, so a malformed ID is caught
+          // while the field is still focused rather than after a submit.
+          pattern={STUDENT_ID_INPUT_PATTERN}
+          title="SCC, your two-digit entry year, then eight digits — e.g. SCC-24-00012345"
           autoCapitalize="characters"
           autoCorrect="off"
           spellCheck={false}

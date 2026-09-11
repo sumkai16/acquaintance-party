@@ -43,6 +43,30 @@ export function normalizeStudentId(value: string): string {
   return value.trim().toUpperCase();
 }
 
+/**
+ * SCC, the two-digit entry year, then an eight-digit serial.
+ *
+ * Checked against the live table before this was tightened: 17 of the 18
+ * registrations taken so far matched this exactly, and the eighteenth was
+ * the typo that prompted it — `SCC-00025420`, missing the year segment
+ * entirely, entered by a staff member and approved before anyone noticed.
+ * A malformed ID is worse than an ugly one: `student_id` is the key behind
+ * the one-registration-per-student cap, so a mistyped one neither collides
+ * with the student's real ID nor reserves it.
+ *
+ * Anchored, and applied after normalizeStudentId, so it sees the trimmed
+ * uppercase form rather than whatever spacing or case was typed.
+ */
+export const STUDENT_ID_PATTERN = /^SCC-\d{2}-\d{8}$/;
+
+/** The same shape for an <input pattern>, which has its own anchoring and
+ * is matched against the raw value — hence the case-insensitive prefix,
+ * since the field only *looks* uppercase (a CSS transform). */
+export const STUDENT_ID_INPUT_PATTERN = "[Ss][Cc][Cc]-[0-9]{2}-[0-9]{8}";
+
+/** What both forms show, and what the import template seeds. */
+export const STUDENT_ID_PLACEHOLDER = "SCC-00-00000000";
+
 // The actual identity key behind the one-registration-per-student cap —
 // email alone isn't reliable, since a student can just use a new address
 // per submission.
@@ -53,7 +77,10 @@ const studentId = z
     z
       .string()
       .min(1, "Enter your student ID.")
-      .max(30, "That student ID is too long."),
+      .regex(
+        STUDENT_ID_PATTERN,
+        "Student ID looks like SCC-24-00012345 — SCC, your two-digit entry year, then eight digits.",
+      ),
   );
 
 const yearLevel = z.enum(YEAR_LEVELS, { error: "Choose your year level." });
