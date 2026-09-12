@@ -64,6 +64,11 @@ pushed with `supabase db push`. This means:
   followed for the latest file before assuming it's live.
 - Any new migration file needs a manual "paste it in" step documented in
   `docs/setup/supabase.md` at the time it's added.
+- One project, one dataset — a git branch never isolates test data, since
+  every branch reads and writes the same hosted database. To test the
+  scanner, raffle, etc. without touching real registrations, see
+  `docs/setup/staging.md` for wiring a second Supabase project to Vercel
+  Preview deployments.
 
 ## 6. Folder structure
 ```
