@@ -11,7 +11,7 @@ import { FlashProvider } from "./flash";
 // as unauthenticated rather than defaulting to admin — the opposite
 // default of the pre-role system, and deliberate: see
 // docs/superpowers/plans/2026-09-06-staff-cashier-and-remittance.md Task 1.
-const STAFF_ALLOWED_PREFIXES = ["/admin/cashier", "/admin/walk-in"];
+const STAFF_ALLOWED_PREFIXES = ["/admin/cashier", "/admin/walk-in", "/admin/scan"];
 
 // Sunset Soiree, throughout — see context/DESIGN.md §3. The one carve-out
 // is the scanner's live scan result screens (full-screen green/red/amber,

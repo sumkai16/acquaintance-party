@@ -33,12 +33,13 @@ const ADMIN_GROUPS = [
   [{ href: "/admin/activity", label: "Activity" }],
 ] as const;
 
-// Three links is already scannable, so staff get one group — same shape as
-// ADMIN_GROUPS purely so both roles render through the same loop below.
+// Four links is still scannable as one group — same shape as ADMIN_GROUPS
+// purely so both roles render through the same loop below.
 const STAFF_GROUPS = [
   [
     { href: "/admin/cashier", label: "My Dashboard" },
     { href: "/admin/walk-in", label: "Walk-in" },
+    { href: "/admin/scan", label: "Scanner" },
     { href: "/admin/cashier/activity", label: "My Activity" },
   ],
 ] as const;
