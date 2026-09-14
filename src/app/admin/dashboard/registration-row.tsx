@@ -8,6 +8,7 @@ import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
+import { ReceiptLightbox } from "../review/receipt-lightbox";
 import { sendTicketEmail, voidRegistration } from "./actions";
 import { EditRegistration } from "./edit-registration";
 
@@ -17,14 +18,17 @@ export function RegistrationRow({
   registration,
   reviewerEmail,
   addedByName,
+  receiptUrl,
 }: {
   registration: Registration;
   reviewerEmail: string | null;
   addedByName: string | null;
+  receiptUrl: string | null;
 }) {
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
   const [editing, setEditing] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const flash = useFlash();
 
   function handleEmail() {
@@ -76,7 +80,27 @@ export function RegistrationRow({
         {registration.payment_method === "walk_in" ? (
           "walk-in"
         ) : (
-          <span className="font-mono">{registration.gcash_reference}</span>
+          <>
+            <span className="font-mono">{registration.gcash_reference}</span>
+            {receiptUrl ? (
+              <button
+                type="button"
+                onClick={() => setReceiptOpen(true)}
+                className="mt-1 block font-semibold text-accent-2 underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              >
+                View receipt
+              </button>
+            ) : (
+              <p className="mt-1 text-ground/40">No receipt</p>
+            )}
+            {receiptOpen && receiptUrl ? (
+              <ReceiptLightbox
+                src={receiptUrl}
+                alt={`Receipt submitted by ${registration.full_name}`}
+                onClose={() => setReceiptOpen(false)}
+              />
+            ) : null}
+          </>
         )}
       </td>
 
