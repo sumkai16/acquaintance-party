@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Badge } from "../badge";
 import { Table, Th, SortHeaderButton, Tr } from "../table";
 import { useFlash } from "../flash";
 import { Option } from "../option";
 import { formatPeso } from "@/lib/config/event";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
-import type { Registration } from "@/lib/supabase/types";
+import { formatTicketCode } from "@/lib/tickets/code";
+import type { Registration, RegistrationStatus } from "@/lib/supabase/types";
 import {
   approveRegistration,
   rejectRegistration,
@@ -19,10 +21,23 @@ type Row = {
   registration: Registration;
   receiptUrl: string | null;
   duplicateCount: number;
+  reviewerEmail: string | null;
 };
 
 type SortColumn = "name" | "amount" | "submitted";
 type SortState = { column: SortColumn; direction: "asc" | "desc" };
+
+const STATUS_LABELS: Record<RegistrationStatus, string> = {
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+};
+
+const EMPTY_TEXT: Record<RegistrationStatus, string> = {
+  pending: "Nothing waiting. Every payment has been reviewed.",
+  approved: "No payments approved yet.",
+  rejected: "No payments rejected.",
+};
 
 function sortKey(row: Row, column: SortColumn): string | number {
   switch (column) {
@@ -43,26 +58,37 @@ function matches(row: Row, query: string): boolean {
     full_name.toLowerCase().includes(q) ||
     email.toLowerCase().includes(q) ||
     student_id.toLowerCase().includes(q) ||
-    // Every row here is pending, which is always an online submission — but
-    // the type is nullable now that walk-ins exist, so guard anyway.
+    // Every row here is an online submission — but the type is nullable now
+    // that walk-ins exist, so guard anyway.
     (gcash_reference ?? "").toLowerCase().includes(q)
   );
 }
 
 /**
  * Instant, client-side search and sort — deliberately not the dashboard's
- * URL-driven pattern. The pending queue self-limits (items leave the moment
- * they're decided), so the dataset stays small and an admin triaging it
- * wants as-you-type filtering, not a page reload per keystroke.
+ * URL-driven pattern. An admin triaging the queue wants as-you-type
+ * filtering, not a page reload per keystroke. Only the status lives in the
+ * URL: it decides which rows the server fetches, so Approved's hundreds of
+ * rows never load while someone is working the Pending queue.
  *
  * `rows` stays a plain prop, never copied into state: approveRegistration/
  * rejectRegistration call revalidatePath, which re-fetches on the server and
  * flows a new `rows` prop down here. Deriving the rendered list from that
- * prop via useMemo is what lets an approved row disappear on its own, the
- * same way it already does today — copying it into local state would break
- * that.
+ * prop via useMemo is what lets an approved row leave the Pending list on its
+ * own — copying it into local state would break that.
  */
-export function ReviewTable({ rows }: { rows: Row[] }) {
+export function ReviewTable({
+  rows,
+  status,
+  counts,
+}: {
+  rows: Row[];
+  status: RegistrationStatus;
+  counts: Record<RegistrationStatus, number>;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [switching, startSwitch] = useTransition();
   const [query, setQuery] = useState("");
   const [year, setYear] = useState("");
   const [sort, setSort] = useState<SortState>({ column: "submitted", direction: "asc" });
@@ -87,6 +113,13 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
     );
   }
 
+  function changeStatus(next: string) {
+    // Pending is the default, so it gets the bare URL.
+    startSwitch(() => {
+      router.push(next === "pending" ? pathname : `${pathname}?status=${next}`);
+    });
+  }
+
   const columns: { key: SortColumn; label: string }[] = [
     { key: "name", label: "Name" },
     { key: "amount", label: "Amount" },
@@ -96,15 +129,27 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
   return (
     <>
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Pending</h2>
+        <h2 className="text-lg font-semibold">{STATUS_LABELS[status]}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search name, email, student ID, or reference"
-            aria-label="Search the review queue"
+            aria-label="Search payments"
             className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none placeholder:text-ground/40 focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30"
           />
+          <select
+            value={status}
+            onChange={(event) => changeStatus(event.target.value)}
+            aria-label="Filter by status"
+            className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
+          >
+            {(Object.keys(STATUS_LABELS) as RegistrationStatus[]).map((value) => (
+              <Option key={value} value={value}>
+                {`${STATUS_LABELS[value]} (${counts[value]})`}
+              </Option>
+            ))}
+          </select>
           <select
             value={year}
             onChange={(event) => setYear(event.target.value)}
@@ -121,12 +166,12 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
         </div>
       </div>
 
-      <div className="mt-2">
+      <div className={`mt-2 transition-opacity ${switching ? "opacity-50" : ""}`}>
         <Table
           empty={
             visible.length === 0
               ? rows.length === 0
-                ? "Nothing waiting. Every payment has been reviewed."
+                ? EMPTY_TEXT[status]
                 : query
                   ? `Nothing matches “${query}”.`
                   : "Nothing matches this filter."
@@ -146,7 +191,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
                 />
               ))}
               <Th>Reference</Th>
-              <Th>Actions</Th>
+              <Th>{status === "pending" ? "Actions" : "Decision"}</Th>
             </tr>
           </thead>
           <tbody>
@@ -162,21 +207,7 @@ export function ReviewTable({ rows }: { rows: Row[] }) {
 
 function ReviewRow({ row }: { row: Row }) {
   const { registration, receiptUrl, duplicateCount } = row;
-  const [pending, startTransition] = useTransition();
-  const [reason, setReason] = useState("");
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const flash = useFlash();
-
-  function run(action: () => Promise<ActionResult>, successText: string) {
-    startTransition(async () => {
-      const result = await action();
-      if (!result.ok) {
-        flash(result.error ?? "Something went wrong.", "error");
-        return;
-      }
-      flash(successText);
-    });
-  }
 
   return (
     <Tr>
@@ -194,6 +225,8 @@ function ReviewRow({ row }: { row: Row }) {
               <img
                 src={receiptUrl}
                 alt={`Receipt submitted by ${registration.full_name}`}
+                // The Approved list can run to hundreds of receipts.
+                loading="lazy"
                 className="h-16 w-16 rounded border border-ground/15 object-cover"
               />
             </button>
@@ -238,43 +271,104 @@ function ReviewRow({ row }: { row: Row }) {
       </td>
 
       <td className="py-2 pl-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() =>
-              run(
-                () => approveRegistration(registration.id),
-                `Approved — ticket emailed to ${registration.full_name}.`,
-              )
-            }
-            className="rounded-full bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-          >
-            Approve
-          </button>
-          <input
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Reason for rejecting"
-            maxLength={300}
-            aria-label={`Reason for rejecting ${registration.full_name}`}
-            className="w-40 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-          />
-          <button
-            type="button"
-            disabled={pending || !reason.trim()}
-            onClick={() =>
-              run(
-                () => rejectRegistration(registration.id, reason),
-                `Rejected ${registration.full_name}'s registration.`,
-              )
-            }
-            className="rounded-full border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
-          >
-            Reject
-          </button>
-        </div>
+        {registration.status === "pending" ? (
+          <ReviewActions registration={registration} />
+        ) : (
+          <Decision registration={registration} reviewerEmail={row.reviewerEmail} />
+        )}
       </td>
     </Tr>
+  );
+}
+
+function ReviewActions({ registration }: { registration: Registration }) {
+  const [pending, startTransition] = useTransition();
+  const [reason, setReason] = useState("");
+  const flash = useFlash();
+
+  function run(action: () => Promise<ActionResult>, successText: string) {
+    startTransition(async () => {
+      const result = await action();
+      if (!result.ok) {
+        flash(result.error ?? "Something went wrong.", "error");
+        return;
+      }
+      flash(successText);
+    });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          run(
+            () => approveRegistration(registration.id),
+            `Approved — ticket emailed to ${registration.full_name}.`,
+          )
+        }
+        className="rounded-full bg-accent-2 px-3 py-1.5 text-xs font-semibold text-deep disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+      >
+        Approve
+      </button>
+      <input
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+        placeholder="Reason for rejecting"
+        maxLength={300}
+        aria-label={`Reason for rejecting ${registration.full_name}`}
+        className="w-40 rounded border border-ground/20 bg-ground/5 px-2 py-1.5 text-xs text-ground placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+      />
+      <button
+        type="button"
+        disabled={pending || !reason.trim()}
+        onClick={() =>
+          run(
+            () => rejectRegistration(registration.id, reason),
+            `Rejected ${registration.full_name}'s registration.`,
+          )
+        }
+        className="rounded-full border border-red-400/60 px-3 py-1.5 text-xs font-semibold text-red-300 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-red-400"
+      >
+        Reject
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Read-only on purpose. Undoing an approval frees the student ID and can
+ * strand a ticket already in someone's inbox, so it stays on the Dashboard's
+ * Void, which says so.
+ */
+function Decision({
+  registration,
+  reviewerEmail,
+}: {
+  registration: Registration;
+  reviewerEmail: string | null;
+}) {
+  const approved = registration.status === "approved";
+  const when = registration.reviewed_at
+    ? ` on ${new Date(registration.reviewed_at).toLocaleString("en-PH")}`
+    : "";
+
+  return (
+    <div className="max-w-xs">
+      <Badge tone={approved ? "green" : "red"}>{registration.status}</Badge>
+      <p className="mt-1 text-ground/60">
+        {approved ? "Approved" : "Rejected"} by {reviewerEmail ?? "an admin"}
+        {when}
+      </p>
+      {approved && registration.ticket_code ? (
+        <p className="font-mono text-ground/60">
+          {formatTicketCode(registration.ticket_code)}
+        </p>
+      ) : null}
+      {!approved && registration.reject_reason ? (
+        <p className="text-ground/60">“{registration.reject_reason}”</p>
+      ) : null}
+    </div>
   );
 }
