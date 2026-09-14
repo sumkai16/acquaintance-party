@@ -44,11 +44,12 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Event/theme config (`src/lib/config/event.ts`, `theme.ts`)
 - [x] Database schema + RLS (`supabase/migrations/0001_init.sql`)
 - [x] Checkout — name, student ID, year level, section, email, GCash
-      reference, receipt upload
+      reference, receipt upload (reference read off the receipt in the
+      browser — see below)
 - [x] Walk-in cash sales (admin-entered, approved on the spot)
 - [x] Duplicate-reference detection (unique index) + orphaned-upload cleanup
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
-- [x] Payments — approve/reject with reason
+- [x] Payments — approve/reject with reason; Pending/Approved/Rejected filter
 - [x] Ticket page with QR
 - [x] Submission throttle (honeypot tried and removed — see §6)
 - [x] Admin search (find a lost ticket by name/email)
@@ -68,6 +69,31 @@ localhost. Plan 3's migrations (`0002_raffle.sql`,
 pasted into the hosted project; the raffle still wants one rehearsal with
 real checked-in rows on the actual projector. See
 `docs/superpowers/plans/` for the authoritative task lists.
+
+**The GCash reference is read off the receipt** (2026-09-14). Checkout's
+receipt field moved above the reference field; picking an image runs
+Tesseract (tesseract.js) in the student's browser and fills the reference
+if it finds a thirteen-digit number, with a line asking them to check it
+against the receipt. Chosen over a server-side vision model for being free,
+keyless, and keeping the image on the device until submit. Tested against
+real input: a clean GCash screenshot reads exactly in well under a second;
+a blurry photo *of* a phone screen doesn't read at all, even with local
+thresholding and a locate-then-reread pass (both tried, both dropped as not
+worth the code). A miss just says "type it in" — the field never fills
+unless `findGcashReference` sees exactly thirteen digits, and never
+overwrites a number the student typed. The engine and English data load
+from jsdelivr on first file pick, not on page load.
+
+**Payments shows decided rows, not just the queue** (2026-09-14). A
+Pending/Approved/Rejected dropdown (with counts) sits beside search and year
+level; Pending is the default and the bare URL, the others are
+`?status=approved|rejected`. Status is URL-driven because it decides what
+the server fetches — Approved can run to hundreds of rows — while search and
+year stay instant and client-side as before. Decided rows are read-only
+("Approved by `<email>` on `<date>`" + ticket code, or the rejection reason);
+undoing an approval stays on the Dashboard's Void. Duplicate-reference
+counts and receipt signed URLs are now one batched call each, not one per
+row.
 
 **Prizes aren't tracked in the app.** An early version hardcoded three
 prizes (Third/Second/Grand) in `src/lib/config/event.ts`; a later version
