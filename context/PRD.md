@@ -19,6 +19,9 @@ same venue — two days earlier than the date above. Runway math elsewhere in
 this doc ("~5 weeks") still holds at this precision; nothing else in §3's
 reasoning changes.
 
+**Corrected 2026-09-15: start time moved to 2:30 PM**, still ending 8 PM,
+same date and venue.
+
 ## 2. Target users
 - **Student** — buys a ticket, pays via GCash, uploads a receipt, gets a QR.
   Mobile-first; this is filled out on a phone.

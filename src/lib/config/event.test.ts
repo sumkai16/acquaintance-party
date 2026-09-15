@@ -37,8 +37,8 @@ describe("EVENT", () => {
 });
 
 describe("formatTimeRange", () => {
-  it("renders the confirmed 4–8 PM window", () => {
-    expect(formatTimeRange(EVENT.startsAt, EVENT.endsAt)).toBe("4:00 PM – 8:00 PM");
+  it("renders the confirmed 2:30–8 PM window", () => {
+    expect(formatTimeRange(EVENT.startsAt, EVENT.endsAt)).toBe("2:30 PM – 8:00 PM");
   });
 
   it("formats an arbitrary start and end", () => {

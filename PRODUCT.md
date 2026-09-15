@@ -40,8 +40,8 @@ claim should be designed around or implied.
 
 ## Operating Context
 
-- Runs the week of a single fixed event date (2026-10-05, SCC Annex
-  Building, 4–8 PM) — not an ongoing service.
+- Runs the week of a single fixed event date (2026-10-03, SCC Annex
+  Building, 2:30–8 PM) — not an ongoing service.
 - Venue wifi is unreliable; the door scanner must work fully offline and
   sync later. This is a hard technical constraint that shaped the
   architecture, not a rare edge case.
