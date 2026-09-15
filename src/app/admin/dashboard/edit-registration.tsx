@@ -78,7 +78,7 @@ export function EditRegistration({
         aria-label="Student ID"
         placeholder={STUDENT_ID_PLACEHOLDER}
         pattern={STUDENT_ID_INPUT_PATTERN}
-        title="SCC, the two-digit entry year, then 7 or 8 digits — e.g. SCC-24-0012345"
+        title="SCC, the two-digit entry year, then your serial — e.g. SCC-24-0012345"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}

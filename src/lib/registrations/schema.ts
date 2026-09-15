@@ -44,7 +44,7 @@ export function normalizeStudentId(value: string): string {
 }
 
 /**
- * SCC, the two-digit entry year, then a 7- or 8-digit serial.
+ * SCC, the two-digit entry year, then a serial of any length.
  *
  * Checked against the live table before this was first tightened: 17 of
  * the 18 registrations taken so far matched SCC-YY + 8 digits exactly, and
@@ -54,18 +54,20 @@ export function normalizeStudentId(value: string): string {
  * the one-registration-per-student cap, so a mistyped one neither collides
  * with the student's real ID nor reserves it.
  *
- * Widened to 7-or-8 (not just 8) once real submissions showed both lengths
- * in use across entry years — the school's serials aren't a fixed width.
+ * The serial itself isn't length-checked: real submissions kept showing new
+ * lengths (6, 7, 8 digits across entry years), so the school's serials
+ * aren't a fixed width and the check only needs to catch the shape — the
+ * SCC prefix and the year segment — not the digit count.
  *
  * Anchored, and applied after normalizeStudentId, so it sees the trimmed
  * uppercase form rather than whatever spacing or case was typed.
  */
-export const STUDENT_ID_PATTERN = /^SCC-\d{2}-\d{7,8}$/;
+export const STUDENT_ID_PATTERN = /^SCC-\d{2}-\d+$/;
 
 /** The same shape for an <input pattern>, which has its own anchoring and
  * is matched against the raw value — hence the case-insensitive prefix,
  * since the field only *looks* uppercase (a CSS transform). */
-export const STUDENT_ID_INPUT_PATTERN = "[Ss][Cc][Cc]-[0-9]{2}-[0-9]{7,8}";
+export const STUDENT_ID_INPUT_PATTERN = "[Ss][Cc][Cc]-[0-9]{2}-[0-9]+";
 
 /** What both forms show, and what the import template seeds. */
 export const STUDENT_ID_PLACEHOLDER = "SCC-00-00000000";
@@ -82,7 +84,7 @@ const studentId = z
       .min(1, "Enter your student ID.")
       .regex(
         STUDENT_ID_PATTERN,
-        "Student ID looks like SCC-24-0012345 — SCC, your two-digit entry year, then 7 or 8 digits.",
+        "Student ID looks like SCC-24-0012345 — SCC, your two-digit entry year, then your serial.",
       ),
   );
 
