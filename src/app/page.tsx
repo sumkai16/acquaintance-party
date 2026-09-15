@@ -73,6 +73,7 @@ export default function HomePage() {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "Asia/Manila",
   });
   const time = formatTimeRange(EVENT.startsAt, EVENT.endsAt);
   const price = formatPeso(EVENT.ticketPriceCentavos);

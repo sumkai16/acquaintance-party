@@ -30,6 +30,7 @@ export default async function TicketPage({
               day: "numeric",
               month: "short",
               year: "numeric",
+              timeZone: "Asia/Manila",
             })}
           </span>
         </header>

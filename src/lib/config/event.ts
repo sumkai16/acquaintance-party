@@ -132,10 +132,14 @@ const wholePesos = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 0,
 });
 
-/** Renders a start/end pair as "4:00 PM – 8:00 PM". */
+/** Renders a start/end pair as "4:00 PM – 8:00 PM", always in Manila time. */
 export function formatTimeRange(start: Date, end: Date): string {
   const time = (date: Date) =>
-    date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+    date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Manila",
+    });
 
   return `${time(start)} – ${time(end)}`;
 }

@@ -158,6 +158,7 @@ export default async function DashboardPage({
                   {new Date(scan.scannedAt).toLocaleTimeString("en-PH", {
                     hour: "numeric",
                     minute: "2-digit",
+                    timeZone: "Asia/Manila",
                   })}
                 </td>
                 <td className="py-2 pr-3">{scan.fullName ?? "—"}</td>
