@@ -129,8 +129,8 @@ export function RegistrationRow({
         {registration.ticket_code ? formatTicketCode(registration.ticket_code) : "—"}
       </td>
 
-      <td className="py-2 pl-3 whitespace-nowrap">
-        <div className="flex items-center gap-3">
+      <td className="py-2 pl-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <button
             type="button"
             disabled={pending || editing}
