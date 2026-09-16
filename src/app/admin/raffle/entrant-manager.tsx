@@ -6,7 +6,7 @@ import type { RaffleEntrant } from "@/lib/raffle/types";
 import { useFlash } from "../flash";
 import { Option } from "../option";
 import { addEntrant, importEntrants, removeEntrant } from "./entrant-actions";
-import { Modal } from "./modal";
+import { Modal } from "../modal";
 
 /**
  * The escape hatch: add someone the scanner missed, or import a walk-in

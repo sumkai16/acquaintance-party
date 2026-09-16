@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { EntrantManager } from "./entrant-manager";
-import { Modal } from "./modal";
+import { Modal } from "../modal";
 
 /**
  * The left column: everyone's eligibility (the count, the two toggles,
