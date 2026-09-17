@@ -25,6 +25,20 @@ export type Registration = {
   reviewed_by: string | null;
   evaluation_invited_at: string | null;
   ticket_email_sent_at: string | null;
+  import_batch_id: string | null;
+};
+
+export type ImportBatch = {
+  id: string;
+  uploaded_by: string;
+  file_name: string;
+  file_path: string;
+  created_count: number;
+  failed_count: number;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
 };
 
 export type Evaluation = {

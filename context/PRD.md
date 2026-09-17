@@ -66,6 +66,8 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Expenses — admin-recorded spend, deducted from cash/GCash on that page only (`0010`);
       optional receipt photo, Excel import and export (`0011`). No third-party
       scanning API — the phone's camera via a capture input, shrunk in the browser
+- [x] Walk-in import batches (`0012`) — every bulk import keeps its original file;
+      admins see who imported what at `/admin/imports` and can void a whole import at once
 
 Status as of 2026-09-03: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →

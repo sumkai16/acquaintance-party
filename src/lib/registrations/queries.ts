@@ -116,7 +116,7 @@ export type CreateWalkInResult =
  * in admin/review/actions.ts.
  */
 export async function createWalkInRegistration(
-  input: WalkInInput & { amount: number; reviewedBy: string },
+  input: WalkInInput & { amount: number; reviewedBy: string; importBatchId?: string },
 ): Promise<CreateWalkInResult> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data, error } = await adminClient()
@@ -135,6 +135,10 @@ export async function createWalkInRegistration(
         ticket_code: generateTicketCode(),
         reviewed_at: new Date().toISOString(),
         reviewed_by: input.reviewedBy,
+        // Only set when the row came from a bulk import. Left out of the
+        // insert otherwise, so a single walk-in sale doesn't depend on
+        // migration 0012 existing.
+        ...(input.importBatchId ? { import_batch_id: input.importBatchId } : {}),
       })
       .select("id, ticket_code")
       .single();
