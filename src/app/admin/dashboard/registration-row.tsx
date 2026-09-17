@@ -9,7 +9,7 @@ import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
-import { ReceiptLightbox } from "../review/receipt-lightbox";
+import { ReceiptLightbox } from "../receipt-lightbox";
 import { sendTicketEmail, voidRegistration } from "./actions";
 import { EditRegistration } from "./edit-registration";
 
