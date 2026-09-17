@@ -25,13 +25,27 @@ export type Registration = {
   reviewed_by: string | null;
   evaluation_invited_at: string | null;
   ticket_email_sent_at: string | null;
+  import_batch_id: string | null;
+};
+
+export type ImportBatch = {
+  id: string;
+  uploaded_by: string;
+  file_name: string;
+  file_path: string;
+  created_count: number;
+  failed_count: number;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
 };
 
 export type Evaluation = {
   id: string;
   registration_id: string;
   form_version: string;
-  answers: Record<string, number | string | null>;
+  answers: Record<string, number | string | string[] | null>;
   submitted_at: string;
 };
 
@@ -61,4 +75,20 @@ export type ActivityLog = {
   remittance_id: string | null;
   amount: number | null;
   created_at: string;
+};
+
+export type ExpenseMethod = "cash" | "gcash";
+
+export type Expense = {
+  id: string;
+  item_name: string;
+  amount: number;
+  method: ExpenseMethod;
+  spent_at: string;
+  added_by: string;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
+  receipt_path: string | null;
 };

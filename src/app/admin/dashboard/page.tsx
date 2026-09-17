@@ -8,6 +8,7 @@ import {
   pendingTicketEmailCount,
   REGISTRATIONS_PAGE_SIZE,
   searchRegistrations,
+  signedReceiptUrls,
 } from "@/lib/registrations/queries";
 import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import { listAllProfileNames } from "@/lib/profiles/queries";
@@ -128,9 +129,17 @@ export default async function RegistrationsPage({
   // and it matters most for listAdminEmails: it calls the Supabase Auth
   // admin API, the slowest single call on this page.
   const needsReviewers = results.some((registration) => registration.reviewed_by);
-  const [adminEmails, profileNames] = needsReviewers
-    ? await Promise.all([listAdminEmails(), listAllProfileNames()])
-    : [new Map<string, string>(), new Map<string, string>()];
+  const [adminEmails, profileNames, receiptUrls] = await Promise.all([
+    needsReviewers ? listAdminEmails() : new Map<string, string>(),
+    needsReviewers ? listAllProfileNames() : new Map<string, string>(),
+    // Payments only shows a receipt while the row is in its current list; this
+    // is the place to pull one up for any online payment, whatever its status.
+    signedReceiptUrls(
+      results.flatMap((registration) =>
+        registration.receipt_path ? [registration.receipt_path] : [],
+      ),
+    ),
+  ]);
   const sectionReport = buildSectionReport(approvedForReport);
 
   return (
@@ -232,6 +241,11 @@ export default async function RegistrationsPage({
                 addedByName={
                   registration.payment_method === "walk_in" && registration.reviewed_by
                     ? (profileNames.get(registration.reviewed_by) ?? null)
+                    : null
+                }
+                receiptUrl={
+                  registration.receipt_path
+                    ? (receiptUrls.get(registration.receipt_path) ?? null)
                     : null
                 }
               />

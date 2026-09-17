@@ -10,7 +10,7 @@ import {
   insertExtraEntrantsBatch,
 } from "@/lib/raffle/queries";
 import type { RaffleEntrant } from "@/lib/raffle/types";
-import { currentAdminId } from "@/lib/supabase/server";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
 const MAX_IMPORT_ROWS = 500;
 
@@ -27,8 +27,9 @@ export async function addEntrant(input: {
   yearLevel?: string;
   section?: string;
 }): Promise<AddEntrantResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  const adminId = admin.id;
 
   const row = normalizeImportRow(input);
   if (!row) return { ok: false, error: "Enter a name (2–120 characters)." };
@@ -54,8 +55,7 @@ export async function addEntrant(input: {
 export async function removeEntrant(id: string): Promise<
   { ok: true } | { ok: false; error: string }
 > {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  if (!(await requireAdmin())) return { ok: false, error: ADMIN_ONLY_ERROR };
 
   const result = await deleteExtraEntrant(id);
   if (result.ok) revalidatePath("/admin/raffle");
@@ -82,8 +82,9 @@ function columnIndex(headerRow: ExcelJS.Row, aliases: string[]): number | null {
  * case-insensitively — see docs/setup for the exact format this expects.
  */
 export async function importEntrants(formData: FormData): Promise<ImportEntrantsResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  const adminId = admin.id;
 
   const file = formData.get("file");
   if (!(file instanceof File)) return { ok: false, error: "Choose a file first." };

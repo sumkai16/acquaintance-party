@@ -116,7 +116,7 @@ export type CreateWalkInResult =
  * in admin/review/actions.ts.
  */
 export async function createWalkInRegistration(
-  input: WalkInInput & { amount: number; reviewedBy: string },
+  input: WalkInInput & { amount: number; reviewedBy: string; importBatchId?: string },
 ): Promise<CreateWalkInResult> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data, error } = await adminClient()
@@ -135,6 +135,10 @@ export async function createWalkInRegistration(
         ticket_code: generateTicketCode(),
         reviewed_at: new Date().toISOString(),
         reviewed_by: input.reviewedBy,
+        // Only set when the row came from a bulk import. Left out of the
+        // insert otherwise, so a single walk-in sale doesn't depend on
+        // migration 0012 existing.
+        ...(input.importBatchId ? { import_batch_id: input.importBatchId } : {}),
       })
       .select("id, ticket_code")
       .single();
@@ -181,27 +185,61 @@ export async function getRegistration(id: string): Promise<Registration | null> 
   return (data as Registration) ?? null;
 }
 
-export async function listPending(): Promise<Registration[]> {
+/**
+ * Online submissions in one status, oldest first — the Payments page. Walk-ins
+ * are left out: they never pass through review and have no receipt to show.
+ */
+export async function listForReview(
+  status: RegistrationStatus,
+): Promise<Registration[]> {
   const { data } = await adminClient()
     .from("registrations")
     .select("*")
-    .eq("status", "pending")
+    .eq("status", status)
+    .eq("payment_method", "online")
     .order("created_at", { ascending: true });
 
   return (data as Registration[]) ?? [];
 }
 
-/** Every registration sharing a GCash reference. Used to flag reused receipts. */
-export async function findByReference(
-  reference: string,
-): Promise<Registration[]> {
+/** Online submissions per status, for the Payments page's filter and stats. */
+export async function reviewStatusCounts(): Promise<Record<RegistrationStatus, number>> {
+  const count = async (status: RegistrationStatus) => {
+    const { count } = await adminClient()
+      .from("registrations")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status)
+      .eq("payment_method", "online");
+    return count ?? 0;
+  };
+  const [pending, approved, rejected] = await Promise.all([
+    count("pending"),
+    count("approved"),
+    count("rejected"),
+  ]);
+  return { pending, approved, rejected };
+}
+
+/**
+ * How many registrations carry each of these GCash references, in one query
+ * instead of one per row — the Approved list on Payments can run to hundreds.
+ */
+export async function countByReferences(
+  references: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  if (references.length === 0) return counts;
+
   const { data } = await adminClient()
     .from("registrations")
-    .select("*")
-    .eq("gcash_reference", reference)
-    .order("created_at", { ascending: true });
+    .select("gcash_reference")
+    .in("gcash_reference", references);
 
-  return (data as Registration[]) ?? [];
+  for (const row of data ?? []) {
+    const ref = row.gcash_reference as string;
+    counts.set(ref, (counts.get(ref) ?? 0) + 1);
+  }
+  return counts;
 }
 
 /** How many times this email has submitted since `sinceIso`. */
@@ -387,12 +425,21 @@ export async function cashPaymentsSummary(): Promise<PaymentMethodSummary> {
  * A short-lived URL for a receipt image. The bucket is private, so this is the
  * only way an admin sees the file, and the link dies in ten minutes.
  */
-export async function signedReceiptUrl(path: string): Promise<string | null> {
+export async function signedReceiptUrls(
+  paths: string[],
+): Promise<Map<string, string>> {
+  const urls = new Map<string, string>();
+  if (paths.length === 0) return urls;
+
+  // One storage call for the whole list, not one per row.
   const { data } = await adminClient()
     .storage.from("receipts")
-    .createSignedUrl(path, 600);
+    .createSignedUrls(paths, 600);
 
-  return data?.signedUrl ?? null;
+  for (const item of data ?? []) {
+    if (item.path && item.signedUrl) urls.set(item.path, item.signedUrl);
+  }
+  return urls;
 }
 
 /**

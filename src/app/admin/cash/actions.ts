@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentProfile } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { adminClient } from "@/lib/supabase/admin";
 import { approveRemittance, rejectRemittance } from "@/lib/remittances/queries";
 import { getProfile } from "@/lib/profiles/queries";
@@ -9,12 +9,6 @@ import { logActivity } from "@/lib/activity/queries";
 import { formatPeso } from "@/lib/config/event";
 
 export type ActionResult = { ok: boolean; error?: string };
-
-async function requireAdmin() {
-  const profile = await currentProfile();
-  if (!profile || profile.role !== "admin") return null;
-  return profile;
-}
 
 export async function approve(remittanceId: string): Promise<ActionResult> {
   const admin = await requireAdmin();

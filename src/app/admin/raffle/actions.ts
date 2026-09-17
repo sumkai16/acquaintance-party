@@ -5,7 +5,7 @@ import { drawFromPool } from "@/lib/raffle/draw";
 import { currentWinnerIds, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
 import { allDraws, eligiblePool, recordDraw } from "@/lib/raffle/queries";
 import type { RaffleDrawRow } from "@/lib/raffle/types";
-import { currentAdminId } from "@/lib/supabase/server";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
 export type DrawActionResult =
   | { ok: true; draw: RaffleDrawRow }
@@ -37,8 +37,9 @@ async function runDraw(input: {
   includeExtraEntrants: boolean;
   supersedesDrawId: string | null;
 }): Promise<DrawActionResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  const adminId = admin.id;
 
   const isRedraw = input.supersedesDrawId !== null;
   const [fullPool, draws] = await Promise.all([eligiblePool(), allDraws()]);

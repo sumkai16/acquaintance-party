@@ -14,6 +14,9 @@ import {
 } from "@/lib/registrations/queries";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity/queries";
+import { cellText, columnIndex } from "@/lib/import/excel-cells";
+import { finishImportBatch, startImportBatch } from "@/lib/import-batches/queries";
+import { revalidatePath } from "next/cache";
 import { scheduleWalkInTicketEmail } from "./notify";
 
 /** Lower than the raffle import's 500 — each row here is a real financial
@@ -37,42 +40,6 @@ export type ParsedWalkInRow = {
 export type ParseImportResult =
   | { ok: true; rows: ParsedWalkInRow[] }
   | { ok: false; error: string };
-
-function columnIndex(headerRow: ExcelJS.Row, aliases: string[]): number | null {
-  let found: number | null = null;
-  headerRow.eachCell((cell, colNumber) => {
-    if (found !== null) return;
-    const text = String(cell.value ?? "").trim().toLowerCase();
-    if (aliases.includes(text)) found = colNumber;
-  });
-  return found;
-}
-
-/**
- * Excel auto-links anything that looks like an email or URL the moment it's
- * typed into a cell, which ExcelJS represents as `{ text, hyperlink }`
- * rather than a plain string — `String(value)` on that object was
- * producing the literal text "[object Object]" instead of the address.
- * Also handles rich-text cells (`{ richText: [...] }`), the other common
- * non-string shape a "plain" typed cell can come back as.
- */
-function cellText(row: ExcelJS.Row, col: number | null): string {
-  if (!col) return "";
-  const value = row.getCell(col).value as unknown;
-  if (value === null || value === undefined) return "";
-
-  if (typeof value === "object") {
-    const rich = value as { text?: unknown; richText?: { text?: unknown }[]; hyperlink?: unknown };
-    if (typeof rich.text === "string") return rich.text.trim();
-    if (Array.isArray(rich.richText)) {
-      return rich.richText.map((part) => String(part.text ?? "")).join("").trim();
-    }
-    if (typeof rich.hyperlink === "string") return rich.hyperlink.trim();
-    return "";
-  }
-
-  return String(value).trim();
-}
 
 /** "1st Year", "1ST YEAR" -> "1st year" — only when it's a case-only typo
  * of a real year level; anything else passes through for the schema's own
@@ -191,7 +158,11 @@ export async function parseWalkInImport(formData: FormData): Promise<ParseImport
 export type ConfirmImportResult = {
   created: number;
   failed: { row: WalkInInput; error: string }[];
+  /** Set when nothing was attempted at all — the rows are untouched. */
+  error?: string;
 };
+
+const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
 
 /**
  * Creates one approved registration per row the admin kept checked after
@@ -199,10 +170,44 @@ export type ConfirmImportResult = {
  * (createWalkInRegistration, the walk_in_payment_added activity log, the
  * ticket email), just looped. Re-validates every row server-side rather
  * than trusting what the client held onto since parsing.
+ *
+ * FormData carries `rows` (JSON) and the original `file` again. The file is
+ * stored as an import batch before any ticket is created, and every ticket
+ * is tagged with that batch, so an admin can later see what was uploaded
+ * and void the whole import in one step (/admin/imports).
  */
-export async function confirmWalkInImport(rows: WalkInInput[]): Promise<ConfirmImportResult> {
+export async function confirmWalkInImport(formData: FormData): Promise<ConfirmImportResult> {
+  let rows: WalkInInput[];
+  try {
+    rows = JSON.parse(String(formData.get("rows") ?? "[]"));
+    if (!Array.isArray(rows)) throw new Error("rows is not an array");
+  } catch {
+    return { created: 0, failed: [], error: "Could not read the rows. Parse the file again." };
+  }
+
   const adminId = await currentAdminId();
-  if (!adminId) return { created: 0, failed: rows.map((row) => ({ row, error: "Sign in again." })) };
+  if (!adminId) return { created: 0, failed: [], error: "Sign in again." };
+  if (rows.length === 0) return { created: 0, failed: [], error: "Nothing selected to import." };
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { created: 0, failed: [], error: `Import at most ${MAX_IMPORT_ROWS} rows at once.` };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { created: 0, failed: [], error: "The file is missing. Choose it again and re-parse." };
+  }
+  if (file.size > MAX_IMPORT_FILE_BYTES) {
+    return { created: 0, failed: [], error: "Keep the file under 5 MB." };
+  }
+
+  const batch = await startImportBatch(adminId, file);
+  if (!batch.ok) {
+    return {
+      created: 0,
+      failed: [],
+      error: "Could not save a copy of the file, so nothing was imported. Try again.",
+    };
+  }
 
   const profile = await currentProfile();
   const failed: ConfirmImportResult["failed"] = [];
@@ -219,6 +224,7 @@ export async function confirmWalkInImport(rows: WalkInInput[]): Promise<ConfirmI
       ...parsed.data,
       amount: EVENT.ticketPriceCentavos,
       reviewedBy: adminId,
+      importBatchId: batch.id,
     });
 
     if (!result.ok) {
@@ -242,11 +248,13 @@ export async function confirmWalkInImport(rows: WalkInInput[]): Promise<ConfirmI
     await logActivity({
       userId: adminId,
       activityType: "walk_in_payment_added",
-      description: `${profile?.fullName ?? "Someone"} recorded a walk-in payment for ${parsed.data.fullName} (${parsed.data.studentId})`,
+      description: `${profile?.fullName ?? "Someone"} recorded a walk-in payment for ${parsed.data.fullName} (${parsed.data.studentId}) (import)`,
       registrationId: result.id,
       amount: EVENT.ticketPriceCentavos,
     });
   }
 
+  await finishImportBatch(batch.id, created, failed.length);
+  if (created > 0) revalidatePath("/admin/imports");
   return { created, failed };
 }

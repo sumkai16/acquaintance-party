@@ -47,6 +47,7 @@ export default async function VerifyPage({
                 day: "numeric",
                 month: "long",
                 year: "numeric",
+                timeZone: "Asia/Manila",
               })}
               .
             </p>

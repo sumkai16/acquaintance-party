@@ -31,6 +31,25 @@ export async function logActivity(entry: LogEntry): Promise<void> {
   if (error) console.error("logActivity failed", entry.activityType, error);
 }
 
+/** Many audit rows in one insert — same never-throws contract as logActivity. */
+export async function logActivities(entries: LogEntry[]): Promise<void> {
+  if (entries.length === 0) return;
+  const { error } = await adminClient()
+    .from("activity_logs")
+    .insert(
+      entries.map((entry) => ({
+        user_id: entry.userId,
+        activity_type: entry.activityType,
+        description: entry.description,
+        registration_id: entry.registrationId ?? null,
+        remittance_id: entry.remittanceId ?? null,
+        amount: entry.amount ?? null,
+      })),
+    );
+
+  if (error) console.error("logActivities failed", entries.length, error);
+}
+
 export type ActivityFilters = {
   userId?: string;
   activityType?: ActivityType;

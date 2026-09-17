@@ -176,8 +176,6 @@ describe("checkoutSchema", () => {
 
   it.each([
     ["a three-digit year", "SCC-253-00025380"],
-    ["a seven-digit serial", "SCC-25-0002538"],
-    ["a nine-digit serial", "SCC-25-000253800"],
     ["no dashes at all", "SCC2500025380"],
     ["a different school prefix", "ABC-25-00025380"],
     ["trailing characters", "SCC-25-00025380X"],
@@ -185,12 +183,20 @@ describe("checkoutSchema", () => {
     expect(checkoutSchema.safeParse({ ...valid, studentId }).success).toBe(false);
   });
 
-  it("accepts the shape every real registration uses", () => {
+  it("accepts the 8-digit shape most real registrations use", () => {
     // 17 of the 18 registrations taken before this rule existed matched
     // exactly this; the eighteenth was the typo above.
     expect(
       checkoutSchema.safeParse({ ...valid, studentId: "SCC-25-00025380" }).success,
     ).toBe(true);
+  });
+
+  it.each([
+    ["a 7-digit serial", "SCC-14-0001819"],
+    ["a 6-digit serial", "SCC-12-000853"],
+    ["a 9-digit serial", "SCC-25-000253800"],
+  ])("accepts %s — the serial isn't a fixed width", (_label, studentId) => {
+    expect(checkoutSchema.safeParse({ ...valid, studentId }).success).toBe(true);
   });
 });
 

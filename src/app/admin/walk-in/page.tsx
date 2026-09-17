@@ -1,9 +1,13 @@
+import Link from "next/link";
+import { currentProfile } from "@/lib/supabase/server";
 import { BulkImportProvider, BulkImportToggle, WalkInLayout } from "./bulk-import";
 import { WalkInForm } from "./walk-in-form";
 
 export const metadata = { title: "Walk-in" };
 
-export default function WalkInPage() {
+export default async function WalkInPage() {
+  const profile = await currentProfile();
+
   return (
     // Wider than the single-entry form needs on its own, so the bulk-import
     // review table has room to sit beside it — WalkInLayout centers the
@@ -17,7 +21,18 @@ export default function WalkInPage() {
               For a student paying cash in person, not through GCash.
             </p>
           </div>
-          <BulkImportToggle />
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Staff can import but not audit or void imports — that's admin-only. */}
+            {profile?.role === "admin" ? (
+              <Link
+                href="/admin/imports"
+                className="text-sm font-semibold text-accent-2 underline"
+              >
+                Past imports
+              </Link>
+            ) : null}
+            <BulkImportToggle />
+          </div>
         </header>
 
         <WalkInLayout>

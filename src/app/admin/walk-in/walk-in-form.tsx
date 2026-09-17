@@ -81,7 +81,7 @@ export function WalkInForm() {
           // Native check before the round trip, so a malformed ID is caught
           // while the field is still focused rather than after a submit.
           pattern={STUDENT_ID_INPUT_PATTERN}
-          title="SCC, your two-digit entry year, then eight digits — e.g. SCC-24-00012345"
+          title="SCC, your two-digit entry year, then your serial — e.g. SCC-24-0012345"
           autoCapitalize="characters"
           autoCorrect="off"
           spellCheck={false}

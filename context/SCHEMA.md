@@ -32,6 +32,7 @@ purchasing means there's no separate orders table.
 | reviewed_at | timestamptz | nullable | |
 | reviewed_by | uuid | FK → `auth.users(id)`, nullable | The admin who approved/rejected |
 | evaluation_invited_at | timestamptz | nullable | Added in `0006_evaluation.sql`. When the post-event evaluation email went out. `NULL` is the queue: the admin send picks recipients by this being null, so pressing the button again retries failures and catches late-syncing scans without emailing anyone twice |
+| import_batch_id | uuid | FK → `import_batches(id)` ON DELETE SET NULL, nullable | Added in `0012`. Set only on tickets created by a Walk-in bulk import — see `import_batches` below |
 | ticket_email_sent_at | timestamptz | nullable | Added in `0009_ticket_email.sql`. When the ticket QR email actually reached Resend. Same "null is the queue" shape as `evaluation_invited_at` — the Dashboard's **Send to N** button emails approved payees where this is null, and stamps a batch only after Resend accepts it. Exists because every approval email failed silently for weeks (no verified sending domain, see `docs/setup/resend.md`) with nothing recording who was missed |
 
 **Check constraints — do not work around these from application code:**
@@ -269,6 +270,82 @@ staff member's own log), `activity_logs_type_idx` on
 `(activity_type, created_at desc)`, `activity_logs_registration_idx` on
 `registration_id`.
 
+## expenses
+
+Added in `0010_expenses.sql`. Admin-recorded money spent on the event —
+`/admin/expenses`. The cash/GCash "remaining" figures on that page are
+computed at read time (collected minus non-voided expenses, per method),
+never written back to `registrations` or `cash_remittances` — no other
+page's totals change because of an expense.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| item_name | text | NOT NULL, 2–120 chars trimmed | |
+| amount | integer | NOT NULL, `> 0` | Centavos, never a float |
+| method | `expense_method` enum | NOT NULL | `cash` \| `gcash` |
+| spent_at | timestamptz | NOT NULL | When the money was actually spent — admin-editable, defaults to now in the form |
+| added_by | uuid | NOT NULL, FK → `auth.users(id)` | From the signed-in session, never a typed field — see `context/RULES.md` on trusting client input for an audit trail |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+| voided_at | timestamptz | nullable | |
+| voided_by | uuid | FK → `auth.users(id)`, nullable | |
+| void_reason | text | nullable | |
+| receipt_path | text | nullable | Added in `0011_expense_receipts.sql`. Key into the private `receipts` bucket (`expenses/<uuid>.<ext>`), not a URL. Optional — imported rows never have one. Viewed in the shared zoomable viewer (`src/app/admin/receipt-lightbox.tsx`), whose image src is `/admin/expenses/receipt/[id]` — that route mints a fresh 10-minute signed URL each time |
+
+Rows can also arrive in bulk from an Excel import (`/admin/expenses`,
+`import-actions.ts`) — `added_by` is the importing admin, and the batch
+writes one summary `expense_added` activity row rather than one per
+expense. `/admin/expenses/export` downloads every row (voided included) plus
+a Summary sheet matching the page's cards.
+
+**Check constraints:**
+- `void_fields_consistent` — `voided_at`/`voided_by`/`void_reason` are all
+  null or all set (with a non-empty reason), same shape as
+  `cash_remittances.approval_fields_match_status`. An expense is voided,
+  never deleted — the row and its reason stay in the audit trail.
+
+**The double-void guard is not a constraint** — `voidExpense()`
+(`src/lib/expenses/queries.ts`) filters `.is("voided_at", null)` in the same
+`UPDATE` that sets it, the same atomic pattern `approveRemittance()` uses.
+
+**Indexes:** `expenses_spent_idx` on `spent_at desc`.
+
+## import_batches
+
+Added in `0012_import_batches.sql`. One row per confirmed Walk-in bulk
+import. Exists because a staff member once imported the wrong file: every
+row became an approved ticket, nothing recorded what file it was or linked
+those tickets together, and the admin had to void them one by one.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK | Generated in app code so the file key can use it before insert |
+| uploaded_by | uuid | NOT NULL, FK → `auth.users(id)` | Staff or admin who confirmed the import |
+| file_name | text | NOT NULL | Original name, used as the download filename |
+| file_path | text | NOT NULL | Key in the private `receipts` bucket: `imports/<id>.xlsx` |
+| created_count | integer | NOT NULL, default 0 | Tickets created |
+| failed_count | integer | NOT NULL, default 0 | Checked rows that failed at insert (e.g. student ID already active) |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+| voided_at / voided_by / void_reason | | nullable | Set together (`batch_void_fields_consistent`) by the first "Void this import" |
+
+`registrations.import_batch_id` (uuid, FK → `import_batches(id)` ON DELETE
+SET NULL, indexed) tags each ticket an import created. Null for single
+walk-in sales, online checkout, and any import from before `0012`.
+
+**Order matters in `confirmWalkInImport`** (`src/app/admin/walk-in/import-actions.ts`):
+the batch row is inserted and the file uploaded *before* any ticket is
+created; if the upload fails the batch is deleted and nothing is imported.
+A batch that ends up creating zero tickets is deleted with its file.
+
+**Voiding** (`voidImportBatch()` in `src/lib/import-batches/queries.ts`) is
+one `UPDATE registrations … where import_batch_id = ? and status <> 'rejected'`
+— the same change `voidRegistration` makes to a single row. Tickets voided
+individually beforehand are untouched. It writes one `registration_voided`
+activity row per ticket plus one `import_voided` summary. Admin-only:
+`/admin/imports` sits outside `/admin/walk-in` on purpose, because the
+layout's staff allowlist is a prefix match and would let staff into anything
+under it.
+
 ## Row-level security
 
 RLS is **on** for every table. Every policy targets `authenticated` (i.e.
@@ -293,6 +370,10 @@ create policy "authenticated read profiles" on profiles
 create policy "authenticated read cash_remittances" on cash_remittances
   for select to authenticated using (true);
 create policy "authenticated read activity_logs" on activity_logs
+  for select to authenticated using (true);
+create policy "authenticated read expenses" on expenses
+  for select to authenticated using (true);
+create policy "authenticated read import_batches" on import_batches
   for select to authenticated using (true);
 ```
 
@@ -322,3 +403,13 @@ and writes through the service-role client. If a feature seems to need an
 `src/app/checkout/actions.ts`), never a guessable path. Admins read receipt
 images only via `signedReceiptUrl()`, a 10-minute signed URL — there is no
 public read path.
+
+Expense receipt photos share this bucket under `expenses/<uuid>.<ext>`
+(`uploadExpenseReceipt()` in `src/lib/expenses/queries.ts`) — a prefix
+checkout's year-keyed paths can never produce. The photo is shrunk in the
+browser first (longest side 2400px, JPEG), so a camera photo lands under
+1 MB while small print stays legible when zoomed.
+
+Walk-in bulk import files are kept here too, under `imports/<batch id>.xlsx`
+(`startImportBatch()` in `src/lib/import-batches/queries.ts`), downloaded by
+admins through `/admin/imports/file/[id]`.

@@ -30,9 +30,11 @@ export default async function EvaluatePage({
           How was it?
         </h1>
         <p className="mt-3 text-ink/70">
-          Hi {context.registration.full_name.split(" ")[0]} — a few quick
-          questions about {EVENT.name}. Send it and your certificate of
-          attendance is ready straight away.
+          Hi {context.registration.full_name.split(" ")[0]} — tell the
+          Information Tech Society how {EVENT.name} went. Most of it is tapping
+          1 to 5, and the written answers are optional. Your answers are read
+          without your name. Send it and your certificate of attendance is
+          ready straight away.
         </p>
       </header>
 

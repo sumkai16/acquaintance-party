@@ -11,7 +11,7 @@ export const EVENT = {
   name: "Acquaintance Party",
   tagline: "Sunset Soiree",
   host: "Itech Society",
-  startsAt: new Date("2026-10-03T16:00:00+08:00"),
+  startsAt: new Date("2026-10-03T14:30:00+08:00"),
   endsAt: new Date("2026-10-03T20:00:00+08:00"),
   venue: "SCC Annex Building",
   ticketPriceCentavos: 49_500,
@@ -132,10 +132,14 @@ const wholePesos = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 0,
 });
 
-/** Renders a start/end pair as "4:00 PM – 8:00 PM". */
+/** Renders a start/end pair as "4:00 PM – 8:00 PM", always in Manila time. */
 export function formatTimeRange(start: Date, end: Date): string {
   const time = (date: Date) =>
-    date.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+    date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: "Asia/Manila",
+    });
 
   return `${time(start)} – ${time(end)}`;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import {
   STUDENT_ID_INPUT_PATTERN,
   STUDENT_ID_PLACEHOLDER,
@@ -8,6 +8,7 @@ import {
 } from "@/lib/registrations/schema";
 import { sectionsFor } from "@/lib/registrations/sections";
 import { submitRegistration, type FormState } from "./actions";
+import { readReferenceFromImage } from "./read-reference";
 
 const initial: FormState = { status: "idle", attempt: 0 };
 
@@ -16,10 +17,71 @@ const inputClass =
   "placeholder:text-ink/40 " +
   "focus:border-accent focus:outline-2 focus:outline-offset-2 focus:outline-accent";
 
+type ReadStatus = "idle" | "reading" | "found" | "missed" | { differs: string };
+
+const READ_MESSAGES: Record<"reading" | "found" | "missed", string> = {
+  reading: "Reading the reference number from your receipt…",
+  found: "Filled in from your receipt. Check it matches the Ref No. on your screenshot.",
+  missed: "We couldn't read the number from that image. Type it in.",
+};
+
 export function CheckoutForm() {
   const [state, action, pending] = useActionState(submitRegistration, initial);
   const errors = state.fieldErrors ?? {};
   const values = state.values;
+
+  const referenceRef = useRef<HTMLInputElement>(null);
+  const [readStatus, setReadStatus] = useState<ReadStatus>("idle");
+  // Which file pick is current, so a slow read of an earlier image can't
+  // land on top of the one the student switched to.
+  const readId = useRef(0);
+  // The last number we filled in. A reference the student typed themselves
+  // is never overwritten — only an empty field or our own earlier guess.
+  const filled = useRef("");
+
+  async function handleReceipt(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    const id = ++readId.current;
+    // A number we read off the previous image belongs to that image. Left in
+    // place, a miss on the new one would read as if it came from this receipt.
+    const input = referenceRef.current;
+    if (input && filled.current && input.value === filled.current) {
+      input.value = "";
+    }
+    filled.current = "";
+    if (!file) {
+      setReadStatus("idle");
+      return;
+    }
+
+    setReadStatus("reading");
+    const reference = await readReferenceFromImage(file).catch((error) => {
+      // Offline, or the engine failed to load — typing it in still works.
+      console.error("reading the receipt failed", error);
+      return null;
+    });
+    if (id !== readId.current) return;
+
+    if (!reference || !input) {
+      setReadStatus("missed");
+      return;
+    }
+    if (input.value !== "" && input.value !== reference) {
+      // The student already typed something else — flag it, don't replace it.
+      setReadStatus({ differs: reference });
+      return;
+    }
+    input.value = reference;
+    filled.current = reference;
+    setReadStatus("found");
+  }
+
+  const readMessage =
+    typeof readStatus === "object"
+      ? `Your receipt reads ${readStatus.differs}. Check the number above matches.`
+      : readStatus === "idle"
+        ? null
+        : READ_MESSAGES[readStatus];
 
   // React resets every uncontrolled field once the action finishes without
   // redirecting — see the comment on FormState.values in actions.ts. Keying
@@ -74,7 +136,7 @@ export function CheckoutForm() {
           // Native check before the round trip, so a malformed ID is caught
           // while the field is still focused rather than after a submit.
           pattern={STUDENT_ID_INPUT_PATTERN}
-          title="SCC, your two-digit entry year, then eight digits — e.g. SCC-24-00012345"
+          title="SCC, your two-digit entry year, then your serial — e.g. SCC-24-0012345"
           autoCapitalize="characters"
           autoCorrect="off"
           spellCheck={false}
@@ -109,28 +171,11 @@ export function CheckoutForm() {
         />
       </Field>
 
-      <Field
-        label="GCash reference number"
-        name="gcashReference"
-        hint="The 13-digit number on your GCash receipt."
-        error={errors.gcashReference}
-      >
-        <input
-          key={keyed("gcashReference")}
-          id="gcashReference"
-          name="gcashReference"
-          required
-          inputMode="numeric"
-          placeholder="1234567890123"
-          defaultValue={values?.gcashReference ?? ""}
-          className={`${inputClass} font-mono`}
-        />
-      </Field>
-
+      {/* Above the reference field, so the number can be read from it first. */}
       <Field
         label="Receipt screenshot"
         name="receipt"
-        hint="JPG, PNG, or WebP, under 5 MB."
+        hint="JPG, PNG, or WebP, under 5 MB. We'll read the reference number from it."
         error={errors.receipt}
       >
         <input
@@ -139,8 +184,38 @@ export function CheckoutForm() {
           type="file"
           required
           accept="image/jpeg,image/png,image/webp"
+          onChange={handleReceipt}
           className="w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-ink/10 file:px-4 file:py-2 file:font-semibold"
         />
+      </Field>
+
+      <Field
+        label="GCash reference number"
+        name="gcashReference"
+        hint="The 13-digit number on your GCash receipt."
+        error={errors.gcashReference}
+      >
+        <input
+          key={keyed("gcashReference")}
+          ref={referenceRef}
+          id="gcashReference"
+          name="gcashReference"
+          required
+          inputMode="numeric"
+          placeholder="1234567890123"
+          defaultValue={values?.gcashReference ?? ""}
+          // Once the student edits it, "filled in from your receipt" no
+          // longer describes what's in the box.
+          onInput={() => {
+            if (readStatus === "found" || typeof readStatus === "object") {
+              setReadStatus("idle");
+            }
+          }}
+          className={`${inputClass} font-mono`}
+        />
+        <p aria-live="polite" className="text-sm font-medium text-ink/80">
+          {readMessage}
+        </p>
       </Field>
 
       <button

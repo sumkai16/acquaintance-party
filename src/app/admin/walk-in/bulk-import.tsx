@@ -137,9 +137,25 @@ export function BulkImportPanel() {
       .map((row) => row.data!);
     if (toImport.length === 0) return;
 
+    // The original file goes along again so the server can keep a copy with
+    // the import — an admin can then see exactly what was uploaded.
+    const file = fileRef.current?.files?.[0];
+    if (!file) {
+      flash("The file is no longer selected. Choose it again and re-parse.", "error");
+      return;
+    }
+    const formData = new FormData();
+    formData.set("file", file);
+    formData.set("rows", JSON.stringify(toImport));
+
     setConfirming(true);
-    const result = await confirmWalkInImport(toImport);
+    const result = await confirmWalkInImport(formData);
     setConfirming(false);
+
+    if (result.error) {
+      flash(result.error, "error");
+      return;
+    }
 
     if (result.failed.length === 0) {
       flash(`Recorded ${result.created} walk-in sale${result.created === 1 ? "" : "s"}.`);
@@ -177,6 +193,12 @@ export function BulkImportPanel() {
             <input
               ref={fileRef}
               type="file"
+              // Picking a different file drops the old parse, so the file
+              // saved with the import is always the one that was reviewed.
+              onChange={() => {
+                setRows(null);
+                setChecked(new Set());
+              }}
               accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="text-sm text-ground/70 file:mr-3 file:rounded file:border-0 file:bg-ground/10 file:px-3 file:py-1.5 file:text-ground"
             />

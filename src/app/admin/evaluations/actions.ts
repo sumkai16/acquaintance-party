@@ -6,7 +6,7 @@ import {
   EMAIL_BATCH_LIMIT,
   sendEvaluationInviteBatch,
 } from "@/lib/notify/email";
-import { currentAdminId } from "@/lib/supabase/server";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
 export type SendResult =
   | { ok: true; sent: number; failed: number }
@@ -22,8 +22,7 @@ export type SendResult =
  * — without emailing anyone twice.
  */
 export async function sendEvaluationInvites(): Promise<SendResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  if (!(await requireAdmin())) return { ok: false, error: ADMIN_ONLY_ERROR };
 
   const recipients = await pendingInviteRecipients();
   if (recipients.length === 0) return { ok: true, sent: 0, failed: 0 };

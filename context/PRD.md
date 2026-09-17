@@ -19,6 +19,9 @@ same venue — two days earlier than the date above. Runway math elsewhere in
 this doc ("~5 weeks") still holds at this precision; nothing else in §3's
 reasoning changes.
 
+**Corrected 2026-09-15: start time moved to 2:30 PM**, still ending 8 PM,
+same date and venue.
+
 ## 2. Target users
 - **Student** — buys a ticket, pays via GCash, uploads a receipt, gets a QR.
   Mobile-first; this is filled out on a phone.
@@ -44,11 +47,12 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Event/theme config (`src/lib/config/event.ts`, `theme.ts`)
 - [x] Database schema + RLS (`supabase/migrations/0001_init.sql`)
 - [x] Checkout — name, student ID, year level, section, email, GCash
-      reference, receipt upload
+      reference, receipt upload (reference read off the receipt in the
+      browser — see below)
 - [x] Walk-in cash sales (admin-entered, approved on the spot)
 - [x] Duplicate-reference detection (unique index) + orphaned-upload cleanup
 - [x] Admin auth (Supabase, signup disabled, accounts created by hand)
-- [x] Payments — approve/reject with reason
+- [x] Payments — approve/reject with reason; Pending/Approved/Rejected filter
 - [x] Ticket page with QR
 - [x] Submission throttle (honeypot tried and removed — see §6)
 - [x] Admin search (find a lost ticket by name/email)
@@ -58,6 +62,12 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
 - [x] Raffle wheel, server-side draw
 - [x] Google Sheets live sync
 - [x] Confirmation emails (Resend) — see below
+- [x] Staff accounts, cash remittance, activity log (`0007`)
+- [x] Expenses — admin-recorded spend, deducted from cash/GCash on that page only (`0010`);
+      optional receipt photo, Excel import and export (`0011`). No third-party
+      scanning API — the phone's camera via a capture input, shrunk in the browser
+- [x] Walk-in import batches (`0012`) — every bulk import keeps its original file;
+      admins see who imported what at `/admin/imports` and can void a whole import at once
 
 Status as of 2026-09-03: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →
@@ -68,6 +78,31 @@ localhost. Plan 3's migrations (`0002_raffle.sql`,
 pasted into the hosted project; the raffle still wants one rehearsal with
 real checked-in rows on the actual projector. See
 `docs/superpowers/plans/` for the authoritative task lists.
+
+**The GCash reference is read off the receipt** (2026-09-14). Checkout's
+receipt field moved above the reference field; picking an image runs
+Tesseract (tesseract.js) in the student's browser and fills the reference
+if it finds a thirteen-digit number, with a line asking them to check it
+against the receipt. Chosen over a server-side vision model for being free,
+keyless, and keeping the image on the device until submit. Tested against
+real input: a clean GCash screenshot reads exactly in well under a second;
+a blurry photo *of* a phone screen doesn't read at all, even with local
+thresholding and a locate-then-reread pass (both tried, both dropped as not
+worth the code). A miss just says "type it in" — the field never fills
+unless `findGcashReference` sees exactly thirteen digits, and never
+overwrites a number the student typed. The engine and English data load
+from jsdelivr on first file pick, not on page load.
+
+**Payments shows decided rows, not just the queue** (2026-09-14). A
+Pending/Approved/Rejected dropdown (with counts) sits beside search and year
+level; Pending is the default and the bare URL, the others are
+`?status=approved|rejected`. Status is URL-driven because it decides what
+the server fetches — Approved can run to hundreds of rows — while search and
+year stay instant and client-side as before. Decided rows are read-only
+("Approved by `<email>` on `<date>`" + ticket code, or the rejection reason);
+undoing an approval stays on the Dashboard's Void. Duplicate-reference
+counts and receipt signed URLs are now one batched call each, not one per
+row.
 
 **Prizes aren't tracked in the app.** An early version hardcoded three
 prizes (Third/Second/Grand) in `src/lib/config/event.ts`; a later version
@@ -341,7 +376,10 @@ The decisions worth not relitigating:
   The link is what rejects a duplicate and gates the certificate;
   `/admin/evaluations` shows totals and lists the written answers without
   names.
-- **Questions and artwork are both deliberately provisional.** The draft
+- **The questions are the organisers' form (`v1`, 2026-09-17), minus its
+  repeats.** Anything the paper form asked twice is kept once, in its first
+  place; ratings are required, written answers and the tick-all list are not.
+- **Questions and artwork both stay easy to swap.** The
   questionnaire is `src/lib/evaluation/questions.ts` and the certificate art
   is a drop-in `public/certificate-bg.png`; changing either touches nothing
   else. Answers are stored as jsonb stamped with a `form_version`, so

@@ -42,7 +42,9 @@ export async function GET(request: Request) {
 
   for (const scan of scans) {
     sheet.addRow({
-      scannedAt: new Date(scan.scannedAt).toLocaleString("en-PH"),
+      scannedAt: new Date(scan.scannedAt).toLocaleString("en-PH", {
+        timeZone: "Asia/Manila",
+      }),
       fullName: scan.fullName ?? "",
       yearLevel: scan.yearLevel ?? "",
       section: scan.section ?? "",
