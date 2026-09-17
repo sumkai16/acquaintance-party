@@ -10,6 +10,7 @@ const QUERY_DEBOUNCE_MS = 300;
 const STATUS_OPTIONS = [
   { value: "", label: "All statuses" },
   { value: "pending", label: "Pending" },
+  { value: "partial", label: "Partial (walk-in)" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ] as const;

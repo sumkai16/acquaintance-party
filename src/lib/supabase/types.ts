@@ -1,6 +1,8 @@
 import type { ActivityType } from "@/lib/activity/types";
 
-export type RegistrationStatus = "pending" | "approved" | "rejected";
+export type RegistrationStatus = "pending" | "approved" | "rejected" | "partial";
+/** The Payments page only ever reviews online submissions — a walk-in never lands in this queue. */
+export type ReviewStatus = "pending" | "approved" | "rejected";
 export type PaymentMethod = "online" | "walk_in";
 export type ScanResult = "ok" | "duplicate" | "invalid";
 export type UserRole = "admin" | "staff";
@@ -17,6 +19,7 @@ export type Registration = {
   gcash_reference: string | null;
   receipt_path: string | null;
   amount: number;
+  amount_paid: number;
   status: RegistrationStatus;
   reject_reason: string | null;
   ticket_code: string | null;

@@ -68,6 +68,11 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
       scanning API — the phone's camera via a capture input, shrunk in the browser
 - [x] Walk-in import batches (`0012`) — every bulk import keeps its original file;
       admins see who imported what at `/admin/imports` and can void a whole import at once
+- [x] Partial walk-in payments (`0013`) — a walk-in cash sale can be recorded
+      with any admin-entered amount, at least `EVENT.partialPaymentMinCentavos`
+      (a flat floor, not a percentage); no QR goes out until staff or admin
+      record the balance on `/admin/walk-in`. Online payments are unaffected — there is
+      no partial concept for GCash
 
 Status as of 2026-09-03: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →

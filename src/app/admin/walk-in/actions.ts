@@ -1,10 +1,15 @@
 "use server";
 
-import { EVENT } from "@/lib/config/event";
+import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { EVENT, formatPeso } from "@/lib/config/event";
 import { walkInSchema } from "@/lib/registrations/schema";
-import { createWalkInRegistration } from "@/lib/registrations/queries";
+import { completeWalkInBalance, createWalkInRegistration } from "@/lib/registrations/queries";
+import { isValidPartialAmount } from "@/lib/registrations/partial";
+import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity/queries";
+import { sendPartialPaymentEmail } from "@/lib/notify/email";
 import { scheduleWalkInTicketEmail } from "./notify";
 
 export type SubmittedValues = {
@@ -13,6 +18,8 @@ export type SubmittedValues = {
   yearLevel: string;
   section: string;
   email: string;
+  /** Raw text as typed — parsed and validated separately from walkInSchema, since it isn't an identity field. */
+  amount: string;
 };
 
 export type FormState = {
@@ -33,6 +40,7 @@ function readValues(formData: FormData): SubmittedValues {
     yearLevel: String(formData.get("yearLevel") ?? ""),
     section: String(formData.get("section") ?? ""),
     email: String(formData.get("email") ?? ""),
+    amount: String(formData.get("amount") ?? ""),
   };
 }
 
@@ -60,12 +68,28 @@ export async function submitWalkIn(
   const attempt = _prev.attempt + 1;
 
   const parsed = walkInSchema.safeParse(values);
+  const fieldErrors: Record<string, string> = {};
   if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
       const field = String(issue.path[0]);
       fieldErrors[field] ??= issue.message;
     }
+  }
+
+  // Checked alongside the identity fields, not after, for the same reason
+  // checkout's receipt check is — one pass reports every invalid field at
+  // once instead of the amount only surfacing once everything else is fixed.
+  const amountCentavos = parsePesoToCentavos(values.amount);
+  const fullPrice = EVENT.ticketPriceCentavos;
+  if (amountCentavos === null) {
+    fieldErrors.amount = "Enter a valid amount.";
+  } else if (amountCentavos > fullPrice) {
+    fieldErrors.amount = `Can't exceed the full price (${formatPeso(fullPrice)}).`;
+  } else if (amountCentavos < fullPrice && !isValidPartialAmount(amountCentavos, fullPrice)) {
+    fieldErrors.amount = `A partial payment must be at least ${formatPeso(EVENT.partialPaymentMinCentavos)}.`;
+  }
+
+  if (!parsed.success || fieldErrors.amount) {
     return {
       status: "error",
       message: "Check the highlighted fields.",
@@ -75,10 +99,18 @@ export async function submitWalkIn(
     };
   }
 
+  // Already validated as a well-formed, in-range amount above (that's what
+  // makes fieldErrors.amount falsy) — TS can't follow that through the
+  // merged if/else-if chain on its own, same as checkout/actions.ts's
+  // validReceipt assertion just above its own equivalent guard.
+  const amount = amountCentavos as number;
+  const partialAmountCentavos = amount < fullPrice ? amount : undefined;
+
   const created = await createWalkInRegistration({
     ...parsed.data,
-    amount: EVENT.ticketPriceCentavos,
+    amount: fullPrice,
     reviewedBy: adminId,
+    partialAmountCentavos,
   });
 
   if (!created.ok) {
@@ -86,9 +118,9 @@ export async function submitWalkIn(
       return {
         status: "error",
         message:
-          "This student already has an active registration. Void it first " +
+          "This student already has a ticket. Void it first " +
           "from Find a registration if this one should replace it.",
-        fieldErrors: { studentId: "Already has an active registration." },
+        fieldErrors: { studentId: "Already has a ticket." },
         values,
         attempt,
       };
@@ -101,14 +133,53 @@ export async function submitWalkIn(
     };
   }
 
+  const profile = await currentProfile();
+
+  if (partialAmountCentavos !== undefined) {
+    const owedCentavos = fullPrice - partialAmountCentavos;
+
+    after(async () => {
+      const status = await sendPartialPaymentEmail({
+        to: parsed.data.email,
+        fullName: parsed.data.fullName,
+        ticketId: created.id,
+        paidCentavos: partialAmountCentavos,
+        owedCentavos,
+      });
+      if (status === "failed") {
+        await logActivity({
+          userId: adminId,
+          activityType: "email_failed",
+          description: `Partial payment email to ${parsed.data.email} failed to send for ${parsed.data.fullName}`,
+          registrationId: created.id,
+        });
+      }
+    });
+
+    await logActivity({
+      userId: adminId,
+      activityType: "walk_in_partial_payment_added",
+      description: `${profile?.fullName ?? "Someone"} recorded a walk-in partial payment for ${parsed.data.fullName} (${parsed.data.studentId})`,
+      registrationId: created.id,
+      amount: partialAmountCentavos,
+    });
+
+    return {
+      status: "success",
+      message:
+        `Recorded ${parsed.data.fullName}'s partial payment (${formatPeso(partialAmountCentavos)}) — ` +
+        `${formatPeso(owedCentavos)} still owed, no ticket yet.`,
+      attempt,
+    };
+  }
+
   scheduleWalkInTicketEmail(adminId, {
     to: parsed.data.email,
     fullName: parsed.data.fullName,
     ticketId: created.id,
-    ticketCode: created.ticketCode,
+    ticketCode: created.ticketCode ?? undefined,
   });
 
-  const profile = await currentProfile();
   await logActivity({
     userId: adminId,
     activityType: "walk_in_payment_added",
@@ -122,4 +193,48 @@ export async function submitWalkIn(
     message: `Recorded ${parsed.data.fullName}'s walk-in sale — ticket emailed to ${parsed.data.email}.`,
     attempt,
   };
+}
+
+export type BalanceActionResult = { ok: boolean; error?: string };
+
+/**
+ * Settles the remaining balance of a partial walk-in — staff-reachable, like
+ * recording the sale itself, since staff are the ones actually collecting
+ * the cash and can't reach Find a registration (admin-only) to do it there.
+ */
+export async function completeWalkInBalanceAction(
+  id: string,
+): Promise<BalanceActionResult> {
+  const adminId = await currentAdminId();
+  if (!adminId) return { ok: false, error: "Sign in again." };
+
+  const completed = await completeWalkInBalance(id, EVENT.ticketPriceCentavos);
+  if (!completed.ok) {
+    return {
+      ok: false,
+      error:
+        completed.error === "not_partial"
+          ? "This balance was already settled."
+          : "Something went wrong. Try again.",
+    };
+  }
+
+  scheduleWalkInTicketEmail(adminId, {
+    to: completed.email,
+    fullName: completed.fullName,
+    ticketId: completed.id,
+    ticketCode: completed.ticketCode,
+  });
+
+  const profile = await currentProfile();
+  await logActivity({
+    userId: adminId,
+    activityType: "walk_in_balance_paid",
+    description: `${profile?.fullName ?? "Someone"} recorded the remaining balance for ${completed.fullName} (${completed.studentId})`,
+    registrationId: completed.id,
+    amount: completed.collectedNowCentavos,
+  });
+
+  revalidatePath("/admin/walk-in");
+  return { ok: true };
 }

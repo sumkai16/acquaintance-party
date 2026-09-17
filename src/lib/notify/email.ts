@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
+  buildPartialPaymentEmail,
   buildTicketApprovedEmail,
   buildTicketSubmittedEmail,
   type BuiltEmail,
@@ -18,6 +19,9 @@ type SendInput = {
   qrPath?: string;
   ticketCode?: string;
   attachments?: { filename: string; content: Buffer }[];
+  /** Only set for the partial walk-in email — see EmailInput. */
+  paidCentavos?: number;
+  owedCentavos?: number;
 };
 
 /**
@@ -50,6 +54,8 @@ async function send(
     url: `${siteUrl}${input.path}`,
     ...(input.qrPath ? { qrUrl: `${siteUrl}${input.qrPath}` } : {}),
     ...(input.ticketCode ? { ticketCode: input.ticketCode } : {}),
+    ...(input.paidCentavos !== undefined ? { paidCentavos: input.paidCentavos } : {}),
+    ...(input.owedCentavos !== undefined ? { owedCentavos: input.owedCentavos } : {}),
   });
 
   try {
@@ -101,6 +107,21 @@ export async function sendTicketApprovedEmail(
         : {}),
     },
     buildTicketApprovedEmail,
+  );
+}
+
+export async function sendPartialPaymentEmail(
+  input: TicketInput & { paidCentavos: number; owedCentavos: number },
+): Promise<SendStatus> {
+  return send(
+    {
+      to: input.to,
+      fullName: input.fullName,
+      path: `/ticket/${input.ticketId}`,
+      paidCentavos: input.paidCentavos,
+      owedCentavos: input.owedCentavos,
+    },
+    buildPartialPaymentEmail,
   );
 }
 

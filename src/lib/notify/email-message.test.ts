@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
+  buildPartialPaymentEmail,
   buildTicketApprovedEmail,
   buildTicketSubmittedEmail,
 } from "./email-message";
@@ -99,6 +100,41 @@ describe("buildEvaluationInviteEmail", () => {
     const email = buildEvaluationInviteEmail({
       ...base,
       fullName: "A & B <script>",
+    });
+    expect(email.html).not.toContain("<script>");
+    expect(email.html).toContain("A &amp; B &lt;script&gt;");
+  });
+});
+
+describe("buildPartialPaymentEmail", () => {
+  it("states what was paid and what's still owed, without a QR", () => {
+    const email = buildPartialPaymentEmail({
+      ...base,
+      paidCentavos: 25000,
+      owedCentavos: 25000,
+    });
+    expect(email.html).toContain("₱250");
+    expect(email.text).toContain("₱250");
+    expect(email.html).not.toContain("<img");
+    expect(email.html.toLowerCase()).toMatch(/held|owed|due/);
+  });
+
+  it("links the ticket status page", () => {
+    const email = buildPartialPaymentEmail({
+      ...base,
+      paidCentavos: 25000,
+      owedCentavos: 25000,
+    });
+    expect(email.html).toContain(base.url);
+    expect(email.text).toContain(base.url);
+  });
+
+  it("escapes HTML-significant characters in the name", () => {
+    const email = buildPartialPaymentEmail({
+      ...base,
+      fullName: "A & B <script>",
+      paidCentavos: 25000,
+      owedCentavos: 25000,
     });
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("A &amp; B &lt;script&gt;");

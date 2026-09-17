@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { currentProfile } from "@/lib/supabase/server";
+import { listPartialWalkIns } from "@/lib/registrations/queries";
 import { BulkImportProvider, BulkImportToggle, WalkInLayout } from "./bulk-import";
+import { OutstandingBalances } from "./outstanding-balances";
 import { WalkInForm } from "./walk-in-form";
 
 export const metadata = { title: "Walk-in" };
 
 export default async function WalkInPage() {
-  const profile = await currentProfile();
+  const [profile, partialWalkIns] = await Promise.all([
+    currentProfile(),
+    listPartialWalkIns(),
+  ]);
 
   return (
     // Wider than the single-entry form needs on its own, so the bulk-import
@@ -38,6 +43,8 @@ export default async function WalkInPage() {
         <WalkInLayout>
           <WalkInForm />
         </WalkInLayout>
+
+        <OutstandingBalances registrations={partialWalkIns} />
       </BulkImportProvider>
     </main>
   );

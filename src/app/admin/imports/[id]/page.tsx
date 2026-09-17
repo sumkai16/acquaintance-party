@@ -9,8 +9,21 @@ import { VoidImport } from "./void-import";
 export const metadata = { title: "Import" };
 export const dynamic = "force-dynamic";
 
-const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
-const STATUS_LABEL = { approved: "Approved", pending: "Pending", rejected: "Voided" } as const;
+// Bulk imports never create a `partial` row (see the Walk-in page's separate
+// partial-payment flow) — these two entries exist only so TypeScript accepts
+// indexing by the full RegistrationStatus union.
+const STATUS_TONE = {
+  approved: "green",
+  pending: "amber",
+  rejected: "red",
+  partial: "amber",
+} as const;
+const STATUS_LABEL = {
+  approved: "Approved",
+  pending: "Pending",
+  rejected: "Voided",
+  partial: "Partial",
+} as const;
 
 export default async function ImportDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

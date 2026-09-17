@@ -25,6 +25,7 @@ const COLUMNS: { key: SortColumn; label: string }[] = [
 ];
 
 const RESULT_TONE = { ok: "green", duplicate: "amber", invalid: "red" } as const;
+const RESULT_LABEL = { ok: "Checked in", duplicate: "Duplicate", invalid: "Invalid" } as const;
 
 export default async function DashboardPage({
   searchParams,
@@ -163,7 +164,7 @@ export default async function DashboardPage({
                 </td>
                 <td className="py-2 pr-3">{scan.fullName ?? "—"}</td>
                 <td className="py-2 pr-3">
-                  <Badge tone={RESULT_TONE[scan.result]}>{scan.result}</Badge>
+                  <Badge tone={RESULT_TONE[scan.result]}>{RESULT_LABEL[scan.result]}</Badge>
                 </td>
                 <td className="py-2 pr-3">{scan.deviceLabel}</td>
                 <td className="py-2 pr-3 text-ground/70">{scan.yearLevel ?? "—"}</td>

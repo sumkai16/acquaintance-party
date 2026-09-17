@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { EVENT } from "@/lib/config/event";
+import { EVENT, formatPeso } from "@/lib/config/event";
 import { getRegistration } from "@/lib/registrations/queries";
 import { formatTicketCode } from "@/lib/tickets/code";
 import { ticketQrDataUrl } from "@/lib/tickets/qr";
@@ -39,6 +39,8 @@ export default async function TicketPage({
           <ApprovedTicket code={registration.ticket_code} />
         ) : registration.status === "rejected" ? (
           <Rejected reason={registration.reject_reason} />
+        ) : registration.status === "partial" ? (
+          <Partial paid={registration.amount_paid} owed={registration.amount - registration.amount_paid} />
         ) : (
           <Pending />
         )}
@@ -84,6 +86,21 @@ function Pending() {
         We check every payment by hand, in the order it arrives. Come back to
         this page any time — it updates on its own, and we&apos;ll also email
         you once it&apos;s approved.
+      </p>
+    </div>
+  );
+}
+
+function Partial({ paid, owed }: { paid: number; owed: number }) {
+  return (
+    <div className="m-5 rounded bg-amber-50 p-5 text-center">
+      <p className="font-display text-2xl uppercase text-amber-900">
+        {formatPeso(paid)} paid — {formatPeso(owed)} owed
+      </p>
+      <p className="mt-2 text-sm text-amber-900/80">
+        Your QR code is held until the balance is paid in full. Pay the rest
+        at the walk-in table, and we&apos;ll email your QR the moment
+        it&apos;s settled.
       </p>
     </div>
   );

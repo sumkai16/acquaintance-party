@@ -1,4 +1,4 @@
-import { EVENT } from "@/lib/config/event";
+import { EVENT, formatPeso } from "@/lib/config/event";
 import { THEME } from "@/lib/config/theme";
 import { formatTicketCode } from "@/lib/tickets/code";
 
@@ -14,6 +14,10 @@ export type EmailInput = {
   qrUrl?: string;
   /** The bare 12-character code, printed under the QR. */
   ticketCode?: string;
+  /** Centavos already collected — only set for the partial walk-in email. */
+  paidCentavos?: number;
+  /** Centavos still owed — only set for the partial walk-in email. */
+  owedCentavos?: number;
 };
 
 export type BuiltEmail = {
@@ -191,6 +195,37 @@ export function buildEvaluationInviteEmail(input: EmailInput): BuiltEmail {
       `Thanks for coming to ${EVENT.name}. Tell us how it went — it's a short ` +
       `evaluation, and it genuinely shapes the next one. Once you've sent it, ` +
       `your certificate of attendance is ready to download on the spot.\n\n` +
+      `${input.url}`,
+  };
+}
+
+/**
+ * Sent the moment a walk-in cash sale is recorded as partially paid. There's no
+ * QR yet — this exists to give the student a written record of what they
+ * paid and what's left, since a walk-in sale otherwise leaves them with
+ * nothing but a memory of handing over cash.
+ */
+export function buildPartialPaymentEmail(input: EmailInput): BuiltEmail {
+  const name = escapeHtml(input.fullName);
+  const paid = formatPeso(input.paidCentavos ?? 0);
+  const owed = formatPeso(input.owedCentavos ?? 0);
+
+  return {
+    subject: `Your ${EVENT.name} payment — ${owed} still due`,
+    html: wrap(
+      `<p style="margin:0 0 16px">Hi ${name},</p>` +
+        `<p style="margin:0 0 16px">We've recorded ${paid} toward your ${escapeHtml(EVENT.name)} ` +
+        `ticket. ${owed} is still owed — your QR code is held until it's paid in ` +
+        `full, so hang on to this page and pay the rest at the walk-in table.</p>` +
+        `<p style="margin:0">We'll email your QR the moment the balance is settled.</p>`,
+      "View your payment status",
+      input.url,
+    ),
+    text:
+      `Hi ${input.fullName},\n\n` +
+      `We've recorded ${paid} toward your ${EVENT.name} ticket. ${owed} is ` +
+      `still owed — your QR code is held until it's paid in full. Pay the ` +
+      `rest at the walk-in table, and we'll email your QR once it's settled.\n\n` +
       `${input.url}`,
   };
 }

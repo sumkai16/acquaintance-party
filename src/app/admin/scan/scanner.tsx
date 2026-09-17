@@ -259,7 +259,7 @@ export function Scanner() {
           <div className="flex items-center gap-3">
             <span>
               {queued > 0 ? `${queued} waiting to sync` : "All scans synced"}
-              {manifestAt ? "" : " · no manifest yet"}
+              {manifestAt ? "" : " · tickets not loaded yet"}
             </span>
             <button
               type="button"

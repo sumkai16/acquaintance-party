@@ -24,8 +24,9 @@ purchasing means there's no separate orders table.
 | payment_method | text | NOT NULL, `'online'` \| `'walk_in'` | Added in `0005` — `online` goes through checkout + review; `walk_in` is a cash sale an admin enters directly at `/admin/walk-in`, approved immediately |
 | gcash_reference | text | nullable, **UNIQUE** (`registrations_gcash_reference_key`) | The anti-fraud lever for online payments — one real GCash transaction, one ticket. Normalized (digits only, no spaces/dashes) before insert. `NULL` for a walk-in row; Postgres treats every `NULL` as distinct, so any number of walk-ins coexist under this index |
 | receipt_path | text | nullable | Key into the private `receipts` storage bucket, not a URL. `NULL` for a walk-in row — no receipt to review |
-| amount | integer | NOT NULL, `> 0` | **Centavos**, never a float |
-| status | `registration_status` enum | NOT NULL, default `pending` | `pending` \| `approved` \| `rejected` |
+| amount | integer | NOT NULL, `> 0` | **Centavos**, never a float — the ticket price owed, always `EVENT.ticketPriceCentavos` |
+| amount_paid | integer | NOT NULL, default 0 | Added in `0013`. Cash/GCash actually collected on this row — an admin-entered amount while `partial`, equal to `amount` once `approved`. Every cash/collected total sums this, not `amount`, so a partial payment sitting with a staffer isn't invisible before the balance is settled |
+| status | `registration_status` enum | NOT NULL, default `pending` | `pending` \| `approved` \| `rejected` \| `partial` |
 | reject_reason | text | nullable | Shown to the student on their ticket page. Also holds the reason when an admin voids an *approved* row to free its student ID for resubmission — see below |
 | ticket_code | text | nullable, UNIQUE | 12-char opaque code, generated only on approval |
 | created_at | timestamptz | NOT NULL, default `now()` | |
@@ -45,6 +46,42 @@ purchasing means there's no separate orders table.
   explanation.
 - `payment_fields_match_method` (`0005`) — `online` requires both
   `gcash_reference` and `receipt_path`; `walk_in` requires neither.
+- `amount_paid_within_amount` (`0013`) — `amount_paid` is never negative and
+  never more than `amount`.
+- `partial_is_walk_in_underpaid` (`0013`) — `status = 'partial'` only ever
+  happens on a `walk_in` row with `0 < amount_paid < amount`. Written as
+  `status::text <> 'partial'` rather than comparing the enum directly, so it
+  can be pasted in the same run as the `ADD VALUE` above it. Doesn't encode
+  the flat minimum below — that's an app-layer rule, not a DB one, same as
+  the section-matches-year-level check in `registrations/schema.ts`.
+
+**`partial` is walk-in only** — there is no partial payment on an online
+registration; checkout, Payments, and the online approve flow are
+unchanged. A walk-in sale can be recorded with any admin-entered amount
+(`createWalkInRegistration` with `partialAmountCentavos`,
+`src/lib/registrations/queries.ts`), not a fixed split — staff type in
+whatever the student actually hands over. It must be at least
+`EVENT.partialPaymentMinCentavos` — a flat floor against an accidentally
+tiny amount, not a percentage of the ticket price, since nothing about it
+needs to scale if the price changes (`isValidPartialAmount()` in
+`src/lib/registrations/partial.ts`, validated in
+`admin/walk-in/actions.ts` before the insert), and strictly less than the
+full price — equal or more is a full sale on the regular path instead. A
+partial row gets `status = 'partial'`, `amount_paid` set to that entered
+amount, and no `ticket_code` — no QR goes out. `completeWalkInBalance()`
+settles the rest: same retry-on-collision ticket-code loop as
+`approveRegistration`, filtered on `.eq("status", "partial")` as the race
+guard, same as every other "second click is a no-op" action in this
+codebase. The UI for this lives on `/admin/walk-in` (an "Outstanding
+balances" list with a "Mark balance paid" button), not the Dashboard, since
+staff — who take this cash — can't reach Find a registration.
+
+**Cash attribution stays on the single `reviewed_by` set at creation** —
+completing a balance does not reassign it. If a different staffer takes the
+remaining payment, they hand that cash to the original collector or to
+admin, the same one-collector assumption every walk-in sale already makes.
+A per-payment ledger would lift this limit but is more than a two-payment
+maximum needs.
 
 **Indexes:**
 - `registrations_gcash_reference_key` — unique, the online fraud lever above

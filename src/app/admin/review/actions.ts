@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { generateTicketCode } from "@/lib/tickets/generate";
+import { EVENT } from "@/lib/config/event";
 import { adminClient } from "@/lib/supabase/admin";
 import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 import { markTicketEmailSent } from "@/lib/registrations/queries";
@@ -33,6 +34,12 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
       .update({
         status: "approved",
         ticket_code: ticketCode,
+        // Same constant the row's own `amount` was inserted with at
+        // checkout — there's no partial concept for online payments, so
+        // this always settles the row in full. Keeps amount_paid in step
+        // with `amount` for every cash/collected total that now reads
+        // amount_paid instead of amount.
+        amount_paid: EVENT.ticketPriceCentavos,
         reject_reason: null,
         reviewed_at: new Date().toISOString(),
         reviewed_by: adminId,

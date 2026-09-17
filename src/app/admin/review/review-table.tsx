@@ -9,7 +9,7 @@ import { Option } from "../option";
 import { formatPeso } from "@/lib/config/event";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { formatTicketCode } from "@/lib/tickets/code";
-import type { Registration, RegistrationStatus } from "@/lib/supabase/types";
+import type { Registration, ReviewStatus } from "@/lib/supabase/types";
 import {
   approveRegistration,
   rejectRegistration,
@@ -27,13 +27,13 @@ type Row = {
 type SortColumn = "name" | "amount" | "submitted";
 type SortState = { column: SortColumn; direction: "asc" | "desc" };
 
-const STATUS_LABELS: Record<RegistrationStatus, string> = {
+const STATUS_LABELS: Record<ReviewStatus, string> = {
   pending: "Pending",
   approved: "Approved",
   rejected: "Rejected",
 };
 
-const EMPTY_TEXT: Record<RegistrationStatus, string> = {
+const EMPTY_TEXT: Record<ReviewStatus, string> = {
   pending: "Nothing waiting. Every payment has been reviewed.",
   approved: "No payments approved yet.",
   rejected: "No payments rejected.",
@@ -83,8 +83,8 @@ export function ReviewTable({
   counts,
 }: {
   rows: Row[];
-  status: RegistrationStatus;
-  counts: Record<RegistrationStatus, number>;
+  status: ReviewStatus;
+  counts: Record<ReviewStatus, number>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -144,7 +144,7 @@ export function ReviewTable({
             aria-label="Filter by status"
             className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
           >
-            {(Object.keys(STATUS_LABELS) as RegistrationStatus[]).map((value) => (
+            {(Object.keys(STATUS_LABELS) as ReviewStatus[]).map((value) => (
               <Option key={value} value={value}>
                 {`${STATUS_LABELS[value]} (${counts[value]})`}
               </Option>
@@ -356,7 +356,7 @@ function Decision({
 
   return (
     <div className="max-w-xs">
-      <Badge tone={approved ? "green" : "red"}>{registration.status}</Badge>
+      <Badge tone={approved ? "green" : "red"}>{approved ? "Approved" : "Rejected"}</Badge>
       <p className="mt-1 text-ground/60">
         {approved ? "Approved" : "Rejected"} by {reviewerEmail ?? "an admin"}
         {when}

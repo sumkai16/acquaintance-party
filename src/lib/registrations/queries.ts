@@ -1,7 +1,12 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { generateTicketCode } from "@/lib/tickets/generate";
-import type { PaymentMethod, Registration, RegistrationStatus } from "@/lib/supabase/types";
+import type {
+  PaymentMethod,
+  Registration,
+  RegistrationStatus,
+  ReviewStatus,
+} from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
 import { REGISTRATION_SORT_COLUMNS, type RegistrationSortColumn } from "./sort";
 
@@ -104,41 +109,79 @@ export async function updateRegistrationIdentity(
 
 export type CreateWalkInResult =
   // The code comes back out because the confirmation email draws the QR from
-  // it — a walk-in is approved on the spot, so this is the only moment it is
-  // in hand without a second read.
-  | { ok: true; id: string; ticketCode: string }
+  // it — a full walk-in is approved on the spot, so this is the only moment
+  // it is in hand without a second read. null for a partial sale: no ticket
+  // exists until the balance is paid.
+  | { ok: true; id: string; ticketCode: string | null }
   | { ok: false; error: "duplicate_student_id" | "failed" };
 
 /**
- * A cash sale entered directly by an admin — approved immediately, since
- * staff already has the cash in hand and there's no receipt to review.
- * Retries on a ticket-code collision the same way approveRegistration does
- * in admin/review/actions.ts.
+ * A cash sale entered directly by an admin or staff member.
+ *
+ * `partialAmountCentavos`, when given, records that admin-entered amount
+ * (validated against `isValidPartialAmount` by the caller before this is
+ * reached — see admin/walk-in/actions.ts) as `status: "partial"` — no
+ * ticket_code, no QR, until `completeWalkInBalance` is called for the rest.
+ * Otherwise this is approved immediately, since staff already has the full
+ * cash in hand and there's no receipt to review. Retries on a ticket-code
+ * collision the same way approveRegistration does in
+ * admin/review/actions.ts — skipped entirely for a partial sale, which
+ * mints no code yet.
  */
 export async function createWalkInRegistration(
-  input: WalkInInput & { amount: number; reviewedBy: string; importBatchId?: string },
+  input: WalkInInput & {
+    amount: number;
+    reviewedBy: string;
+    importBatchId?: string;
+    partialAmountCentavos?: number;
+  },
 ): Promise<CreateWalkInResult> {
+  const base = {
+    full_name: input.fullName,
+    student_id: input.studentId,
+    year_level: input.yearLevel,
+    section: input.section,
+    email: input.email,
+    payment_method: "walk_in" as const,
+    gcash_reference: null,
+    receipt_path: null,
+    amount: input.amount,
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: input.reviewedBy,
+    // Only set when the row came from a bulk import. Left out of the
+    // insert otherwise, so a single walk-in sale doesn't depend on
+    // migration 0012 existing.
+    ...(input.importBatchId ? { import_batch_id: input.importBatchId } : {}),
+  };
+
+  if (input.partialAmountCentavos !== undefined) {
+    const { data, error } = await adminClient()
+      .from("registrations")
+      .insert({
+        ...base,
+        status: "partial",
+        ticket_code: null,
+        amount_paid: input.partialAmountCentavos,
+      })
+      .select("id")
+      .single();
+
+    if (!error) return { ok: true, id: data.id, ticketCode: null };
+    if (error.code === UNIQUE_VIOLATION && isStudentIdViolation(error.message)) {
+      return { ok: false, error: "duplicate_student_id" };
+    }
+    console.error("createWalkInRegistration (partial) failed", error);
+    return { ok: false, error: "failed" };
+  }
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const { data, error } = await adminClient()
       .from("registrations")
       .insert({
-        full_name: input.fullName,
-        student_id: input.studentId,
-        year_level: input.yearLevel,
-        section: input.section,
-        email: input.email,
-        payment_method: "walk_in",
-        gcash_reference: null,
-        receipt_path: null,
-        amount: input.amount,
+        ...base,
         status: "approved",
         ticket_code: generateTicketCode(),
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: input.reviewedBy,
-        // Only set when the row came from a bulk import. Left out of the
-        // insert otherwise, so a single walk-in sale doesn't depend on
-        // migration 0012 existing.
-        ...(input.importBatchId ? { import_batch_id: input.importBatchId } : {}),
+        amount_paid: input.amount,
       })
       .select("id, ticket_code")
       .single();
@@ -152,6 +195,78 @@ export async function createWalkInRegistration(
       continue; // ticket-code collision — try again
     }
     console.error("createWalkInRegistration failed", error);
+    return { ok: false, error: "failed" };
+  }
+
+  return { ok: false, error: "failed" };
+}
+
+export type CompleteWalkInBalanceResult =
+  | {
+      ok: true;
+      id: string;
+      ticketCode: string;
+      email: string;
+      fullName: string;
+      studentId: string;
+      /** What this completion actually collected — full price minus whatever was already paid, not assumed to be any fixed split. */
+      collectedNowCentavos: number;
+    }
+  | { ok: false; error: "not_partial" | "failed" };
+
+/**
+ * Settles the remaining balance of a partial walk-in — mints the ticket code
+ * (same retry-on-collision loop as approveRegistration) and moves the row to
+ * `approved`. `.eq("status", "partial")` on the update is the race guard: if
+ * two people complete the same balance at once, the second UPDATE matches
+ * zero rows and comes back as `not_partial` rather than emailing the QR
+ * twice. The amount already paid can be any admin-entered figure (no fixed
+ * split), so it's read once up front to report what this completion
+ * actually collects — a stale read here only loses a display number, since
+ * the update's own guard is what actually prevents a double-settle.
+ */
+export async function completeWalkInBalance(
+  id: string,
+  fullAmountCentavos: number,
+): Promise<CompleteWalkInBalanceResult> {
+  const before = await adminClient()
+    .from("registrations")
+    .select("amount_paid")
+    .eq("id", id)
+    .eq("status", "partial")
+    .maybeSingle();
+  if (!before.data) return { ok: false, error: "not_partial" };
+  const collectedNowCentavos = fullAmountCentavos - (before.data.amount_paid as number);
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ticketCode = generateTicketCode();
+
+    const { data, error } = await adminClient()
+      .from("registrations")
+      .update({
+        status: "approved",
+        ticket_code: ticketCode,
+        amount_paid: fullAmountCentavos,
+      })
+      .eq("id", id)
+      .eq("status", "partial")
+      .select("email, full_name, student_id")
+      .maybeSingle();
+
+    if (!error) {
+      if (!data) return { ok: false, error: "not_partial" };
+      return {
+        ok: true,
+        id,
+        ticketCode,
+        email: data.email,
+        fullName: data.full_name,
+        studentId: data.student_id,
+        collectedNowCentavos,
+      };
+    }
+    if (error.code === UNIQUE_VIOLATION) continue; // ticket-code collision — try again
+    console.error("completeWalkInBalance failed", error);
     return { ok: false, error: "failed" };
   }
 
@@ -175,6 +290,22 @@ export async function findActiveStudentIds(ids: string[]): Promise<Set<string>> 
   return new Set((data ?? []).map((row) => row.student_id as string));
 }
 
+/**
+ * Walk-in sales still waiting on their remaining balance, oldest first — feeds
+ * the "Outstanding balances" list on /admin/walk-in, which staff and admin
+ * both need since staff can't reach Find a registration.
+ */
+export async function listPartialWalkIns(): Promise<Registration[]> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .eq("payment_method", "walk_in")
+    .eq("status", "partial")
+    .order("created_at", { ascending: true });
+
+  return (data as Registration[]) ?? [];
+}
+
 export async function getRegistration(id: string): Promise<Registration | null> {
   const { data } = await adminClient()
     .from("registrations")
@@ -190,7 +321,7 @@ export async function getRegistration(id: string): Promise<Registration | null> 
  * are left out: they never pass through review and have no receipt to show.
  */
 export async function listForReview(
-  status: RegistrationStatus,
+  status: ReviewStatus,
 ): Promise<Registration[]> {
   const { data } = await adminClient()
     .from("registrations")
@@ -203,8 +334,8 @@ export async function listForReview(
 }
 
 /** Online submissions per status, for the Payments page's filter and stats. */
-export async function reviewStatusCounts(): Promise<Record<RegistrationStatus, number>> {
-  const count = async (status: RegistrationStatus) => {
+export async function reviewStatusCounts(): Promise<Record<ReviewStatus, number>> {
+  const count = async (status: ReviewStatus) => {
     const { count } = await adminClient()
       .from("registrations")
       .select("id", { count: "exact", head: true })
@@ -392,11 +523,19 @@ export async function listApprovedForSectionReport(): Promise<
 
 export type PaymentMethodSummary = { count: number; totalCentavos: number };
 
-async function paymentMethodSummary(method: PaymentMethod): Promise<PaymentMethodSummary> {
+/**
+ * Approved online (GCash) payments only — how many students paid this way,
+ * and how much that's worth. Walk-in cash sales are tracked separately on
+ * the Cash page, since they're a different custody question (who's holding
+ * the cash) rather than "how many people paid online." There is no partial
+ * concept for online — see cashPaymentsSummary for the walk-in counterpart,
+ * which does have one.
+ */
+export async function onlinePaymentsSummary(): Promise<PaymentMethodSummary> {
   const { data } = await adminClient()
     .from("registrations")
     .select("amount")
-    .eq("payment_method", method)
+    .eq("payment_method", "online")
     .eq("status", "approved");
 
   const rows = data ?? [];
@@ -407,18 +546,24 @@ async function paymentMethodSummary(method: PaymentMethod): Promise<PaymentMetho
 }
 
 /**
- * Approved online (GCash) payments only — how many students paid this way,
- * and how much that's worth. Walk-in cash sales are tracked separately on
- * the Cash page, since they're a different custody question (who's holding
- * the cash) rather than "how many people paid online."
+ * Approved and partial walk-in (cash) payments — the counterpart to
+ * onlinePaymentsSummary. Includes `partial` rows so a partial payment already
+ * sitting with a staff member isn't invisible to the cash total; sums
+ * `amount_paid`, not `amount`, so a partial row only counts what has
+ * actually been collected on it so far.
  */
-export async function onlinePaymentsSummary(): Promise<PaymentMethodSummary> {
-  return paymentMethodSummary("online");
-}
-
-/** Approved walk-in (cash) payments only — the counterpart to onlinePaymentsSummary. */
 export async function cashPaymentsSummary(): Promise<PaymentMethodSummary> {
-  return paymentMethodSummary("walk_in");
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("amount_paid")
+    .eq("payment_method", "walk_in")
+    .in("status", ["approved", "partial"]);
+
+  const rows = data ?? [];
+  return {
+    count: rows.length,
+    totalCentavos: rows.reduce((sum, row) => sum + (row.amount_paid as number), 0),
+  };
 }
 
 /**

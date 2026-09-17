@@ -17,6 +17,16 @@ export const EVENT = {
   ticketPriceCentavos: 49_500,
   capacity: 700,
 
+  /**
+   * The least a walk-in partial payment can be, in centavos — see
+   * src/lib/registrations/partial.ts. Staff enter whatever amount the
+   * student actually hands over; this is only a floor against an
+   * accidentally tiny one (e.g. a stray "1"), not a real percentage split —
+   * a flat peso amount rather than a percentage of ticketPriceCentavos
+   * because nothing here needs to scale automatically if the price changes.
+   */
+  partialPaymentMinCentavos: 5_000,
+
   /** Where a student goes when something goes wrong. PLACEHOLDER. */
   contact: "Message the Itech Society page on Facebook.",
 

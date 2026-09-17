@@ -1,12 +1,14 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { EVENT, formatPeso } from "@/lib/config/event";
 import {
   STUDENT_ID_INPUT_PATTERN,
   STUDENT_ID_PLACEHOLDER,
   YEAR_LEVELS,
 } from "@/lib/registrations/schema";
 import { sectionsFor } from "@/lib/registrations/sections";
+import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { useFlash } from "../flash";
 import { Option } from "../option";
 import { submitWalkIn, type FormState } from "./actions";
@@ -17,6 +19,12 @@ const inputClass =
   "w-full rounded border border-ground/25 bg-deep px-3 py-2.5 text-ground " +
   "placeholder:text-ground/40 focus:border-accent-2 focus:outline-2 " +
   "focus:outline-offset-2 focus:outline-accent-2 [color-scheme:dark]";
+
+// Plain "495", not formatPeso's "₱495" — this seeds an editable text input,
+// which shouldn't start out carrying a currency symbol staff would have to
+// delete before typing a smaller amount.
+const FULL_PRICE_PESOS = String(EVENT.ticketPriceCentavos / 100);
+const MIN_PARTIAL = EVENT.partialPaymentMinCentavos;
 
 export function WalkInForm() {
   const [state, action, pending] = useActionState(submitWalkIn, initial);
@@ -115,20 +123,87 @@ export function WalkInForm() {
         />
       </Field>
 
+      <AmountSection
+        key={keyed("amount")}
+        defaultValue={values?.amount ?? FULL_PRICE_PESOS}
+        error={errors.amount}
+        pending={pending}
+      />
+    </form>
+  );
+}
+
+/**
+ * The amount-received field plus the submit button and hint below it, all
+ * driven by one local `amount` string — same self-contained, remount-to-reset
+ * pattern as YearAndSection, so resetting on a successful submit needs no
+ * effect (see the lint rule this avoids: react-hooks/set-state-in-effect).
+ * The button lives inside here, not beside it, because its label reacts to
+ * whatever's currently typed. Defaults to the full price — entering less is
+ * what makes this a partial sale, no separate checkbox to mean the same
+ * thing.
+ */
+function AmountSection({
+  defaultValue,
+  error,
+  pending,
+}: {
+  defaultValue: string;
+  error?: string;
+  pending: boolean;
+}) {
+  const [amount, setAmount] = useState(defaultValue);
+  const parsed = parsePesoToCentavos(amount);
+  const isPartial = parsed !== null && parsed < EVENT.ticketPriceCentavos;
+
+  return (
+    <>
+      <Field
+        label="Amount received (₱)"
+        name="amount"
+        hint={
+          `Full price is ${formatPeso(EVENT.ticketPriceCentavos)}. Enter less to record a ` +
+          `partial payment — minimum ${formatPeso(MIN_PARTIAL)}.`
+        }
+        error={error}
+      >
+        <input
+          id="amount"
+          name="amount"
+          inputMode="decimal"
+          required
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+          className={inputClass}
+        />
+      </Field>
+
+      {isPartial ? (
+        <p className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-300">
+          No ticket yet — held until the remaining{" "}
+          {formatPeso(EVENT.ticketPriceCentavos - (parsed ?? 0))} is paid. Settle it later from
+          Outstanding balances below.
+        </p>
+      ) : null}
+
       <button
         type="submit"
         disabled={pending}
         className="rounded-full bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
       >
-        {pending ? "Saving…" : "Record cash sale"}
+        {pending ? "Saving…" : isPartial ? "Record partial payment" : "Record cash sale"}
       </button>
 
       <p className="text-sm text-ground/60">
-        Approved immediately — only enter this once you have the cash in
-        hand. Their ticket link is emailed to them, and this form clears so
-        you can enter the next sale.
+        {isPartial
+          ? "Only enter this once you have that amount in hand. They're emailed " +
+            "what they paid and what's still owed — the ticket link and QR wait " +
+            "until the balance is settled."
+          : "Approved immediately — only enter this once you have the cash in " +
+            "hand. Their ticket link is emailed to them, and this form clears " +
+            "so you can enter the next sale."}
       </p>
-    </form>
+    </>
   );
 }
 

@@ -16,7 +16,7 @@ import { SORT_COLUMNS, type RegistrationSortColumn } from "@/lib/registrations/s
 import { buildSectionReport } from "@/lib/registrations/section-report";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { formatPeso } from "@/lib/config/event";
-import { RegistrationRow } from "./registration-row";
+import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
 import { SendTicketEmails } from "./send-ticket-emails";
 import { Pagination } from "../pagination";
@@ -24,7 +24,7 @@ import { Pagination } from "../pagination";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Dashboard" };
 
-const VALID_STATUSES = ["pending", "approved", "rejected"] as const;
+const VALID_STATUSES = ["pending", "partial", "approved", "rejected"] as const;
 const VALID_PAYMENT_METHODS = ["walk_in", "online"] as const;
 
 export default async function RegistrationsPage({
@@ -188,7 +188,7 @@ export default async function RegistrationsPage({
                 ? `Nothing matches “${q}”.`
                 : status === "all"
                   ? "No registrations yet."
-                  : `No ${status} registrations.`
+                  : `No ${STATUS_LABEL[status].toLowerCase()} registrations.`
               : undefined
           }
         >

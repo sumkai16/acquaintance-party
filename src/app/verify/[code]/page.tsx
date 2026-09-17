@@ -61,7 +61,7 @@ export default async function VerifyPage({
               Not a certificate we issued
             </p>
             <p className="mt-3 text-sm text-ink/70">
-              Nothing matches this serial. Check it was typed correctly, or ask
+              Nothing matches this code. Check it was typed correctly, or ask
               the holder to open the link on their certificate.
             </p>
           </div>

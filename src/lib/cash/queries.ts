@@ -4,20 +4,23 @@ import { availableToRemitCentavos, currentCollectionCentavos } from "./balances"
 import { startOfTodayPH } from "@/lib/format/datetime";
 
 /**
- * Sum of a staff member's own walk-in sales. Filtered to status='approved'
- * deliberately: if an admin later Voids one of this staff's walk-in tickets
- * (registrations.status -> 'rejected'), that cash should no longer count as
- * theirs to remit — Void already exists as a feature; this just makes cash
- * accounting agree with it instead of silently drifting.
+ * Sum of a staff member's own walk-in sales, in cash actually collected.
+ * Filtered to status in ('approved','partial') deliberately: if an admin
+ * later Voids one of this staff's walk-in tickets (registrations.status ->
+ * 'rejected'), that cash should no longer count as theirs to remit — Void
+ * already exists as a feature; this just makes cash accounting agree with
+ * it instead of silently drifting. `partial` rows are included and summed
+ * by `amount_paid` (not `amount`) so a partial payment still in this staffer's
+ * hand isn't invisible until the balance is settled.
  */
 async function staffWalkInCollectedCentavos(staffId: string): Promise<number> {
   const { data } = await adminClient()
     .from("registrations")
-    .select("amount")
+    .select("amount_paid")
     .eq("payment_method", "walk_in")
     .eq("reviewed_by", staffId)
-    .eq("status", "approved");
-  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+    .in("status", ["approved", "partial"]);
+  return (data ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
 }
 
 async function staffRemittedCentavos(
@@ -49,17 +52,17 @@ export async function staffCashSummary(staffId: string): Promise<StaffCashSummar
       staffRemittedCentavos(staffId, "pending"),
       adminClient()
         .from("registrations")
-        .select("amount")
+        .select("amount_paid")
         .eq("payment_method", "walk_in")
         .eq("reviewed_by", staffId)
-        .eq("status", "approved")
+        .in("status", ["approved", "partial"])
         .gte("created_at", startOfTodayPH()),
       adminClient()
         .from("registrations")
         .select("id", { count: "exact", head: true })
         .eq("payment_method", "walk_in")
         .eq("reviewed_by", staffId)
-        .eq("status", "approved"),
+        .in("status", ["approved", "partial"]),
     ]);
 
   const current = currentCollectionCentavos(collected, approvedRemitted);
@@ -69,7 +72,7 @@ export async function staffCashSummary(staffId: string): Promise<StaffCashSummar
     pendingRemittanceCentavos: pendingRemitted,
     availableToRemitCentavos: availableToRemitCentavos(current, pendingRemitted),
     todayCollectionCentavos: (todayRows.data ?? []).reduce(
-      (sum, row) => sum + (row.amount as number),
+      (sum, row) => sum + (row.amount_paid as number),
       0,
     ),
     transactionCount: countResult.count ?? 0,
@@ -88,11 +91,11 @@ export async function adminCurrentCollectionCentavos(): Promise<number> {
   if (adminIds.length > 0) {
     const { data } = await adminClient()
       .from("registrations")
-      .select("amount")
+      .select("amount_paid")
       .eq("payment_method", "walk_in")
-      .eq("status", "approved")
+      .in("status", ["approved", "partial"])
       .in("reviewed_by", adminIds);
-    ownSales = (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+    ownSales = (data ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
   }
 
   const remitted = (remittances ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
@@ -108,14 +111,14 @@ export async function staffCashOnHandCentavos(): Promise<number> {
   const [{ data: sales }, { data: remittances }] = await Promise.all([
     adminClient()
       .from("registrations")
-      .select("amount")
+      .select("amount_paid")
       .eq("payment_method", "walk_in")
-      .eq("status", "approved")
+      .in("status", ["approved", "partial"])
       .in("reviewed_by", staffIds),
     adminClient().from("cash_remittances").select("amount").eq("status", "approved"),
   ]);
 
-  const collected = (sales ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+  const collected = (sales ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
   const remitted = (remittances ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
   return currentCollectionCentavos(collected, remitted);
 }
@@ -132,19 +135,19 @@ export async function staffCashOnHandCentavos(): Promise<number> {
 export async function totalCashCollectedCentavos(): Promise<number> {
   const { data } = await adminClient()
     .from("registrations")
-    .select("amount")
+    .select("amount_paid")
     .eq("payment_method", "walk_in")
-    .eq("status", "approved");
-  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+    .in("status", ["approved", "partial"]);
+  return (data ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
 }
 
-/** How many approved walk-in sales that total is made of. */
+/** How many walk-in sales (approved or partially paid) that total is made of. */
 export async function cashPaymentCount(): Promise<number> {
   const { count } = await adminClient()
     .from("registrations")
     .select("id", { count: "exact", head: true })
     .eq("payment_method", "walk_in")
-    .eq("status", "approved");
+    .in("status", ["approved", "partial"]);
   return count ?? 0;
 }
 

@@ -160,10 +160,10 @@ export async function submitRegistration(
       return {
         status: "error",
         message:
-          "You've already submitted a registration with this student ID. " +
+          "You already have a ticket request with this student ID. " +
           "If it was rejected, you can submit again — otherwise contact an " +
           "organiser.",
-        fieldErrors: { studentId: "Already has an active registration." },
+        fieldErrors: { studentId: "Already has a ticket." },
         values,
         attempt,
       };

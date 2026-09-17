@@ -13,7 +13,19 @@ import { ReceiptLightbox } from "../receipt-lightbox";
 import { sendTicketEmail, voidRegistration } from "./actions";
 import { EditRegistration } from "./edit-registration";
 
-const STATUS_TONE = { approved: "green", pending: "amber", rejected: "red" } as const;
+const STATUS_TONE = {
+  approved: "green",
+  pending: "amber",
+  rejected: "red",
+  partial: "amber",
+} as const;
+
+export const STATUS_LABEL = {
+  approved: "Approved",
+  pending: "Pending",
+  rejected: "Rejected",
+  partial: "Partial payment",
+} as const;
 
 export function RegistrationRow({
   registration,
@@ -77,7 +89,11 @@ export function RegistrationRow({
         )}
       </td>
 
-      <td className="py-2 pr-3 whitespace-nowrap">{formatPeso(registration.amount)}</td>
+      <td className="py-2 pr-3 whitespace-nowrap">
+        {registration.status === "partial"
+          ? `${formatPeso(registration.amount_paid)} / ${formatPeso(registration.amount)}`
+          : formatPeso(registration.amount)}
+      </td>
 
       <td className="py-2 pr-3">
         {registration.payment_method === "walk_in" ? (
@@ -115,7 +131,7 @@ export function RegistrationRow({
 
       <td className="py-2 pr-3">
         <Badge tone={STATUS_TONE[registration.status]}>
-          {registration.status}
+          {STATUS_LABEL[registration.status]}
         </Badge>
         {registration.status === "rejected" ? (
           <p className="mt-1 text-ground/50">

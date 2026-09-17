@@ -7,14 +7,14 @@ import {
   signedReceiptUrls,
 } from "@/lib/registrations/queries";
 import { formatPeso } from "@/lib/config/event";
-import type { RegistrationStatus } from "@/lib/supabase/types";
+import type { ReviewStatus } from "@/lib/supabase/types";
 import { Stat } from "../stat";
 import { ReviewTable } from "./review-table";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Payments" };
 
-const STATUSES: RegistrationStatus[] = ["pending", "approved", "rejected"];
+const STATUSES: ReviewStatus[] = ["pending", "approved", "rejected"];
 
 export default async function ReviewPage({
   searchParams,
@@ -24,8 +24,8 @@ export default async function ReviewPage({
   const { status: rawStatus } = await searchParams;
   // No status (or a hand-edited one) means Pending — the queue is what an
   // admin opens this page for.
-  const status = STATUSES.includes(rawStatus as RegistrationStatus)
-    ? (rawStatus as RegistrationStatus)
+  const status = STATUSES.includes(rawStatus as ReviewStatus)
+    ? (rawStatus as ReviewStatus)
     : "pending";
 
   const [registrations, online, counts] = await Promise.all([

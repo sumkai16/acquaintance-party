@@ -174,17 +174,24 @@ export async function approvedCount(): Promise<number> {
   return count ?? 0;
 }
 
-/** Sum of every approved registration's amount, in centavos — online and walk-in alike. */
+/**
+ * Sum of everything actually collected, in centavos — online and walk-in
+ * alike. Sums `amount_paid`, not `amount`, and includes `partial` rows: a
+ * partial payment sitting with a staffer is still money in hand and belongs in
+ * this total, even though the ticket hasn't been issued yet. `amount_paid`
+ * equals `amount` for every `approved` row (online or walk-in), so this
+ * reads identically to before for the common case.
+ */
 export async function totalCollectedCentavos(): Promise<number> {
   const { data, error } = await adminClient()
     .from("registrations")
-    .select("amount")
-    .eq("status", "approved");
+    .select("amount_paid")
+    .in("status", ["approved", "partial"]);
 
   if (error) {
     console.error("totalCollectedCentavos failed", error);
     return 0;
   }
 
-  return (data ?? []).reduce((sum, row) => sum + (row.amount as number), 0);
+  return (data ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
 }

@@ -142,7 +142,7 @@ export async function parseWalkInImport(formData: FormData): Promise<ParseImport
       return { rowNumber, raw, ok: false, error: "Duplicate student ID in this file." };
     }
     if (raw.studentId && existingIds.has(raw.studentId)) {
-      return { rowNumber, raw, ok: false, error: "Already has an active registration." };
+      return { rowNumber, raw, ok: false, error: "Already has a ticket." };
     }
 
     const result = walkInSchema.safeParse(raw);
@@ -232,7 +232,7 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
         row,
         error:
           result.error === "duplicate_student_id"
-            ? "Already has an active registration."
+            ? "Already has a ticket."
             : "Something went wrong saving this ticket.",
       });
       continue;
@@ -243,7 +243,10 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
       to: parsed.data.email,
       fullName: parsed.data.fullName,
       ticketId: result.id,
-      ticketCode: result.ticketCode,
+      // Bulk import never creates a partial row, so ticketCode is always
+      // set here — the null case only exists for the walk-in partial-payment
+      // path this call never takes.
+      ticketCode: result.ticketCode ?? undefined,
     });
     await logActivity({
       userId: adminId,
