@@ -62,3 +62,19 @@ export type ActivityLog = {
   amount: number | null;
   created_at: string;
 };
+
+export type ExpenseMethod = "cash" | "gcash";
+
+export type Expense = {
+  id: string;
+  item_name: string;
+  amount: number;
+  method: ExpenseMethod;
+  spent_at: string;
+  added_by: string;
+  created_at: string;
+  voided_at: string | null;
+  voided_by: string | null;
+  void_reason: string | null;
+  receipt_path: string | null;
+};

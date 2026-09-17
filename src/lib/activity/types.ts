@@ -14,6 +14,8 @@ export const ACTIVITY_TYPES = [
   "remittance_submitted",
   "remittance_approved",
   "remittance_rejected",
+  "expense_added",
+  "expense_voided",
   "email_failed",
   "ticket_email_sent",
 ] as const;
@@ -31,6 +33,8 @@ const LABELS: Record<ActivityType, string> = {
   remittance_submitted: "Remittance Submitted",
   remittance_approved: "Remittance Approved",
   remittance_rejected: "Remittance Rejected",
+  expense_added: "Expense Added",
+  expense_voided: "Expense Voided",
   email_failed: "Email Failed",
   ticket_email_sent: "Ticket Email Sent",
 };

@@ -15,7 +15,7 @@ import {
   rejectRegistration,
   type ActionResult,
 } from "./actions";
-import { ReceiptLightbox } from "./receipt-lightbox";
+import { ReceiptLightbox } from "../receipt-lightbox";
 
 type Row = {
   registration: Registration;

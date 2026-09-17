@@ -20,7 +20,8 @@ filename order:
 `0001_init.sql` → `0002_raffle.sql` → `0003_raffle_prizes_and_entrants.sql`
 → `0004_raffle_remove_prizes.sql` → `0005_student_id_and_walk_in.sql` →
 `0006_evaluation.sql` → `0007_staff_roles_and_cash_remittance.sql` →
-`0008_activity_log_fk_set_null.sql` → `0009_ticket_email.sql`.
+`0008_activity_log_fk_set_null.sql` → `0009_ticket_email.sql` →
+`0010_expenses.sql` → `0011_expense_receipts.sql`.
 The verification queries in that doc are optional here — worth running
 once to confirm the constraints exist, but nothing to clean up carefully
 afterward since this database is never going live.

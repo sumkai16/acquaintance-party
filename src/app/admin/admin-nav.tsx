@@ -21,6 +21,7 @@ const ADMIN_GROUPS = [
     { href: "/admin/review", label: "Payments" },
     { href: "/admin/walk-in", label: "Walk-in" },
     { href: "/admin/cash", label: "Cash" },
+    { href: "/admin/expenses", label: "Expenses" },
   ],
   [
     { href: "/admin/scan", label: "Scanner" },
