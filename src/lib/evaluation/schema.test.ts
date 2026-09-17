@@ -1,23 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { parseAnswers } from "./schema";
-import { MAX_TEXT_LENGTH, QUESTIONS } from "./questions";
+import { parseAnswers, type RawAnswers } from "./schema";
+import { MAX_TEXT_LENGTH, NOT_APPLICABLE, QUESTIONS } from "./questions";
 
-/** A complete, valid submission built from whatever the current draft asks. */
-function complete(over: Record<string, string> = {}): Record<string, string> {
-  const answers: Record<string, string> = {};
+/** A complete, valid submission built from whatever the current form asks. */
+function complete(over: RawAnswers = {}): RawAnswers {
+  const answers: RawAnswers = {};
   for (const question of QUESTIONS) {
     answers[question.id] =
       question.kind === "rating"
         ? "4"
         : question.kind === "choice"
           ? question.options[0]
-          : "It was good.";
+          : question.kind === "multi"
+            ? [question.options[0]]
+            : "It was good.";
   }
   return { ...answers, ...over };
 }
 
-const ratingId = QUESTIONS.find((q) => q.kind === "rating")!.id;
-const choice = QUESTIONS.find((q) => q.kind === "choice")!;
+const ratingId = QUESTIONS.find((q) => q.kind === "rating" && !q.allowNA)!.id;
+const naRatingId = QUESTIONS.find((q) => q.kind === "rating" && q.allowNA)!.id;
+const choice = QUESTIONS.find((q) => q.kind === "choice" && !q.optional)!;
+const optionalChoiceId = QUESTIONS.find(
+  (q) => q.kind === "choice" && q.optional,
+)!.id;
+const multi = QUESTIONS.find((q) => q.kind === "multi")!;
+if (multi.kind !== "multi") throw new Error("unreachable");
 const textId = QUESTIONS.find((q) => q.kind === "text")!.id;
 
 describe("parseAnswers", () => {
@@ -26,7 +34,14 @@ describe("parseAnswers", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.answers[ratingId]).toBe(4);
+    if (choice.kind !== "choice") return;
     expect(result.answers[choice.id]).toBe(choice.options[0]);
+  });
+
+  it("question ids are unique", () => {
+    // Two questions sharing an id would silently overwrite each other's answer.
+    const ids = QUESTIONS.map((q) => q.id);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("reports every missed question at once, not just the first", () => {
@@ -35,7 +50,9 @@ describe("parseAnswers", () => {
     const result = parseAnswers({});
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    const required = QUESTIONS.filter((q) => q.kind !== "text");
+    const required = QUESTIONS.filter(
+      (q) => q.kind === "rating" || (q.kind === "choice" && !q.optional),
+    );
     expect(Object.keys(result.fieldErrors).sort()).toEqual(
       required.map((q) => q.id).sort(),
     );
@@ -71,10 +88,44 @@ describe("parseAnswers", () => {
     }
   });
 
+  it("accepts N/A only where the question offers it", () => {
+    const allowed = parseAnswers(complete({ [naRatingId]: NOT_APPLICABLE }));
+    expect(allowed.ok).toBe(true);
+    if (allowed.ok) expect(allowed.answers[naRatingId]).toBe(NOT_APPLICABLE);
+
+    const refused = parseAnswers(complete({ [ratingId]: NOT_APPLICABLE }));
+    expect(refused.ok).toBe(false);
+  });
+
   it("rejects a choice that isn't one of the options", () => {
     // The form only offers the listed options, so anything else arrived by
     // hand-crafting the POST.
     const result = parseAnswers(complete({ [choice.id]: "something else" }));
+    expect(result.ok).toBe(false);
+  });
+
+  it("stores a skipped optional choice as null", () => {
+    const result = parseAnswers(complete({ [optionalChoiceId]: "" }));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.answers[optionalChoiceId]).toBeNull();
+  });
+
+  it("keeps tick-all answers in listed order, once each, and allows none", () => {
+    const [first, second] = multi.options;
+    const ticked = parseAnswers(complete({ [multi.id]: [second, first, second] }));
+    expect(ticked.ok).toBe(true);
+    if (ticked.ok) expect(ticked.answers[multi.id]).toEqual([first, second]);
+
+    const none = parseAnswers(complete({ [multi.id]: [] }));
+    expect(none.ok).toBe(true);
+    if (none.ok) expect(none.answers[multi.id]).toEqual([]);
+  });
+
+  it("rejects a tick-all answer outside the options", () => {
+    const result = parseAnswers(
+      complete({ [multi.id]: [multi.options[0], "smuggled"] }),
+    );
     expect(result.ok).toBe(false);
   });
 

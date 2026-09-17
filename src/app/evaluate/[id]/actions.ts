@@ -10,7 +10,7 @@ import {
 } from "@/lib/certificates/render";
 import { evaluationContext, saveEvaluation } from "@/lib/evaluation/queries";
 import { FORM_VERSION, QUESTIONS } from "@/lib/evaluation/questions";
-import { parseAnswers } from "@/lib/evaluation/schema";
+import { parseAnswers, type RawAnswers } from "@/lib/evaluation/schema";
 import { sendCertificateEmail } from "@/lib/notify/email";
 
 export type FormState = {
@@ -20,15 +20,18 @@ export type FormState = {
   // Same reset-on-error problem as checkout's FormState.values — see the
   // comment there. Keying inputs on `attempt` keeps one missed question from
   // wiping every answer above it.
-  values?: Record<string, string>;
+  values?: RawAnswers;
   attempt: number;
 };
 
-function readValues(formData: FormData): Record<string, string> {
+function readValues(formData: FormData): RawAnswers {
   return Object.fromEntries(
     QUESTIONS.map((question) => [
       question.id,
-      String(formData.get(question.id) ?? ""),
+      // A tick-all question posts one field per ticked box under the same name.
+      question.kind === "multi"
+        ? formData.getAll(question.id).map(String)
+        : String(formData.get(question.id) ?? ""),
     ]),
   );
 }

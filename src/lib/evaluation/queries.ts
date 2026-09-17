@@ -1,6 +1,12 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
-import { QUESTIONS, RATING_SCALE } from "./questions";
+import {
+  FORM_VERSION,
+  NOT_APPLICABLE,
+  RATING_SCALE,
+  SECTIONS,
+  type Question,
+} from "./questions";
 import type { Answers } from "./schema";
 import type { Evaluation, Registration } from "@/lib/supabase/types";
 
@@ -199,21 +205,82 @@ export type QuestionSummary =
       average: number | null;
       /** Response count per point on the scale, in RATING_SCALE order. */
       counts: number[];
+      /** Answered N/A, and left out of the average. Null when N/A isn't offered. */
+      notApplicable: number | null;
     }
   | {
-      kind: "choice";
+      kind: "choice" | "multi";
       id: string;
       prompt: string;
       counts: { option: string; count: number }[];
     }
   | { kind: "text"; id: string; prompt: string; responses: string[] };
 
+export type SectionSummary = {
+  id: string;
+  title: string;
+  /** Mean of every 1–5 answer across the section's ratings; null if none. */
+  average: number | null;
+  questions: QuestionSummary[];
+};
+
 export type EvaluationSummary = {
   responses: number;
   checkedIn: number;
   invited: number;
-  questions: QuestionSummary[];
+  sections: SectionSummary[];
 };
+
+function mean(values: number[]): number | null {
+  return values.length === 0
+    ? null
+    : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function summarise(question: Question, rows: Answers[]): QuestionSummary {
+  const answers = rows.map((row) => row[question.id]);
+
+  if (question.kind === "rating") {
+    const values = answers.filter(
+      (value): value is number => typeof value === "number",
+    );
+    return {
+      kind: "rating",
+      id: question.id,
+      prompt: question.prompt,
+      average: mean(values),
+      counts: RATING_SCALE.map(
+        (point) => values.filter((value) => value === point).length,
+      ),
+      notApplicable: question.allowNA
+        ? answers.filter((value) => value === NOT_APPLICABLE).length
+        : null,
+    };
+  }
+
+  if (question.kind === "choice" || question.kind === "multi") {
+    return {
+      kind: question.kind,
+      id: question.id,
+      prompt: question.prompt,
+      counts: question.options.map((option) => ({
+        option,
+        count: answers.filter((value) =>
+          Array.isArray(value) ? value.includes(option) : value === option,
+        ).length,
+      })),
+    };
+  }
+
+  return {
+    kind: "text",
+    id: question.id,
+    prompt: question.prompt,
+    responses: answers.filter(
+      (value): value is string => typeof value === "string" && value !== "",
+    ),
+  };
+}
 
 /**
  * The admin view of the results: totals only, no names.
@@ -233,6 +300,7 @@ export async function evaluationSummary(): Promise<EvaluationSummary> {
     adminClient()
       .from("evaluations")
       .select("answers")
+      .eq("form_version", FORM_VERSION)
       .order("submitted_at", { ascending: true }),
   ]);
 
@@ -242,47 +310,25 @@ export async function evaluationSummary(): Promise<EvaluationSummary> {
 
   const rows = (data ?? []).map((row) => row.answers as Answers);
 
-  const questions: QuestionSummary[] = QUESTIONS.map((question) => {
-    if (question.kind === "rating") {
-      const values = rows
-        .map((row) => row[question.id])
-        .filter((value): value is number => typeof value === "number");
-      const counts = RATING_SCALE.map(
-        (point) => values.filter((value) => value === point).length,
-      );
-      const average =
-        values.length === 0
-          ? null
-          : values.reduce((sum, value) => sum + value, 0) / values.length;
-      return { kind: "rating", id: question.id, prompt: question.prompt, average, counts };
-    }
-
-    if (question.kind === "choice") {
-      return {
-        kind: "choice",
-        id: question.id,
-        prompt: question.prompt,
-        counts: question.options.map((option) => ({
-          option,
-          count: rows.filter((row) => row[question.id] === option).length,
-        })),
-      };
-    }
-
-    return {
-      kind: "text",
-      id: question.id,
-      prompt: question.prompt,
-      responses: rows
-        .map((row) => row[question.id])
-        .filter((value): value is string => typeof value === "string" && value !== ""),
-    };
-  });
+  const sections: SectionSummary[] = SECTIONS.map((section) => ({
+    id: section.id,
+    title: section.title,
+    average: mean(
+      section.questions.flatMap((question) =>
+        question.kind === "rating"
+          ? rows
+              .map((row) => row[question.id])
+              .filter((value): value is number => typeof value === "number")
+          : [],
+      ),
+    ),
+    questions: section.questions.map((question) => summarise(question, rows)),
+  }));
 
   return {
     responses: rows.length,
     checkedIn: attended.size,
     invited: invitedCount.count ?? 0,
-    questions,
+    sections,
   };
 }

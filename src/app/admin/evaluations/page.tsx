@@ -3,7 +3,7 @@ import {
   pendingInviteRecipients,
   type QuestionSummary,
 } from "@/lib/evaluation/queries";
-import { RATING_SCALE } from "@/lib/evaluation/questions";
+import { RATING_LABELS, RATING_SCALE } from "@/lib/evaluation/questions";
 import { SendInvites } from "./send-invites";
 
 export const dynamic = "force-dynamic";
@@ -51,13 +51,29 @@ export default async function EvaluationsPage() {
           No responses yet. They appear here as students send them.
         </p>
       ) : (
-        <div className="mt-8 flex flex-col gap-4">
-          {summary.questions.map((question) => (
-            <QuestionCard
-              key={question.id}
-              question={question}
-              responses={summary.responses}
-            />
+        <div className="mt-8 flex flex-col gap-10">
+          {summary.sections.map((section) => (
+            <section key={section.id} className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ground/10 pb-2">
+                <h2 className="text-xl font-semibold">{section.title}</h2>
+                {section.average !== null ? (
+                  <span className="text-sm text-ground/60">
+                    Section average{" "}
+                    <span className="text-lg font-bold tabular-nums text-ground">
+                      {section.average.toFixed(1)}
+                    </span>{" "}
+                    / 5
+                  </span>
+                ) : null}
+              </div>
+              {section.questions.map((question) => (
+                <QuestionCard
+                  key={question.id}
+                  question={question}
+                  responses={summary.responses}
+                />
+              ))}
+            </section>
           ))}
         </div>
       )}
@@ -75,27 +91,32 @@ function QuestionCard({
   return (
     <section className="rounded-lg border border-ground/10 bg-ground/5 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-semibold">{question.prompt}</h2>
+        <h3 className="font-semibold">{question.prompt}</h3>
         {question.kind === "rating" && question.average !== null ? (
           <span className="text-2xl font-bold tabular-nums">
             {question.average.toFixed(1)}
             <span className="text-sm font-normal text-ground/50"> / 5</span>
           </span>
+        ) : question.kind === "multi" ? (
+          <span className="text-sm text-ground/50">Tick all that apply</span>
         ) : null}
       </div>
 
       {question.kind === "rating" ? (
         <div className="mt-3 flex flex-col gap-1.5">
-          {RATING_SCALE.map((point, index) => (
+          {[...RATING_SCALE].reverse().map((point) => (
             <Bar
               key={point}
-              label={String(point)}
-              count={question.counts[index]}
+              label={`${point} · ${RATING_LABELS[point]}`}
+              count={question.counts[point - 1]}
               total={responses}
             />
           ))}
+          {question.notApplicable !== null ? (
+            <Bar label="N/A" count={question.notApplicable} total={responses} />
+          ) : null}
         </div>
-      ) : question.kind === "choice" ? (
+      ) : question.kind !== "text" ? (
         <div className="mt-3 flex flex-col gap-1.5">
           {question.counts.map((row) => (
             <Bar
@@ -139,7 +160,7 @@ function Bar({
 
   return (
     <div className="flex items-center gap-3 text-sm">
-      <span className="w-32 shrink-0 truncate text-ground/70">{label}</span>
+      <span className="w-44 shrink-0 truncate text-ground/70" title={label}>{label}</span>
       <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ground/10">
         <div className="h-full bg-accent" style={{ width: `${share}%` }} />
       </div>

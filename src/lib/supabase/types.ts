@@ -45,7 +45,7 @@ export type Evaluation = {
   id: string;
   registration_id: string;
   form_version: string;
-  answers: Record<string, number | string | null>;
+  answers: Record<string, number | string | string[] | null>;
   submitted_at: string;
 };
 

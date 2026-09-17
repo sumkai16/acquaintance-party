@@ -376,7 +376,10 @@ The decisions worth not relitigating:
   The link is what rejects a duplicate and gates the certificate;
   `/admin/evaluations` shows totals and lists the written answers without
   names.
-- **Questions and artwork are both deliberately provisional.** The draft
+- **The questions are the organisers' form (`v1`, 2026-09-17), minus its
+  repeats.** Anything the paper form asked twice is kept once, in its first
+  place; ratings are required, written answers and the tick-all list are not.
+- **Questions and artwork both stay easy to swap.** The
   questionnaire is `src/lib/evaluation/questions.ts` and the certificate art
   is a drop-in `public/certificate-bg.png`; changing either touches nothing
   else. Answers are stored as jsonb stamped with a `form_version`, so
