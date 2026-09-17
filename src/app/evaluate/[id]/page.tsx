@@ -38,6 +38,25 @@ export default async function EvaluatePage({
         </p>
       </header>
 
+      {/* Read-only: taken from the registration this link belongs to, so the
+          form never asks for it again. The name also goes on the certificate,
+          which is why it's worth a glance before sending. */}
+      <section className="rounded border border-ink/15 bg-white/60 px-4 py-3">
+        <p className="text-xs uppercase tracking-[0.2em] text-ink/60">
+          Answering as
+        </p>
+        <p className="mt-1 text-lg font-semibold">
+          {context.registration.full_name}
+        </p>
+        <p className="text-ink/70">
+          {context.registration.student_id} · {context.registration.year_level}{" "}
+          · Section {context.registration.section}
+        </p>
+        <p className="mt-2 text-sm text-ink/60">
+          Something wrong? Tell an organiser before sending. {EVENT.contact}
+        </p>
+      </section>
+
       <EvaluationForm registrationId={id} />
     </main>
   );

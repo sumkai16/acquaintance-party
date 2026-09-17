@@ -20,10 +20,7 @@ function complete(over: RawAnswers = {}): RawAnswers {
 
 const ratingId = QUESTIONS.find((q) => q.kind === "rating" && !q.allowNA)!.id;
 const naRatingId = QUESTIONS.find((q) => q.kind === "rating" && q.allowNA)!.id;
-const choice = QUESTIONS.find((q) => q.kind === "choice" && !q.optional)!;
-const optionalChoiceId = QUESTIONS.find(
-  (q) => q.kind === "choice" && q.optional,
-)!.id;
+const choice = QUESTIONS.find((q) => q.kind === "choice")!;
 const multi = QUESTIONS.find((q) => q.kind === "multi")!;
 if (multi.kind !== "multi") throw new Error("unreachable");
 const textId = QUESTIONS.find((q) => q.kind === "text")!.id;
@@ -51,7 +48,7 @@ describe("parseAnswers", () => {
     expect(result.ok).toBe(false);
     if (result.ok) return;
     const required = QUESTIONS.filter(
-      (q) => q.kind === "rating" || (q.kind === "choice" && !q.optional),
+      (q) => q.kind === "rating" || q.kind === "choice",
     );
     expect(Object.keys(result.fieldErrors).sort()).toEqual(
       required.map((q) => q.id).sort(),
@@ -102,13 +99,6 @@ describe("parseAnswers", () => {
     // hand-crafting the POST.
     const result = parseAnswers(complete({ [choice.id]: "something else" }));
     expect(result.ok).toBe(false);
-  });
-
-  it("stores a skipped optional choice as null", () => {
-    const result = parseAnswers(complete({ [optionalChoiceId]: "" }));
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.answers[optionalChoiceId]).toBeNull();
   });
 
   it("keeps tick-all answers in listed order, once each, and allows none", () => {

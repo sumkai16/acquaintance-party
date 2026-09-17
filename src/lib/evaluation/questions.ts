@@ -12,6 +12,10 @@
  * the admin summary are all generated from it. Bump FORM_VERSION when the
  * questions change so responses already in the database stay readable against
  * the wording that produced them.
+ *
+ * The paper form's "Respondent information" (year level, section) isn't asked:
+ * the evaluation link belongs to a registration, which already holds both, so
+ * the admin summary counts them from there instead.
  */
 export const FORM_VERSION = "v1";
 
@@ -42,8 +46,6 @@ export type ChoiceQuestion = {
   id: string;
   prompt: string;
   options: readonly string[];
-  /** Blank is allowed and stored as null. */
-  optional?: boolean;
 };
 
 /** Tick all that apply. Always optional — ticking nothing is an answer. */
@@ -99,20 +101,6 @@ const AGREEMENT = [
 ] as const;
 
 export const SECTIONS: readonly Section[] = [
-  {
-    id: "respondent",
-    title: "About you",
-    questions: [
-      {
-        kind: "choice",
-        id: "year_level",
-        prompt: "Year level",
-        options: ["1st Year", "2nd Year", "3rd Year", "4th Year"],
-        optional: true,
-      },
-      text("section", "Section"),
-    ],
-  },
   {
     id: "organization",
     title: "Event organization",

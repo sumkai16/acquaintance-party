@@ -9,7 +9,7 @@ import {
 /**
  * One answer per question id. Ratings are numbers, or NOT_APPLICABLE where
  * the question allows it; tick-all answers are the ticked options; skipped
- * free text and optional choices are null.
+ * free text is null.
  */
 export type Answers = Record<string, number | string | string[] | null>;
 
@@ -88,10 +88,6 @@ export function parseAnswers(raw: RawAnswers): ParseResult {
     }
 
     if (value === "") {
-      if (question.kind === "choice" && question.optional) {
-        answers[question.id] = null;
-        continue;
-      }
       fieldErrors[question.id] = "Answer this one before submitting.";
       continue;
     }

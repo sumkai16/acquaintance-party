@@ -52,6 +52,18 @@ export default async function EvaluationsPage() {
         </p>
       ) : (
         <div className="mt-8 flex flex-col gap-10">
+          <section className="grid gap-4 md:grid-cols-2">
+            <Tally
+              title="Responses by year level"
+              rows={summary.byYearLevel}
+              total={summary.responses}
+            />
+            <Tally
+              title="Responses by section"
+              rows={summary.bySection}
+              total={summary.responses}
+            />
+          </section>
           {summary.sections.map((section) => (
             <section key={section.id} className="flex flex-col gap-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ground/10 pb-2">
@@ -144,6 +156,27 @@ function QuestionCard({
         </ul>
       )}
     </section>
+  );
+}
+
+function Tally({
+  title,
+  rows,
+  total,
+}: {
+  title: string;
+  rows: { option: string; count: number }[];
+  total: number;
+}) {
+  return (
+    <div className="rounded-lg border border-ground/10 bg-ground/5 p-4">
+      <h2 className="font-semibold">{title}</h2>
+      <div className="mt-3 flex flex-col gap-1.5">
+        {rows.map((row) => (
+          <Bar key={row.option} label={row.option} count={row.count} total={total} />
+        ))}
+      </div>
+    </div>
   );
 }
 

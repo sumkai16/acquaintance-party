@@ -226,10 +226,26 @@ export type SectionSummary = {
 
 export type EvaluationSummary = {
   responses: number;
+  /**
+   * Who answered, from their registration rather than the form — counts only,
+   * busiest first, so a year level or section never points back at a person.
+   */
+  byYearLevel: { option: string; count: number }[];
+  bySection: { option: string; count: number }[];
   checkedIn: number;
   invited: number;
   sections: SectionSummary[];
 };
+
+function tally(values: (string | undefined)[]): { option: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const value of values) {
+    if (value) counts.set(value, (counts.get(value) ?? 0) + 1);
+  }
+  return [...counts]
+    .map(([option, count]) => ({ option, count }))
+    .sort((a, b) => b.count - a.count || a.option.localeCompare(b.option));
+}
 
 function mean(values: number[]): number | null {
   return values.length === 0
@@ -299,7 +315,7 @@ export async function evaluationSummary(): Promise<EvaluationSummary> {
       .not("evaluation_invited_at", "is", null),
     adminClient()
       .from("evaluations")
-      .select("answers")
+      .select("answers, registrations(year_level, section)")
       .eq("form_version", FORM_VERSION)
       .order("submitted_at", { ascending: true }),
   ]);
@@ -309,6 +325,10 @@ export async function evaluationSummary(): Promise<EvaluationSummary> {
   }
 
   const rows = (data ?? []).map((row) => row.answers as Answers);
+  const respondents = (data ?? []).map(
+    (row) =>
+      row.registrations as unknown as { year_level: string; section: string } | null,
+  );
 
   const sections: SectionSummary[] = SECTIONS.map((section) => ({
     id: section.id,
@@ -327,6 +347,10 @@ export async function evaluationSummary(): Promise<EvaluationSummary> {
 
   return {
     responses: rows.length,
+    byYearLevel: tally(respondents.map((r) => r?.year_level)),
+    bySection: tally(
+      respondents.map((r) => (r ? `${r.year_level} · ${r.section}` : undefined)),
+    ),
     checkedIn: attended.size,
     invited: invitedCount.count ?? 0,
     sections,
