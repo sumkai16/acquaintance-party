@@ -5,7 +5,7 @@ import { totalCashCollectedCentavos } from "@/lib/cash/queries";
 import { onlinePaymentsSummary } from "@/lib/registrations/queries";
 import { listExpenses, spentCentavos } from "@/lib/expenses/queries";
 import { expenseBalances } from "@/lib/expenses/parse";
-import { adminOnlyResponse } from "../route-auth";
+import { adminOnlyResponse } from "../../route-auth";
 
 /**
  * Every expense, voided ones included and marked, plus a Summary sheet with

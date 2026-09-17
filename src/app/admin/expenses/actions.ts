@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { currentProfile } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { formatPeso } from "@/lib/config/event";
 import { logActivity } from "@/lib/activity/queries";
 import {
@@ -20,12 +20,6 @@ import type { ExpenseMethod } from "@/lib/supabase/types";
 export type AddExpenseResult =
   | { ok: true }
   | { ok: false; error: string; needsConfirm?: boolean };
-
-async function requireAdmin() {
-  const profile = await currentProfile();
-  if (!profile || profile.role !== "admin") return null;
-  return profile;
-}
 
 /**
  * Re-derives the balance for `method` at submit time and returns how far

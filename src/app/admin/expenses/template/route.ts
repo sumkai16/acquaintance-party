@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { adminOnlyResponse } from "../route-auth";
+import { adminOnlyResponse } from "../../route-auth";
 
 export async function GET() {
   const denied = await adminOnlyResponse();

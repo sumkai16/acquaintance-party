@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { adminClient } from "@/lib/supabase/admin";
-import { currentAdminId } from "@/lib/supabase/server";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 import { logActivity } from "@/lib/activity/queries";
-import { getProfile } from "@/lib/profiles/queries";
 import {
   getRegistration,
   markTicketEmailSent,
@@ -36,8 +35,8 @@ export async function voidRegistration(
   id: string,
   reason: string,
 ): Promise<ActionResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const adminId = (await requireAdmin())?.id;
+  if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
 
   const trimmed = reason.trim();
   if (!trimmed) return { ok: false, error: "Give a reason the student can act on." };
@@ -85,18 +84,6 @@ const NO_DOMAIN_ERROR =
   "No verified sending domain yet. Set RESEND_FROM_EMAIL to an address on " +
   "your own domain and redeploy — see docs/setup/resend.md.";
 
-/**
- * Only an admin sends mail to the whole event. The Dashboard is already
- * admin-only via admin/layout.tsx, but a server action is callable on its
- * own, and this one reaches every payee's inbox at once.
- */
-async function currentAdmin(): Promise<string | null> {
-  const userId = await currentAdminId();
-  if (!userId) return null;
-  const profile = await getProfile(userId);
-  return profile?.role === "admin" ? userId : null;
-}
-
 export type SendTicketEmailsResult =
   | { ok: true; sent: number; failed: number }
   | { ok: false; error: string };
@@ -115,8 +102,8 @@ export type SendTicketEmailsResult =
  * a sender that silently discards mail — see sendingDomainReady().
  */
 export async function sendTicketEmails(): Promise<SendTicketEmailsResult> {
-  const adminId = await currentAdmin();
-  if (!adminId) return { ok: false, error: "Sign in as an admin again." };
+  const adminId = (await requireAdmin())?.id;
+  if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
   if (!sendingDomainReady()) return { ok: false, error: NO_DOMAIN_ERROR };
 
   const recipients = await pendingTicketEmailRecipients();
@@ -180,8 +167,8 @@ export async function sendTicketEmails(): Promise<SendTicketEmailsResult> {
  * to a typo'd address they've since had corrected.
  */
 export async function sendTicketEmail(id: string): Promise<ActionResult> {
-  const adminId = await currentAdmin();
-  if (!adminId) return { ok: false, error: "Sign in as an admin again." };
+  const adminId = (await requireAdmin())?.id;
+  if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
   if (!sendingDomainReady()) return { ok: false, error: NO_DOMAIN_ERROR };
 
   const registration = await getRegistration(id);
@@ -250,8 +237,8 @@ export async function editRegistration(
   id: string,
   input: { fullName: string; studentId: string; yearLevel: string; section: string; email: string },
 ): Promise<EditRegistrationResult> {
-  const adminId = await currentAdmin();
-  if (!adminId) return { ok: false, error: "Sign in as an admin again." };
+  const adminId = (await requireAdmin())?.id;
+  if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
 
   const before = await getRegistration(id);
   if (!before) return { ok: false, error: "Registration not found." };

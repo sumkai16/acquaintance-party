@@ -4,7 +4,7 @@ import { currentAdminId } from "@/lib/supabase/server";
 
 /**
  * Route handlers don't pass through admin/layout.tsx's role gate, so each
- * Expenses route checks for itself. Returns the error Response to send, or
+ * admin-only route (Expenses, Imports) checks for itself. Returns the error Response to send, or
  * null when the caller is an admin.
  */
 export async function adminOnlyResponse(): Promise<Response | null> {

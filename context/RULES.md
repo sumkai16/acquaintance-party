@@ -41,6 +41,17 @@ The RLS policies on `registrations` and `scans` exist only to describe what a
 signed-in **admin** can do. If a task seems to need an `anon` policy, that's
 a sign the design is wrong — route it through a server action instead.
 
+**Every admin-only server action checks the role itself, with
+`requireAdmin()` (`src/lib/auth/require-admin.ts`).** `admin/layout.tsx` only
+decides which *pages* staff can open. A server action is a POST endpoint that
+can be called without its page, so `currentAdminId()` — "someone is signed
+in" — is not enough: a staff session passes it. Use `currentAdminId()` only
+for actions staff are meant to run (walk-in sale, walk-in import, remittance).
+Route handlers do the same with `adminOnlyResponse()` in
+`src/app/admin/route-auth.ts`, since they skip the layout too. Until
+2026-09-17, Payments approve/reject, Dashboard void, raffle draws and
+entrants, and evaluation invites all had only the signed-in check.
+
 **`SUPABASE_SERVICE_ROLE_KEY` is server-only, no exceptions:**
 - Read only inside `src/lib/supabase/admin.ts`, which starts with
   `import "server-only"`. That import makes the Next.js build fail loudly if

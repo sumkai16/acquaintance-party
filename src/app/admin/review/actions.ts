@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { generateTicketCode } from "@/lib/tickets/generate";
 import { adminClient } from "@/lib/supabase/admin";
-import { currentAdminId } from "@/lib/supabase/server";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 import { markTicketEmailSent } from "@/lib/registrations/queries";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
 import { logActivity } from "@/lib/activity/queries";
@@ -14,8 +14,9 @@ const UNIQUE_VIOLATION = "23505";
 export type ActionResult = { ok: boolean; error?: string };
 
 export async function approveRegistration(id: string): Promise<ActionResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  const adminId = admin.id;
 
   // Retry on the vanishingly unlikely ticket-code collision rather than
   // failing the approval. The unique index is what makes this safe.
@@ -90,8 +91,9 @@ export async function rejectRegistration(
   id: string,
   reason: string,
 ): Promise<ActionResult> {
-  const adminId = await currentAdminId();
-  if (!adminId) return { ok: false, error: "Sign in again." };
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  const adminId = admin.id;
 
   const trimmed = reason.trim();
   if (!trimmed) return { ok: false, error: "Give a reason the student can act on." };

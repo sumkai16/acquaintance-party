@@ -2,7 +2,7 @@
 
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
-import { currentProfile } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import { formatPeso } from "@/lib/config/event";
 import { logActivity } from "@/lib/activity/queries";
 import { cellText, columnIndex } from "@/lib/import/excel-cells";
@@ -18,12 +18,6 @@ import {
 } from "@/lib/expenses/import-rows";
 
 const MAX_IMPORT_ROWS = 200;
-
-async function requireAdmin() {
-  const profile = await currentProfile();
-  if (!profile || profile.role !== "admin") return null;
-  return profile;
-}
 
 export type ParseExpenseImportResult =
   | { ok: true; rows: ExpenseImportRow[] }

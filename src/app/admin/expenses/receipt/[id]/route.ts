@@ -1,5 +1,5 @@
 import { signedExpenseReceiptUrl } from "@/lib/expenses/queries";
-import { adminOnlyResponse } from "../../route-auth";
+import { adminOnlyResponse } from "../../../route-auth";
 
 /**
  * Mints a fresh 10-minute signed URL on every click and redirects to it —
