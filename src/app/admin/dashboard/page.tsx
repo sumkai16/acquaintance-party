@@ -17,7 +17,7 @@ import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
-import { receiptBacklog, receiptIdsForMany } from "@/lib/receipts/queries";
+import { receiptBacklog, receiptsForMany } from "@/lib/receipts/queries";
 import { SendReceiptEmails } from "./send-receipt-emails";
 import { Pagination } from "../pagination";
 
@@ -38,6 +38,7 @@ export default async function RegistrationsPage({
     dir?: string;
     page?: string;
     year?: string;
+    delivery?: string;
   }>;
 }) {
   const {
@@ -48,7 +49,10 @@ export default async function RegistrationsPage({
     dir,
     page: rawPage,
     year: rawYear,
+    delivery: rawDelivery,
   } = await searchParams;
+  const delivery =
+    rawDelivery === "qr" || rawDelivery === "receipt" ? rawDelivery : undefined;
   // No status in the URL means "all" — populated by default, same as
   // Attendance's Recent Scans needing no filter picked to show something.
   const status = VALID_STATUSES.includes(rawStatus as (typeof VALID_STATUSES)[number])
@@ -96,6 +100,7 @@ export default async function RegistrationsPage({
       sort: sortColumn,
       direction,
       yearLevel,
+      delivery,
     }),
     approvedCount(),
     totalCollectedCentavos(),
@@ -115,6 +120,7 @@ export default async function RegistrationsPage({
     if (rawStatus) next.set("status", rawStatus);
     if (rawPaymentMethod) next.set("paymentMethod", rawPaymentMethod);
     if (yearLevel) next.set("year", yearLevel);
+    if (delivery) next.set("delivery", delivery);
     if (sort) next.set("sort", sort);
     if (dir) next.set("dir", dir);
     if (targetPage > 1) next.set("page", String(targetPage));
@@ -129,7 +135,7 @@ export default async function RegistrationsPage({
   // and it matters most for listAdminEmails: it calls the Supabase Auth
   // admin API, the slowest single call on this page.
   const needsReviewers = results.some((registration) => registration.reviewed_by);
-  const [adminEmails, profileNames, receiptUrls, receiptIds] = await Promise.all([
+  const [adminEmails, profileNames, receiptUrls, receipts] = await Promise.all([
     needsReviewers ? listAdminEmails() : new Map<string, string>(),
     needsReviewers ? listAllProfileNames() : new Map<string, string>(),
     // Payments only shows a receipt while the row is in its current list; this
@@ -139,7 +145,7 @@ export default async function RegistrationsPage({
         registration.receipt_path ? [registration.receipt_path] : [],
       ),
     ),
-    receiptIdsForMany(results.map((registration) => registration.id)),
+    receiptsForMany(results.map((registration) => registration.id)),
   ]);
   const sectionReport = buildSectionReport(approvedForReport);
 
@@ -197,7 +203,11 @@ export default async function RegistrationsPage({
             results.length === 0
               ? q.trim().length >= 2
                 ? `Nothing matches “${q}”.`
-                : status === "all"
+                : delivery === "qr"
+                  ? "Everyone who's paid in full has been emailed their QR."
+                  : delivery === "receipt"
+                    ? "Everyone who's paid has been emailed their receipt."
+                    : status === "all"
                   ? "No registrations yet."
                   : `No ${STATUS_LABEL[status].toLowerCase()} registrations.`
               : undefined
@@ -214,6 +224,7 @@ export default async function RegistrationsPage({
                   params.set("dir", nextDir);
                   if (q) params.set("q", q);
                   if (status !== "all") params.set("status", status);
+                  if (delivery) params.set("delivery", delivery);
                   return { href: `?${params.toString()}`, active };
                 };
                 // Header order matches RegistrationRow's <td> order exactly —
@@ -259,7 +270,7 @@ export default async function RegistrationsPage({
                     ? (receiptUrls.get(registration.receipt_path) ?? null)
                     : null
                 }
-                receiptIds={receiptIds.get(registration.id) ?? []}
+                receipts={receipts.get(registration.id) ?? []}
               />
             ))}
           </tbody>

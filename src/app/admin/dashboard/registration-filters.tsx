@@ -15,6 +15,12 @@ const STATUS_OPTIONS = [
   { value: "rejected", label: "Rejected" },
 ] as const;
 
+const DELIVERY_OPTIONS = [
+  { value: "", label: "All emails" },
+  { value: "qr", label: "Waiting for QR" },
+  { value: "receipt", label: "Waiting for receipt" },
+] as const;
+
 const PAYMENT_METHOD_OPTIONS = [
   { value: "", label: "All payments" },
   { value: "walk_in", label: "Walk-in only" },
@@ -36,9 +42,13 @@ export function RegistrationFilters() {
   const status = searchParams.get("status") ?? "";
   const paymentMethod = searchParams.get("paymentMethod") ?? "";
   const year = searchParams.get("year") ?? "";
+  const delivery = searchParams.get("delivery") ?? "";
   const [q, setQ] = useState(searchParams.get("q") ?? "");
 
-  function setParam(key: "q" | "status" | "paymentMethod" | "year", value: string) {
+  function setParam(
+    key: "q" | "status" | "paymentMethod" | "year" | "delivery",
+    value: string,
+  ) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
@@ -101,6 +111,19 @@ export function RegistrationFilters() {
         className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         {PAYMENT_METHOD_OPTIONS.map((option) => (
+          <Option key={option.value} value={option.value}>
+            {option.label}
+          </Option>
+        ))}
+      </select>
+
+      <select
+        value={delivery}
+        onChange={(event) => setParam("delivery", event.target.value)}
+        aria-label="Filter by who is still waiting for an email"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
+      >
+        {DELIVERY_OPTIONS.map((option) => (
           <Option key={option.value} value={option.value}>
             {option.label}
           </Option>

@@ -17,6 +17,7 @@ import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
+import type { RowReceipt } from "@/lib/receipts/queries";
 import { ReceiptLightbox } from "../receipt-lightbox";
 import { sendTicketEmail, voidRegistration } from "./actions";
 import { EditRegistration } from "./edit-registration";
@@ -40,7 +41,7 @@ export function RegistrationRow({
   reviewerEmail,
   addedByName,
   receiptUrl,
-  receiptIds,
+  receipts,
 }: {
   registration: Registration;
   reviewerEmail: string | null;
@@ -48,7 +49,7 @@ export function RegistrationRow({
   /** The GCash proof they uploaded at checkout — not the acknowledgement receipt. */
   receiptUrl: string | null;
   /** Acknowledgement receipts issued for this registration's payments. */
-  receiptIds: string[];
+  receipts: RowReceipt[];
 }) {
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
@@ -166,8 +167,11 @@ export function RegistrationRow({
         ) : null}
       </td>
 
-      <td className="py-2 pr-3 font-mono whitespace-nowrap">
-        {registration.ticket_code ? formatTicketCode(registration.ticket_code) : "—"}
+      <td className="py-2 pr-3 whitespace-nowrap">
+        <span className="font-mono">
+          {registration.ticket_code ? formatTicketCode(registration.ticket_code) : "—"}
+        </span>
+        <DeliveryMarkers registration={registration} receipts={receipts} />
       </td>
 
       <td className="py-2 pl-3">
@@ -180,11 +184,11 @@ export function RegistrationRow({
             href={`/ticket/${registration.id}`}
             icon={ArrowRightIcon}
           />
-          {receiptIds.map((receiptId, index) => (
+          {receipts.map((receipt, index) => (
             <IconActionLink
-              key={receiptId}
-              label={`View receipt${receiptIds.length > 1 ? ` ${index + 1}` : ""}`}
-              href={`/receipt/${receiptId}`}
+              key={receipt.id}
+              label={`View receipt${receipts.length > 1 ? ` ${index + 1}` : ""}`}
+              href={`/receipt/${receipt.id}`}
               newTab
               icon={EyeIcon}
             />
@@ -230,6 +234,47 @@ export function RegistrationRow({
         ) : null}
       </td>
     </Tr>
+  );
+}
+
+/**
+ * Whether this student has actually been emailed their QR and receipt — the
+ * row-level view of what the Receipts card counts. A voided ticket shows
+ * nothing (nobody is emailing it), and a pending one has neither yet.
+ * A partial payer has no QR to send until paid in full, so only their
+ * receipt is shown.
+ */
+function DeliveryMarkers({
+  registration,
+  receipts,
+}: {
+  registration: Registration;
+  receipts: RowReceipt[];
+}) {
+  if (registration.status === "rejected" || registration.status === "pending") return null;
+
+  const qrSent = Boolean(registration.ticket_email_sent_at);
+  const receiptSent = receipts.length > 0 && receipts.every((receipt) => receipt.emailed);
+
+  return (
+    <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
+      {registration.status === "approved" ? (
+        <Marker sent={qrSent}>{qrSent ? "QR sent" : "QR not sent"}</Marker>
+      ) : null}
+      <Marker sent={receiptSent}>{receiptSent ? "Receipt sent" : "Receipt not sent"}</Marker>
+    </div>
+  );
+}
+
+function Marker({ sent, children }: { sent: boolean; children: React.ReactNode }) {
+  return (
+    <span className={`flex items-center gap-1.5 ${sent ? "text-green-300" : "text-amber-300"}`}>
+      <span
+        aria-hidden
+        className={`h-1.5 w-1.5 rounded-full ${sent ? "bg-green-400" : "bg-amber-400"}`}
+      />
+      {children}
+    </span>
   );
 }
 

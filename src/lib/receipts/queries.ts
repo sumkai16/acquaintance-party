@@ -153,25 +153,31 @@ export async function receiptIdsFor(registrationId: string): Promise<string[]> {
   return (data ?? []).map((row) => row.id as string);
 }
 
+export type RowReceipt = { id: string; emailed: boolean };
+
 /**
- * Receipt ids per registration for a page of rows — one query, not one per
- * row, the same batching `signedReceiptUrls` does for the Dashboard.
+ * Receipts per registration for a page of rows — one query, not one per
+ * row, the same batching `signedReceiptUrls` does for the Dashboard. Carries
+ * whether each was emailed, for the row's "Receipt sent" marker.
  */
-export async function receiptIdsForMany(
+export async function receiptsForMany(
   registrationIds: string[],
-): Promise<Map<string, string[]>> {
-  const byRegistration = new Map<string, string[]>();
+): Promise<Map<string, RowReceipt[]>> {
+  const byRegistration = new Map<string, RowReceipt[]>();
   if (registrationIds.length === 0) return byRegistration;
 
   const { data } = await adminClient()
     .from("receipts")
-    .select("id, registration_id")
+    .select("id, registration_id, emailed_at")
     .in("registration_id", registrationIds)
     .order("number", { ascending: true });
 
   for (const row of data ?? []) {
     const key = row.registration_id as string;
-    byRegistration.set(key, [...(byRegistration.get(key) ?? []), row.id as string]);
+    byRegistration.set(key, [
+      ...(byRegistration.get(key) ?? []),
+      { id: row.id as string, emailed: Boolean(row.emailed_at) },
+    ]);
   }
   return byRegistration;
 }

@@ -425,6 +425,12 @@ export async function searchRegistrations(
     direction?: "asc" | "desc";
     /** One of YEAR_LEVELS, already validated by the caller. */
     yearLevel?: string;
+    /**
+     * Who is still owed an email — the same two groups the Dashboard's
+     * Receipts card counts. `qr`: paid in full, QR never emailed. `receipt`:
+     * has at least one receipt nobody has emailed them yet.
+     */
+    delivery?: "qr" | "receipt";
   } = {},
 ): Promise<RegistrationsPage> {
   const trimmed = query.trim();
@@ -433,17 +439,28 @@ export async function searchRegistrations(
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  const { sort = null, direction = "desc", yearLevel } = options;
+  const { sort = null, direction = "desc", yearLevel, delivery } = options;
 
-  if (!hasQuery && !status && !paymentMethod && !yearLevel) {
+  if (!hasQuery && !status && !paymentMethod && !yearLevel && !delivery) {
     return { rows: [], total: 0 };
   }
 
-  let builder = adminClient().from("registrations").select("*", { count: "exact" });
+  // Waiting for a receipt means "has an unemailed receipt": an inner join
+  // keeps only registrations with at least one receipt matching the filter.
+  let builder = adminClient()
+    .from("registrations")
+    .select(delivery === "receipt" ? "*, receipts!inner(id)" : "*", { count: "exact" });
   if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
   if (status && status !== "all") builder = builder.eq("status", status);
   if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
   if (yearLevel) builder = builder.eq("year_level", yearLevel);
+  if (delivery === "qr") {
+    builder = builder.eq("status", "approved").is("ticket_email_sent_at", null);
+  }
+  if (delivery === "receipt") {
+    // Voided tickets are excluded, same as the backlog — nobody is emailing them.
+    builder = builder.neq("status", "rejected").is("receipts.emailed_at", null);
+  }
 
   // Ordering moved into the query once only one page comes back. Sorting the
   // fetched rows in JS would reorder only the rows on screen out of every
@@ -478,7 +495,9 @@ export async function searchRegistrations(
     offset + REGISTRATIONS_PAGE_SIZE - 1,
   );
 
-  return { rows: (data as Registration[]) ?? [], total: count ?? 0 };
+  // Via unknown: the select string varies with `delivery`, so the client can't
+  // infer one row shape. The extra `receipts` key the join adds is ignored.
+  return { rows: (data as unknown as Registration[]) ?? [], total: count ?? 0 };
 }
 
 /**
