@@ -3,6 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { logActivity } from "@/lib/activity/queries";
 import type { RegistrationStatus } from "@/lib/supabase/types";
 import type { ReceiptMethod } from "./format";
+import { backlogGroup, sortByPriority, type BacklogGroup } from "./priority";
 
 export type Receipt = {
   id: string;
@@ -182,19 +183,23 @@ export type ReceiptBacklogEntry = {
   /** Set only when the ticket is approved — a partial payer gets no QR yet. */
   ticketCode: string | null;
   receiptIds: string[];
+  group: BacklogGroup;
 };
 
 /**
- * Paid students with at least one receipt nobody has emailed them — oldest
- * payment first, so a quota running out mid-send lands on the most recent.
- * Voided tickets are left out: an apology email for a ticket we cancelled
- * would only confuse. Null means the table couldn't be read (migration 0014
- * not pasted yet), which must not read as "nobody left".
+ * Paid students with at least one receipt nobody has emailed them, most
+ * urgent first (see ./priority.ts): anyone still without their QR, then
+ * partial payers, then people who only lack the receipt. Within each group,
+ * oldest payment first. Voided tickets are left out: an apology email for a
+ * ticket we cancelled would only confuse. Null means the table couldn't be
+ * read (migration 0014 not pasted yet), which must not read as "nobody left".
  */
 export async function receiptBacklog(): Promise<ReceiptBacklogEntry[] | null> {
   const { data, error } = await adminClient()
     .from("receipts")
-    .select("id, registration_id, registrations(email, full_name, status, ticket_code)")
+    .select(
+      "id, registration_id, registrations(email, full_name, status, ticket_code, ticket_email_sent_at)",
+    )
     .is("emailed_at", null)
     .not("registration_id", "is", null)
     .order("number", { ascending: true })
@@ -212,6 +217,7 @@ export async function receiptBacklog(): Promise<ReceiptBacklogEntry[] | null> {
       full_name: string;
       status: RegistrationStatus;
       ticket_code: string | null;
+      ticket_email_sent_at: string | null;
     } | null;
     if (!registration || registration.status === "rejected") continue;
 
@@ -222,11 +228,12 @@ export async function receiptBacklog(): Promise<ReceiptBacklogEntry[] | null> {
       fullName: registration.full_name,
       ticketCode: registration.status === "approved" ? registration.ticket_code : null,
       receiptIds: [],
+      group: backlogGroup(registration),
     };
     entry.receiptIds.push(row.id as string);
     byRegistration.set(registrationId, entry);
   }
-  return [...byRegistration.values()];
+  return sortByPriority([...byRegistration.values()]);
 }
 
 /** Stamped only after Resend accepts the send — never before. */

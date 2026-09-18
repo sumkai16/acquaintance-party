@@ -174,7 +174,17 @@ export default async function RegistrationsPage({
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
 
-      <SendReceiptEmails pending={backlog === null ? null : backlog.length} />
+      <SendReceiptEmails
+        split={
+          backlog === null
+            ? null
+            : {
+                qr: backlog.filter((entry) => entry.group === "qr").length,
+                partial: backlog.filter((entry) => entry.group === "partial").length,
+                receipt: backlog.filter((entry) => entry.group === "receipt").length,
+              }
+        }
+      />
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Results</h2>

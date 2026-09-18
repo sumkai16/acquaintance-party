@@ -1,8 +1,19 @@
 "use client";
 
 import { useTransition } from "react";
+import type { BacklogGroup } from "@/lib/receipts/priority";
 import { useFlash } from "../flash";
 import { sendReceiptEmails } from "./actions";
+
+/** "12 waiting for their QR · 3 partial payers · 85 only need a receipt" — empty groups left out. */
+function describeSplit(split: Record<BacklogGroup, number>): string {
+  const parts = [
+    split.qr > 0 ? `${split.qr} waiting for their QR` : null,
+    split.partial > 0 ? `${split.partial} partial payer${split.partial === 1 ? "" : "s"}` : null,
+    split.receipt > 0 ? `${split.receipt} only need a receipt` : null,
+  ];
+  return parts.filter(Boolean).join(" · ");
+}
 
 /**
  * The backlog send, built the same way evaluations/send-invites.tsx is:
@@ -12,9 +23,14 @@ import { sendReceiptEmails } from "./actions";
  * Safe to press repeatedly — the action retries only what failed — so the
  * button never asks for confirmation or disables itself after a run.
  */
-export function SendReceiptEmails({ pending }: { pending: number | null }) {
+export function SendReceiptEmails({
+  split,
+}: {
+  split: Record<BacklogGroup, number> | null;
+}) {
   const [isSending, startTransition] = useTransition();
   const flash = useFlash();
+  const pending = split === null ? null : split.qr + split.partial + split.receipt;
 
   // Null is "the queue couldn't be read" — the receipts table doesn't exist
   // until migration 0014 is pasted in. Saying "everyone has theirs" here
@@ -52,8 +68,8 @@ export function SendReceiptEmails({ pending }: { pending: number | null }) {
             ? "Can't tell who still needs a receipt — paste migration 0014 into Supabase."
             : pending === 0
               ? "Every paid student has been emailed their receipt."
-              : `${pending} paid student${pending === 1 ? " hasn't" : "s haven't"} been emailed a receipt yet. ` +
-                "They'll get an apology, their receipt, and their QR if paid in full."}
+              : `${describeSplit(split!)}. Sends in that order — anyone still ` +
+                "without their QR goes first."}
         </p>
       </div>
 
