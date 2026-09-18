@@ -1,9 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { Badge } from "../badge";
 import { Modal } from "../modal";
+import {
+  ArrowRightIcon,
+  EyeIcon,
+  IconActionButton,
+  IconActionLink,
+  MailIcon,
+  PencilIcon,
+  TrashIcon,
+} from "../icon-action";
 import { Tr } from "../table";
 import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
@@ -32,11 +40,15 @@ export function RegistrationRow({
   reviewerEmail,
   addedByName,
   receiptUrl,
+  receiptIds,
 }: {
   registration: Registration;
   reviewerEmail: string | null;
   addedByName: string | null;
+  /** The GCash proof they uploaded at checkout — not the acknowledgement receipt. */
   receiptUrl: string | null;
+  /** Acknowledgement receipts issued for this registration's payments. */
+  receiptIds: string[];
 }) {
   const [pending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
@@ -44,6 +56,13 @@ export function RegistrationRow({
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [voidOpen, setVoidOpen] = useState(false);
   const flash = useFlash();
+
+  const rejectionNote =
+    `Rejected by ${reviewerEmail ?? "an admin"}` +
+    (registration.reviewed_at
+      ? ` on ${new Date(registration.reviewed_at).toLocaleString("en-PH")}`
+      : "") +
+    (registration.reject_reason ? ` — ${registration.reject_reason}` : "");
 
   function handleEmail() {
     startTransition(async () => {
@@ -134,12 +153,15 @@ export function RegistrationRow({
           {STATUS_LABEL[registration.status]}
         </Badge>
         {registration.status === "rejected" ? (
-          <p className="mt-1 text-ground/50">
-            Rejected by {reviewerEmail ?? "an admin"}
-            {registration.reviewed_at
-              ? ` on ${new Date(registration.reviewed_at).toLocaleString("en-PH")}`
-              : ""}
-            {registration.reject_reason ? ` — ${registration.reject_reason}` : ""}
+          // Capped and clamped: this is the longest wrappable text in the
+          // table, so left to grow it takes every spare pixel the layout has
+          // and opens a gap beside Ticket code on every other row. The full
+          // text stays available on hover.
+          <p
+            title={rejectionNote}
+            className="mt-1 line-clamp-2 max-w-52 text-ground/50"
+          >
+            {rejectionNote}
           </p>
         ) : null}
       </td>
@@ -149,49 +171,50 @@ export function RegistrationRow({
       </td>
 
       <td className="py-2 pl-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <button
-            type="button"
+        {/* Every action is always visible, tinted by what it does — neutral to
+            go look, blue to edit, gold to send, clay to destroy — rather than
+            hidden behind a menu that took two clicks to reach. */}
+        <div className="flex items-center justify-end gap-[7px]">
+          <IconActionLink
+            label="Ticket"
+            href={`/ticket/${registration.id}`}
+            icon={ArrowRightIcon}
+          />
+          {receiptIds.map((receiptId, index) => (
+            <IconActionLink
+              key={receiptId}
+              label={`View receipt${receiptIds.length > 1 ? ` ${index + 1}` : ""}`}
+              href={`/receipt/${receiptId}`}
+              newTab
+              icon={EyeIcon}
+            />
+          ))}
+          <IconActionButton
+            label="Edit details"
+            tone="blue"
+            icon={PencilIcon}
             disabled={pending || editing}
             onClick={() => setEditing(true)}
-            title="Correct a mistyped name, student ID, year, section or email. Amount and status are not editable."
-            className="font-semibold text-accent-2 underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-          >
-            Edit
-          </button>
-          <Link
-            href={`/ticket/${registration.id}`}
-            className="font-semibold text-accent-2 underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-          >
-            Open ticket
-          </Link>
+          />
           {registration.status === "approved" ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={handleEmail}
+            <IconActionButton
               // Works on someone already emailed on purpose — this is the
               // answer to "it went to spam" / "I mistyped my address."
-              title={
-                registration.ticket_email_sent_at
-                  ? `Last sent ${new Date(registration.ticket_email_sent_at).toLocaleString("en-PH")}. Sends again.`
-                  : "Not emailed yet. Sends the QR to their address."
-              }
-              className="font-semibold text-accent-2 underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-            >
-              {registration.ticket_email_sent_at ? "Resend QR" : "Email QR"}
-            </button>
+              label={registration.ticket_email_sent_at ? "Resend QR email" : "Email QR"}
+              tone="gold"
+              icon={MailIcon}
+              disabled={pending}
+              onClick={handleEmail}
+            />
           ) : null}
           {registration.status !== "rejected" ? (
-            <button
-              type="button"
+            <IconActionButton
+              label="Void ticket"
+              tone="clay"
+              icon={TrashIcon}
               disabled={pending}
               onClick={() => setVoidOpen(true)}
-              title="Lets them submit again. Does not affect a ticket already scanned at the door."
-              className="font-semibold text-accent underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent"
-            >
-              Void
-            </button>
+            />
           ) : null}
         </div>
 

@@ -73,6 +73,10 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
       (a flat floor, not a percentage); no QR goes out until staff or admin
       record the balance on `/admin/walk-in`. Online payments are unaffected — there is
       no partial concept for GCash
+- [x] Acknowledgement receipts (`0014`) — one per payment, at `/receipt/<id>`, printed
+      through the browser. Linked from the ticket/partial email; the Dashboard's
+      **Receipts** card emails the backlog with an apology, QR included for anyone
+      already paid in full. Replaces the old QR-only "Ticket emails" card
 
 Status as of 2026-09-03: **all three plans are written and implemented.**
 Plan 1 ("sell and verify") was verified by hand-clicking checkout → review →

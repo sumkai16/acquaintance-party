@@ -7,16 +7,16 @@ import { logActivity } from "@/lib/activity/queries";
 import {
   getRegistration,
   markTicketEmailSent,
-  pendingTicketEmailRecipients,
   updateRegistrationIdentity,
 } from "@/lib/registrations/queries";
 import { walkInSchema } from "@/lib/registrations/schema";
 import {
   EMAIL_BATCH_LIMIT,
-  sendTicketApprovedBatch,
+  sendReceiptBacklogBatch,
   sendTicketApprovedEmail,
   sendingDomainReady,
 } from "@/lib/notify/email";
+import { markReceiptsEmailed, receiptBacklog, receiptIdsFor } from "@/lib/receipts/queries";
 
 export type ActionResult = { ok: boolean; error?: string };
 
@@ -89,33 +89,32 @@ export type SendTicketEmailsResult =
   | { ok: false; error: string };
 
 /**
- * Emails the QR to every approved payee who hasn't been sent one.
+ * Emails a receipt to every paid student who hasn't been sent one — with
+ * their QR too if the ticket is paid in full, and an apology, since most of
+ * these payments went through before receipts existed.
  *
- * This exists because the approval email has been failing since sales
- * opened — no verified domain, so Resend dropped every message
- * (docs/setup/resend.md). The backlog is real people holding a paid ticket
- * they've never seen. Modelled on sendEvaluationInvites(): a chunk is
- * stamped only after Resend accepts it, so pressing this again retries
- * exactly what failed and emails nobody twice.
+ * Covers the old QR-only backlog as well: every approved ticket got a
+ * receipt in migration 0014, unemailed. Modelled on sendEvaluationInvites():
+ * a chunk is stamped only after Resend accepts it, so pressing this again
+ * retries exactly what failed and emails nobody twice.
  *
- * It refuses to run at all until the domain is live, rather than firing into
- * a sender that silently discards mail — see sendingDomainReady().
+ * Refuses to run until the sending domain is live, rather than firing into a
+ * sender that silently discards mail — see sendingDomainReady().
  */
-export async function sendTicketEmails(): Promise<SendTicketEmailsResult> {
+export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
   const adminId = (await requireAdmin())?.id;
   if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
   if (!sendingDomainReady()) return { ok: false, error: NO_DOMAIN_ERROR };
 
-  const recipients = await pendingTicketEmailRecipients();
+  const recipients = await receiptBacklog();
   // Null means the queue couldn't be read at all — almost always migration
-  // 0009 not yet pasted into the hosted project. Say that instead of
-  // reporting an empty queue, which reads as "everyone already has theirs."
+  // 0014 not yet pasted. Saying "nobody left" here would be the costly lie.
   if (recipients === null) {
     return {
       ok: false,
       error:
-        "Can't read who still needs emailing. Paste " +
-        "supabase/migrations/0009_ticket_email.sql into Supabase first.",
+        "Can't read who still needs a receipt. Paste " +
+        "supabase/migrations/0014_receipts.sql into Supabase first.",
     };
   }
   if (recipients.length === 0) return { ok: true, sent: 0, failed: 0 };
@@ -127,17 +126,23 @@ export async function sendTicketEmails(): Promise<SendTicketEmailsResult> {
     if (start > 0) await new Promise((resolve) => setTimeout(resolve, BATCH_PAUSE_MS));
 
     const chunk = recipients.slice(start, start + EMAIL_BATCH_LIMIT);
-    const delivered = await sendTicketApprovedBatch(
+    const delivered = await sendReceiptBacklogBatch(
       chunk.map((recipient) => ({
         to: recipient.email,
         fullName: recipient.fullName,
-        registrationId: recipient.id,
+        registrationId: recipient.registrationId,
         ticketCode: recipient.ticketCode,
+        receiptIds: recipient.receiptIds,
       })),
     );
 
     if (delivered) {
-      await markTicketEmailSent(chunk.map((recipient) => recipient.id));
+      await markReceiptsEmailed(chunk.flatMap((recipient) => recipient.receiptIds));
+      // The QR went out in the same email, so the old ticket-email queue
+      // shouldn't still list these people.
+      await markTicketEmailSent(
+        chunk.filter((recipient) => recipient.ticketCode).map((recipient) => recipient.registrationId),
+      );
       sent += chunk.length;
     } else {
       failed += chunk.length;
@@ -149,7 +154,7 @@ export async function sendTicketEmails(): Promise<SendTicketEmailsResult> {
       userId: adminId,
       activityType: "ticket_email_sent",
       description:
-        `Sent ${sent} ticket QR email${sent === 1 ? "" : "s"}` +
+        `Sent ${sent} receipt email${sent === 1 ? "" : "s"}` +
         (failed > 0 ? ` (${failed} failed)` : ""),
     });
   }
@@ -177,11 +182,13 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
     return { ok: false, error: "Only an approved ticket has a QR to send." };
   }
 
+  const receiptIds = await receiptIdsFor(registration.id);
   const status = await sendTicketApprovedEmail({
     to: registration.email,
     fullName: registration.full_name,
     ticketId: registration.id,
     ticketCode: registration.ticket_code,
+    receiptIds,
   });
 
   if (status !== "sent") {
@@ -195,6 +202,7 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
   }
 
   await markTicketEmailSent([id]);
+  await markReceiptsEmailed(receiptIds);
   await logActivity({
     userId: adminId,
     activityType: "ticket_email_sent",

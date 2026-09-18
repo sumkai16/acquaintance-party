@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useFlash } from "../flash";
-import { sendTicketEmails } from "./actions";
+import { sendReceiptEmails } from "./actions";
 
 /**
  * The backlog send, built the same way evaluations/send-invites.tsx is:
@@ -12,18 +12,18 @@ import { sendTicketEmails } from "./actions";
  * Safe to press repeatedly — the action retries only what failed — so the
  * button never asks for confirmation or disables itself after a run.
  */
-export function SendTicketEmails({ pending }: { pending: number | null }) {
+export function SendReceiptEmails({ pending }: { pending: number | null }) {
   const [isSending, startTransition] = useTransition();
   const flash = useFlash();
 
-  // Null is "the queue couldn't be read" — the column doesn't exist until
-  // migration 0009 is pasted in. Saying "everyone has been emailed" here
+  // Null is "the queue couldn't be read" — the receipts table doesn't exist
+  // until migration 0014 is pasted in. Saying "everyone has theirs" here
   // would be the most expensive possible wrong answer.
   const unreadable = pending === null;
 
   function send() {
     startTransition(async () => {
-      const result = await sendTicketEmails();
+      const result = await sendReceiptEmails();
       if (!result.ok) {
         flash(result.error, "error");
         return;
@@ -46,13 +46,14 @@ export function SendTicketEmails({ pending }: { pending: number | null }) {
   return (
     <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ground/10 bg-ground/5 px-4 py-3">
       <div>
-        <h2 className="text-sm font-semibold">Ticket emails</h2>
+        <h2 className="text-sm font-semibold">Receipts</h2>
         <p className="text-sm text-ground/70">
           {unreadable
-            ? "Can't tell who still needs their QR — paste migration 0009 into Supabase."
+            ? "Can't tell who still needs a receipt — paste migration 0014 into Supabase."
             : pending === 0
-              ? "Every approved payee has been sent their QR."
-              : `${pending} approved payee${pending === 1 ? " hasn't" : "s haven't"} been sent their QR yet.`}
+              ? "Every paid student has been emailed their receipt."
+              : `${pending} paid student${pending === 1 ? " hasn't" : "s haven't"} been emailed a receipt yet. ` +
+                "They'll get an apology, their receipt, and their QR if paid in full."}
         </p>
       </div>
 
@@ -65,7 +66,7 @@ export function SendTicketEmails({ pending }: { pending: number | null }) {
         {isSending
           ? "Sending…"
           : unreadable
-            ? "Send tickets"
+            ? "Send receipts"
             : pending === 0
               ? "Nothing to send"
               : `Send to ${pending}`}

@@ -5,7 +5,6 @@ import {
   listAdminEmails,
   listApprovedForSectionReport,
   onlinePaymentsSummary,
-  pendingTicketEmailCount,
   REGISTRATIONS_PAGE_SIZE,
   searchRegistrations,
   signedReceiptUrls,
@@ -18,7 +17,8 @@ import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
-import { SendTicketEmails } from "./send-ticket-emails";
+import { receiptBacklog, receiptIdsForMany } from "@/lib/receipts/queries";
+import { SendReceiptEmails } from "./send-receipt-emails";
 import { Pagination } from "../pagination";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +89,7 @@ export default async function RegistrationsPage({
     cash,
     online,
     approvedForReport,
-    unemailed,
+    backlog,
   ] = await Promise.all([
     searchRegistrations(q, status, paymentMethod, {
       page,
@@ -102,7 +102,7 @@ export default async function RegistrationsPage({
     cashPaymentsSummary(),
     onlinePaymentsSummary(),
     listApprovedForSectionReport(),
-    pendingTicketEmailCount(),
+    receiptBacklog(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / REGISTRATIONS_PAGE_SIZE));
@@ -129,7 +129,7 @@ export default async function RegistrationsPage({
   // and it matters most for listAdminEmails: it calls the Supabase Auth
   // admin API, the slowest single call on this page.
   const needsReviewers = results.some((registration) => registration.reviewed_by);
-  const [adminEmails, profileNames, receiptUrls] = await Promise.all([
+  const [adminEmails, profileNames, receiptUrls, receiptIds] = await Promise.all([
     needsReviewers ? listAdminEmails() : new Map<string, string>(),
     needsReviewers ? listAllProfileNames() : new Map<string, string>(),
     // Payments only shows a receipt while the row is in its current list; this
@@ -139,6 +139,7 @@ export default async function RegistrationsPage({
         registration.receipt_path ? [registration.receipt_path] : [],
       ),
     ),
+    receiptIdsForMany(results.map((registration) => registration.id)),
   ]);
   const sectionReport = buildSectionReport(approvedForReport);
 
@@ -173,7 +174,7 @@ export default async function RegistrationsPage({
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
 
-      <SendTicketEmails pending={unemailed} />
+      <SendReceiptEmails pending={backlog === null ? null : backlog.length} />
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Results</h2>
@@ -248,6 +249,7 @@ export default async function RegistrationsPage({
                     ? (receiptUrls.get(registration.receipt_path) ?? null)
                     : null
                 }
+                receiptIds={receiptIds.get(registration.id) ?? []}
               />
             ))}
           </tbody>

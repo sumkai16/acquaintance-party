@@ -4,6 +4,7 @@ import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
   buildPartialPaymentEmail,
+  buildReceiptBacklogEmail,
   buildTicketApprovedEmail,
   buildTicketSubmittedEmail,
   type BuiltEmail,
@@ -22,6 +23,8 @@ type SendInput = {
   /** Only set for the partial walk-in email — see EmailInput. */
   paidCentavos?: number;
   owedCentavos?: number;
+  /** Receipt ids to link, turned into absolute /receipt/<id> URLs. */
+  receiptIds?: string[];
 };
 
 /**
@@ -56,6 +59,9 @@ async function send(
     ...(input.ticketCode ? { ticketCode: input.ticketCode } : {}),
     ...(input.paidCentavos !== undefined ? { paidCentavos: input.paidCentavos } : {}),
     ...(input.owedCentavos !== undefined ? { owedCentavos: input.owedCentavos } : {}),
+    ...(input.receiptIds?.length
+      ? { receiptUrls: input.receiptIds.map((id) => `${siteUrl}/receipt/${id}`) }
+      : {}),
   });
 
   try {
@@ -95,7 +101,7 @@ export async function sendTicketSubmittedEmail(
  * it's what puts the QR in the email rather than one click away.
  */
 export async function sendTicketApprovedEmail(
-  input: TicketInput & { ticketCode?: string },
+  input: TicketInput & { ticketCode?: string; receiptIds?: string[] },
 ): Promise<SendStatus> {
   return send(
     {
@@ -105,13 +111,14 @@ export async function sendTicketApprovedEmail(
       ...(input.ticketCode
         ? { qrPath: `/ticket/${input.ticketId}/qr`, ticketCode: input.ticketCode }
         : {}),
+      receiptIds: input.receiptIds,
     },
     buildTicketApprovedEmail,
   );
 }
 
 export async function sendPartialPaymentEmail(
-  input: TicketInput & { paidCentavos: number; owedCentavos: number },
+  input: TicketInput & { paidCentavos: number; owedCentavos: number; receiptIds?: string[] },
 ): Promise<SendStatus> {
   return send(
     {
@@ -120,6 +127,7 @@ export async function sendPartialPaymentEmail(
       path: `/ticket/${input.ticketId}`,
       paidCentavos: input.paidCentavos,
       owedCentavos: input.owedCentavos,
+      receiptIds: input.receiptIds,
     },
     buildPartialPaymentEmail,
   );
@@ -213,18 +221,16 @@ export async function sendEvaluationInviteBatch(
 }
 
 /**
- * The ticket QR, up to a hundred at a time — the backlog send.
- *
- * Same message the single approval sends, QR image and all; nothing about it
- * says "this is late," because from the student's side it is simply their
- * ticket arriving.
+ * The receipt backlog, up to a hundred at a time — the apology email, with
+ * the QR included for anyone whose ticket is already paid in full.
  */
-export async function sendTicketApprovedBatch(
+export async function sendReceiptBacklogBatch(
   recipients: {
     to: string;
     fullName: string;
     registrationId: string;
-    ticketCode: string;
+    ticketCode: string | null;
+    receiptIds: string[];
   }[],
 ): Promise<boolean> {
   const context = batchContext();
@@ -232,11 +238,16 @@ export async function sendTicketApprovedBatch(
 
   return deliverBatch(
     recipients.map((recipient) => {
-      const built = buildTicketApprovedEmail({
+      const built = buildReceiptBacklogEmail({
         fullName: recipient.fullName,
         url: `${context.siteUrl}/ticket/${recipient.registrationId}`,
-        qrUrl: `${context.siteUrl}/ticket/${recipient.registrationId}/qr`,
-        ticketCode: recipient.ticketCode,
+        ...(recipient.ticketCode
+          ? {
+              qrUrl: `${context.siteUrl}/ticket/${recipient.registrationId}/qr`,
+              ticketCode: recipient.ticketCode,
+            }
+          : {}),
+        receiptUrls: recipient.receiptIds.map((id) => `${context.siteUrl}/receipt/${id}`),
       });
       return { from: context.from, to: recipient.to, ...built };
     }),

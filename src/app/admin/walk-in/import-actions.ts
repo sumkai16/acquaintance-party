@@ -17,6 +17,7 @@ import { logActivity } from "@/lib/activity/queries";
 import { cellText, columnIndex } from "@/lib/import/excel-cells";
 import { finishImportBatch, startImportBatch } from "@/lib/import-batches/queries";
 import { revalidatePath } from "next/cache";
+import { issueReceiptOrLog } from "@/lib/receipts/queries";
 import { scheduleWalkInTicketEmail } from "./notify";
 
 /** Lower than the raffle import's 500 — each row here is a real financial
@@ -239,6 +240,15 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
     }
 
     created += 1;
+    const receiptIds = await issueReceiptOrLog({
+      registrationId: result.id,
+      fullName: parsed.data.fullName,
+      amount: EVENT.ticketPriceCentavos,
+      method: "cash",
+      balanceAfter: 0,
+      receivedBy: adminId,
+      paidAt: new Date().toISOString(),
+    });
     scheduleWalkInTicketEmail(adminId, {
       to: parsed.data.email,
       fullName: parsed.data.fullName,
@@ -247,6 +257,7 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
       // set here — the null case only exists for the walk-in partial-payment
       // path this call never takes.
       ticketCode: result.ticketCode ?? undefined,
+      receiptIds,
     });
     await logActivity({
       userId: adminId,

@@ -18,6 +18,8 @@ export type EmailInput = {
   paidCentavos?: number;
   /** Centavos still owed — only set for the partial walk-in email. */
   owedCentavos?: number;
+  /** Absolute URLs of the acknowledgement receipts this email carries, oldest first. */
+  receiptUrls?: string[];
 };
 
 export type BuiltEmail = {
@@ -137,6 +139,27 @@ function qrBlock(qrUrl: string, ticketCode?: string): string {
   );
 }
 
+/**
+ * "View your receipt" link(s), one per payment. A partial walk-in that has
+ * since been paid in full has two, so they're numbered only when there's
+ * more than one.
+ */
+function receiptLinksHtml(urls: string[] | undefined): string {
+  if (!urls || urls.length === 0) return "";
+  const links = urls
+    .map(
+      (url, index) =>
+        `<a href="${url}" style="color:${accent};font-weight:700">View your receipt${urls.length > 1 ? ` ${index + 1}` : ""}</a>`,
+    )
+    .join("<br />");
+  return `<p style="margin:16px 0 0">Proof of payment: ${urls.length > 1 ? "<br />" : ""}${links}</p>`;
+}
+
+function receiptLinksText(urls: string[] | undefined): string {
+  if (!urls || urls.length === 0) return "";
+  return `\n\nYour receipt${urls.length > 1 ? "s" : ""}:\n${urls.join("\n")}`;
+}
+
 /** Sent the moment an admin approves a registration. */
 export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
   const name = escapeHtml(input.fullName);
@@ -153,7 +176,8 @@ export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
             qrBlock(input.qrUrl!, input.ticketCode)
           : `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. Your QR ` +
             `code is ready at the link below — screenshot it or keep the page ` +
-            `bookmarked for the door.</p>`),
+            `bookmarked for the door.</p>`) +
+        receiptLinksHtml(input.receiptUrls),
       "View your QR ticket",
       input.url,
     ),
@@ -164,6 +188,45 @@ export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
       (input.ticketCode
         ? `Ticket code: ${formatTicketCode(input.ticketCode)}\n\n`
         : "") +
+      `${input.url}` +
+      receiptLinksText(input.receiptUrls),
+  };
+}
+
+/**
+ * The backlog send — a receipt that should have reached them already, plus
+ * their QR if the ticket is paid in full. Says sorry up front: for most of
+ * these students the payment went through days ago with nothing in writing.
+ */
+export function buildReceiptBacklogEmail(input: EmailInput): BuiltEmail {
+  const name = escapeHtml(input.fullName);
+  const hasQr = Boolean(input.qrUrl);
+
+  return {
+    subject: `Your ${EVENT.name} receipt — sorry for the wait`,
+    html: wrap(
+      `<p style="margin:0 0 16px">Hi ${name},</p>` +
+        `<p style="margin:0 0 16px">Sorry this took a while. Here's the receipt for ` +
+        `your ${escapeHtml(EVENT.name)} payment — keep it as your proof of payment.</p>` +
+        (hasQr
+          ? `<p style="margin:0">Your ticket is paid in full. Here's your QR code again ` +
+            `for the door, in case you need it.</p>` +
+            qrBlock(input.qrUrl!, input.ticketCode)
+          : `<p style="margin:0">Your QR code comes once your ticket is paid in full.</p>`) +
+        receiptLinksHtml(input.receiptUrls),
+      hasQr ? "View your QR ticket" : "View your payment status",
+      input.url,
+    ),
+    text:
+      `Hi ${input.fullName},\n\n` +
+      `Sorry this took a while. Here's the receipt for your ${EVENT.name} ` +
+      `payment — keep it as your proof of payment.` +
+      receiptLinksText(input.receiptUrls) +
+      "\n\n" +
+      (hasQr
+        ? `Your ticket is paid in full. Your QR code:\n` +
+          (input.ticketCode ? `Ticket code: ${formatTicketCode(input.ticketCode)}\n` : "")
+        : `Your QR code comes once your ticket is paid in full.\n`) +
       `${input.url}`,
   };
 }
@@ -217,7 +280,8 @@ export function buildPartialPaymentEmail(input: EmailInput): BuiltEmail {
         `<p style="margin:0 0 16px">We've recorded ${paid} toward your ${escapeHtml(EVENT.name)} ` +
         `ticket. ${owed} is still owed — your QR code is held until it's paid in ` +
         `full, so hang on to this page and pay the rest at the walk-in table.</p>` +
-        `<p style="margin:0">We'll email your QR the moment the balance is settled.</p>`,
+        `<p style="margin:0">We'll email your QR the moment the balance is settled.</p>` +
+        receiptLinksHtml(input.receiptUrls),
       "View your payment status",
       input.url,
     ),
@@ -226,7 +290,8 @@ export function buildPartialPaymentEmail(input: EmailInput): BuiltEmail {
       `We've recorded ${paid} toward your ${EVENT.name} ticket. ${owed} is ` +
       `still owed — your QR code is held until it's paid in full. Pay the ` +
       `rest at the walk-in table, and we'll email your QR once it's settled.\n\n` +
-      `${input.url}`,
+      `${input.url}` +
+      receiptLinksText(input.receiptUrls),
   };
 }
 

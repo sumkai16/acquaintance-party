@@ -347,6 +347,36 @@ a Summary sheet matching the page's cards.
 
 **Indexes:** `expenses_spent_idx` on `spent_at desc`.
 
+## receipts
+
+Added in `0014_receipts.sql`. One row per **payment**, not per registration —
+a partial walk-in that pays twice has two receipts. Public at
+`/receipt/<id>`, printed through the browser's own Save as PDF (no PDF
+library, unlike the certificate).
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | The unguessable half of the public link, same as a ticket id |
+| number | integer | `generated always as identity`, UNIQUE | Displayed as `AR-<year paid>-<4 digits>` (`formatReceiptNumber()`). An identity column, not a count of rows: a number is never reused after a void, and two payments landing together can't draw the same one |
+| registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, indexed | Null only if the registration was hard-deleted; the receipt itself survives as the record |
+| full_name / student_id / year_level / section | text | NOT NULL | **Snapshotted at issue time**, same reasoning as `raffle_draws.finalists` — a receipt records what was issued, so a later name correction can't rewrite a document the student already holds |
+| amount | integer | NOT NULL, `> 0` | Centavos collected **by this payment**, not the ticket price |
+| method | text | NOT NULL, `'gcash'` \| `'cash'` | Plain text, not an enum — one fewer migration if a third method ever appears |
+| balance_after | integer | NOT NULL, `>= 0` | What was still owed after this payment. `> 0` is what makes the page say "partial payment" and hide the ticket code |
+| received_by | uuid | FK → `auth.users(id)`, nullable | Whoever confirmed *this* payment: the approving admin (online), the staffer who took the cash, or whoever marked the balance paid. So a second collector is credited correctly on receipt #2, even though `registrations.reviewed_by` (and therefore cash attribution) stays with the first |
+| paid_at | timestamptz | NOT NULL | When the money moved: `created_at` for online (the GCash was sent then, not when an admin got to it), the time of entry for walk-in |
+| emailed_at | timestamptz | nullable | "Null is the queue," the same shape as `ticket_email_sent_at` — the Dashboard's **Receipts** card sends to everyone still null and stamps only after Resend accepts |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+`0014` backfills one receipt per existing `approved`/`partial` row, ordered by
+`paid_at`, all with `emailed_at` null — so every student who paid before
+receipts existed lands in that backlog and gets the apology email.
+
+**Issuing never blocks a sale.** `issueReceiptOrLog()`
+(`src/lib/receipts/queries.ts`) returns the ids to link in the payment's email,
+or writes a `receipt_failed` activity row and returns none. The cash is already
+in hand by then; a missing receipt is fixable, a failed sale is not.
+
 ## import_batches
 
 Added in `0012_import_batches.sql`. One row per confirmed Walk-in bulk
@@ -412,7 +442,13 @@ create policy "authenticated read expenses" on expenses
   for select to authenticated using (true);
 create policy "authenticated read import_batches" on import_batches
   for select to authenticated using (true);
+create policy "authenticated read receipts" on receipts
+  for select to authenticated using (true);
 ```
+
+`receipts` is read publicly at `/receipt/<id>` by an unauthenticated student,
+and still gets no `anon` policy — the page reads through the service-role
+client in a server component, the same way `evaluations` does.
 
 **No `insert`/`update` policy exists on `profiles`, `cash_remittances`, or
 `activity_logs` for any role, on purpose.** Staff-vs-admin scoping (a staff

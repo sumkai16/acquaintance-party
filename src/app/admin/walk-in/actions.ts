@@ -10,6 +10,11 @@ import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity/queries";
 import { sendPartialPaymentEmail } from "@/lib/notify/email";
+import {
+  issueReceiptOrLog,
+  markReceiptsEmailed,
+  unemailedReceiptIds,
+} from "@/lib/receipts/queries";
 import { scheduleWalkInTicketEmail } from "./notify";
 
 export type SubmittedValues = {
@@ -134,6 +139,15 @@ export async function submitWalkIn(
   }
 
   const profile = await currentProfile();
+  const receiptIds = await issueReceiptOrLog({
+    registrationId: created.id,
+    fullName: parsed.data.fullName,
+    amount,
+    method: "cash",
+    balanceAfter: fullPrice - amount,
+    receivedBy: adminId,
+    paidAt: new Date().toISOString(),
+  });
 
   if (partialAmountCentavos !== undefined) {
     const owedCentavos = fullPrice - partialAmountCentavos;
@@ -145,7 +159,9 @@ export async function submitWalkIn(
         ticketId: created.id,
         paidCentavos: partialAmountCentavos,
         owedCentavos,
+        receiptIds,
       });
+      if (status === "sent") await markReceiptsEmailed(receiptIds);
       if (status === "failed") {
         await logActivity({
           userId: adminId,
@@ -178,6 +194,7 @@ export async function submitWalkIn(
     fullName: parsed.data.fullName,
     ticketId: created.id,
     ticketCode: created.ticketCode ?? undefined,
+    receiptIds,
   });
 
   await logActivity({
@@ -219,11 +236,23 @@ export async function completeWalkInBalanceAction(
     };
   }
 
+  await issueReceiptOrLog({
+    registrationId: completed.id,
+    fullName: completed.fullName,
+    amount: completed.collectedNowCentavos,
+    method: "cash",
+    balanceAfter: 0,
+    receivedBy: adminId,
+    paidAt: new Date().toISOString(),
+  });
+
   scheduleWalkInTicketEmail(adminId, {
     to: completed.email,
     fullName: completed.fullName,
     ticketId: completed.id,
     ticketCode: completed.ticketCode,
+    // This payment's receipt, plus the first one if its email never made it.
+    receiptIds: await unemailedReceiptIds(completed.id),
   });
 
   const profile = await currentProfile();

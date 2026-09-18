@@ -9,6 +9,7 @@ import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 import { markTicketEmailSent } from "@/lib/registrations/queries";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
 import { logActivity } from "@/lib/activity/queries";
+import { issueReceiptOrLog, markReceiptsEmailed } from "@/lib/receipts/queries";
 
 const UNIQUE_VIOLATION = "23505";
 
@@ -46,26 +47,40 @@ export async function approveRegistration(id: string): Promise<ActionResult> {
       })
       .eq("id", id)
       .eq("status", "pending") // no-op if another admin already handled it
-      .select("email, full_name, student_id, amount");
+      .select("email, full_name, student_id, amount, created_at");
 
     if (!error) {
       revalidatePath("/admin/review");
       // Only send the confirmation when this call actually approved the
-      // row — a no-op race must not fire a second email.
+      // row — a no-op race must not fire a second email or a second receipt.
       const approved = data?.[0];
       if (approved) {
+        // Paid when the GCash went out, not when an admin got to it.
+        const receiptIds = await issueReceiptOrLog({
+          registrationId: id,
+          fullName: approved.full_name,
+          amount: approved.amount,
+          method: "gcash",
+          balanceAfter: 0,
+          receivedBy: adminId,
+          paidAt: approved.created_at,
+        });
         after(async () => {
           const status = await sendTicketApprovedEmail({
             to: approved.email,
             fullName: approved.full_name,
             ticketId: id,
             ticketCode,
+            receiptIds,
           });
           // Recording what actually left keeps the Dashboard's "hasn't been
           // emailed" queue honest — that queue is what a later bulk send
           // works from, and a send it never hears about would strand this
           // student in it forever, or email them twice.
-          if (status === "sent") await markTicketEmailSent([id]);
+          if (status === "sent") {
+            await markTicketEmailSent([id]);
+            await markReceiptsEmailed(receiptIds);
+          }
           if (status === "failed") {
             await logActivity({
               userId: adminId,

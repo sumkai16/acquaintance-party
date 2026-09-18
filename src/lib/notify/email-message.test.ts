@@ -3,6 +3,7 @@ import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
   buildPartialPaymentEmail,
+  buildReceiptBacklogEmail,
   buildTicketApprovedEmail,
   buildTicketSubmittedEmail,
 } from "./email-message";
@@ -138,6 +139,57 @@ describe("buildPartialPaymentEmail", () => {
     });
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("A &amp; B &lt;script&gt;");
+  });
+});
+
+const receiptUrl = "https://it2026.vercel.app/receipt/r-1";
+
+describe("receipt links", () => {
+  it("adds a receipt link to the approval email when given one", () => {
+    const email = buildTicketApprovedEmail({ ...base, receiptUrls: [receiptUrl] });
+    expect(email.html).toContain(receiptUrl);
+    expect(email.text).toContain(receiptUrl);
+  });
+
+  it("leaves the approval email unchanged without one", () => {
+    expect(buildTicketApprovedEmail(base).html).not.toContain("receipt");
+  });
+
+  it("numbers the links when a payment was split in two", () => {
+    const email = buildPartialPaymentEmail({
+      ...base,
+      paidCentavos: 20000,
+      owedCentavos: 29500,
+      receiptUrls: [receiptUrl, `${receiptUrl}-2`],
+    });
+    expect(email.html).toContain("View your receipt 1");
+    expect(email.html).toContain("View your receipt 2");
+  });
+});
+
+describe("buildReceiptBacklogEmail", () => {
+  it("apologises, links the receipt, and includes the QR when paid in full", () => {
+    const email = buildReceiptBacklogEmail({
+      ...base,
+      qrUrl: "https://it2026.vercel.app/ticket/abc-123/qr",
+      ticketCode: "A1B2C3D4E5F6",
+      receiptUrls: [receiptUrl],
+    });
+    expect(email.subject.toLowerCase()).toContain("sorry");
+    expect(email.html).toContain(receiptUrl);
+    expect(email.html).toContain("<img");
+    expect(email.text).toContain("A1B2-C3D4-E5F6");
+  });
+
+  it("skips the QR for a partial payment", () => {
+    const email = buildReceiptBacklogEmail({ ...base, receiptUrls: [receiptUrl] });
+    expect(email.html).not.toContain("<img");
+    expect(email.html).toContain(receiptUrl);
+  });
+
+  it("escapes HTML-significant characters in the name", () => {
+    const email = buildReceiptBacklogEmail({ ...base, fullName: "A & B <script>" });
+    expect(email.html).not.toContain("<script>");
   });
 });
 

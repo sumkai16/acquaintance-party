@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { sendTicketApprovedEmail } from "@/lib/notify/email";
 import { markTicketEmailSent } from "@/lib/registrations/queries";
 import { logActivity } from "@/lib/activity/queries";
+import { markReceiptsEmailed } from "@/lib/receipts/queries";
 
 /**
  * Fires the same-instant ticket email a walk-in sale always sends, logging
@@ -19,13 +20,22 @@ import { logActivity } from "@/lib/activity/queries";
  */
 export function scheduleWalkInTicketEmail(
   adminId: string,
-  ticket: { to: string; fullName: string; ticketId: string; ticketCode?: string },
+  ticket: {
+    to: string;
+    fullName: string;
+    ticketId: string;
+    ticketCode?: string;
+    receiptIds?: string[];
+  },
 ) {
   after(async () => {
     const status = await sendTicketApprovedEmail(ticket);
     // Same reason the review path stamps: the Dashboard's not-yet-emailed
     // queue is only as good as what gets recorded here.
-    if (status === "sent") await markTicketEmailSent([ticket.ticketId]);
+    if (status === "sent") {
+      await markTicketEmailSent([ticket.ticketId]);
+      await markReceiptsEmailed(ticket.receiptIds ?? []);
+    }
     if (status === "failed") {
       await logActivity({
         userId: adminId,
