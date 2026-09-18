@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { currentProfile } from "@/lib/supabase/server";
 import { listPartialWalkIns } from "@/lib/registrations/queries";
+import { listAllProfileNames } from "@/lib/profiles/queries";
 import { BulkImportProvider, BulkImportToggle, WalkInLayout } from "./bulk-import";
 import { OutstandingBalances } from "./outstanding-balances";
 import { WalkInForm } from "./walk-in-form";
@@ -8,10 +9,20 @@ import { WalkInForm } from "./walk-in-form";
 export const metadata = { title: "Walk-in" };
 
 export default async function WalkInPage() {
-  const [profile, partialWalkIns] = await Promise.all([
+  const [profile, partialWalkIns, profileNames] = await Promise.all([
     currentProfile(),
     listPartialWalkIns(),
+    listAllProfileNames(),
   ]);
+
+  // Who took the first payment — `reviewed_by` on a walk-in is the person who
+  // recorded the sale, the same field the Dashboard's "Added by" reads.
+  const recordedBy = Object.fromEntries(
+    partialWalkIns.map((registration) => [
+      registration.id,
+      registration.reviewed_by ? (profileNames.get(registration.reviewed_by) ?? null) : null,
+    ]),
+  );
 
   return (
     // Wider than the single-entry form needs on its own, so the bulk-import
@@ -44,7 +55,7 @@ export default async function WalkInPage() {
           <WalkInForm />
         </WalkInLayout>
 
-        <OutstandingBalances registrations={partialWalkIns} />
+        <OutstandingBalances registrations={partialWalkIns} recordedBy={recordedBy} />
       </BulkImportProvider>
     </main>
   );

@@ -15,7 +15,14 @@ import { completeWalkInBalanceAction } from "./actions";
  * taking this cash — can't reach Find a registration; see admin/layout.tsx's
  * staff allowlist.
  */
-export function OutstandingBalances({ registrations }: { registrations: Registration[] }) {
+export function OutstandingBalances({
+  registrations,
+  recordedBy,
+}: {
+  registrations: Registration[];
+  /** Registration id → name of whoever recorded the first payment. */
+  recordedBy: Record<string, string | null>;
+}) {
   if (registrations.length === 0) return null;
 
   return (
@@ -34,7 +41,11 @@ export function OutstandingBalances({ registrations }: { registrations: Registra
         </thead>
         <tbody>
           {registrations.map((registration) => (
-            <BalanceRow key={registration.id} registration={registration} />
+            <BalanceRow
+              key={registration.id}
+              registration={registration}
+              recordedBy={recordedBy[registration.id] ?? null}
+            />
           ))}
         </tbody>
       </Table>
@@ -42,7 +53,13 @@ export function OutstandingBalances({ registrations }: { registrations: Registra
   );
 }
 
-function BalanceRow({ registration }: { registration: Registration }) {
+function BalanceRow({
+  registration,
+  recordedBy,
+}: {
+  registration: Registration;
+  recordedBy: string | null;
+}) {
   const [pending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
   const flash = useFlash();
@@ -76,6 +93,7 @@ function BalanceRow({ registration }: { registration: Registration }) {
       </td>
       <td className="py-2 pr-3 whitespace-nowrap text-ground/70">
         {new Date(registration.created_at).toLocaleString("en-PH")}
+        <span className="block text-ground/90">by {recordedBy ?? "an organiser"}</span>
       </td>
       <td className="py-2 pl-3">
         <button
