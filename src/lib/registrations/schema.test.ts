@@ -54,6 +54,29 @@ describe("checkoutSchema", () => {
     ).toBe(false);
   });
 
+  // The real incident: Resend accepts "gamil.com" as a well-formed domain
+  // and stamps the ticket emailed, but it never reaches a real inbox.
+  it.each([
+    "kimberlyabella90@gamil.com",
+    "student@gmial.com",
+    "student@yhoo.com",
+    "student@outlok.com",
+    "student@hotmial.com",
+  ])("rejects a near-miss of a major provider's domain: %s", (email) => {
+    const result = checkoutSchema.safeParse({ ...valid, email });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/did you mean/i);
+    }
+  });
+
+  it("does not flag a domain that just happens to share letters with a provider", () => {
+    expect(
+      checkoutSchema.safeParse({ ...valid, email: "student@example.com" })
+        .success,
+    ).toBe(true);
+  });
+
   // The cap exists so the certificate renderer never has to shrink a name
   // past legibility — see fullName in schema.ts.
   it("accepts a 60-character name", () => {

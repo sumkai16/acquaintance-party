@@ -113,11 +113,68 @@ function checkSectionMatchesYear(
   });
 }
 
+// The big free providers a mistyped domain is almost always aiming for.
+const COMMON_EMAIL_DOMAINS = [
+  "gmail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "icloud.com",
+];
+
+function levenshteinDistance(a: string, b: string): number {
+  const dist: number[][] = Array.from({ length: a.length + 1 }, () =>
+    new Array(b.length + 1).fill(0),
+  );
+  for (let i = 0; i <= a.length; i++) dist[i][0] = i;
+  for (let j = 0; j <= b.length; j++) dist[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dist[i][j] = Math.min(
+        dist[i - 1][j] + 1,
+        dist[i][j - 1] + 1,
+        dist[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dist[a.length][b.length];
+}
+
+/**
+ * A domain like "gamil.com" is still shaped like an email, so Resend
+ * accepts the send and we stamp it delivered — the ticket just never
+ * arrives, and nothing else ever flags the typo. Catches a near-miss of a
+ * major provider (edit distance ≤2) before the registration is saved.
+ */
+function suggestedDomainFor(domain: string): string | null {
+  for (const known of COMMON_EMAIL_DOMAINS) {
+    if (domain === known) return null;
+    if (
+      Math.abs(domain.length - known.length) <= 2 &&
+      levenshteinDistance(domain, known) <= 2
+    ) {
+      return known;
+    }
+  }
+  return null;
+}
+
 const email = z
   .string()
   .trim()
   .toLowerCase()
-  .pipe(z.email("Enter a valid email address."));
+  .pipe(z.email("Enter a valid email address."))
+  .superRefine((value, ctx) => {
+    const domain = value.split("@")[1];
+    const suggestion = domain ? suggestedDomainFor(domain) : null;
+    if (suggestion) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Check the email — did you mean "...@${suggestion}"?`,
+      });
+    }
+  });
 
 export const checkoutSchema = z.object({
   fullName,
