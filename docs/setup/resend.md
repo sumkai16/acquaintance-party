@@ -124,8 +124,10 @@ To turn it on:
 1. **Resend → Webhooks → Add Endpoint.**
 2. **Endpoint URL:** `https://itech2026.site/api/webhooks/resend`
    (must be the live deployment — Resend can't reach `localhost`).
-3. **Events to send:** tick `email.bounced` only. (Nothing else is handled;
-   ticking more just means Resend calls an endpoint that no-ops on them.)
+3. **Events to send:** tick `email.bounced`, `email.suppressed`,
+   `email.failed` and `email.complained`. The first three put the student back
+   in the send queue; a spam complaint is logged but never re-sent. (Any other
+   event just no-ops.)
 4. Save, then copy the **Signing Secret** it shows you (`whsec_...`).
 5. Add it as `RESEND_WEBHOOK_SECRET` in Vercel's **Settings → Environment
    Variables**, redeploy.

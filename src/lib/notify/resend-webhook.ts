@@ -1,5 +1,10 @@
 import "server-only";
-import type { EmailBouncedEvent } from "resend";
+import type {
+  EmailBouncedEvent,
+  EmailComplainedEvent,
+  EmailFailedEvent,
+  EmailSuppressedEvent,
+} from "resend";
 import { clearTicketEmailSent, getRegistration } from "@/lib/registrations/queries";
 import { clearReceiptsEmailedFor } from "@/lib/receipts/queries";
 import { logActivity } from "@/lib/activity/queries";
@@ -11,30 +16,59 @@ import { logActivity } from "@/lib/activity/queries";
  * before this ever found out. Every send that carries a `registration_id`
  * tag (see src/lib/notify/email.ts) can be traced back here; anything else
  * — the checkout submission email, say — was never stamped "sent" in the
- * first place, so a bounce for it has nothing to undo.
+ * first place, so a send that fails for it has nothing to undo.
  */
-export async function handleEmailBounced(event: EmailBouncedEvent): Promise<void> {
+type UndeliveredEvent =
+  | EmailBouncedEvent
+  | EmailSuppressedEvent
+  | EmailFailedEvent
+  | EmailComplainedEvent;
+
+/** What the activity log says happened, in the words an admin would use. */
+function describe(event: UndeliveredEvent): string {
+  switch (event.type) {
+    case "email.bounced":
+      return "bounced";
+    case "email.suppressed":
+      return "was suppressed by Resend (the address is on its suppression list)";
+    case "email.failed":
+      return `failed to send (${event.data.failed.reason})`;
+    case "email.complained":
+      return "was reported as spam";
+  }
+}
+
+/**
+ * A bounce, a suppression or a send failure means the student never got the
+ * email, so they go back in the queue. A spam complaint means they did get it
+ * and didn't want it: that is logged but never re-queued, because sending it
+ * again is exactly what they objected to.
+ */
+export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<void> {
   const registrationId = event.data.tags?.registration_id;
   const recipient = event.data.to[0] ?? "an address";
 
   if (!registrationId) {
-    console.warn("Resend bounce with no registration_id tag", recipient);
+    console.warn(`Resend ${event.type} with no registration_id tag`, recipient);
     return;
   }
 
   const registration = await getRegistration(registrationId);
-  await Promise.all([
-    clearTicketEmailSent(registrationId),
-    clearReceiptsEmailedFor(registrationId),
-  ]);
+  const requeue = event.type !== "email.complained";
+  if (requeue) {
+    await Promise.all([
+      clearTicketEmailSent(registrationId),
+      clearReceiptsEmailedFor(registrationId),
+    ]);
+  }
 
   await logActivity({
     userId: null,
     activityType: "email_failed",
     description:
-      `Email to ${recipient} bounced` +
+      `Email to ${recipient} ${describe(event)}` +
       (registration ? ` for ${registration.full_name}` : "") +
-      " — back in the send queue.",
+      (requeue ? " — back in the send queue." : " — not re-sent."),
     registrationId,
   });
 }

@@ -51,8 +51,9 @@ export function SendReceiptEmails({
       flash(
         `Sent ${result.sent}.` +
           (result.failed > 0
-            ? ` ${result.failed} didn't go out — Resend's free plan caps at ` +
-              `100 emails a day. Press again tomorrow to send the rest.`
+            ? ` ${result.failed} didn't go out` +
+              (result.reason ? ` — Resend said: ${result.reason}` : "") +
+              ". Press again to retry them."
             : ""),
         result.failed > 0 ? "error" : "success",
       );

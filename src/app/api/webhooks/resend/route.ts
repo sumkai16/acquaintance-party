@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { resendAccount, resendWebhookSecrets } from "@/lib/notify/resend-account";
-import { handleEmailBounced } from "@/lib/notify/resend-webhook";
+import { handleEmailUndelivered } from "@/lib/notify/resend-webhook";
 
 /**
  * Resend calls this the moment a send it already accepted turns out not to
@@ -46,8 +46,13 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid signature" }, { status: 401 });
   }
 
-  if (event.type === "email.bounced") {
-    await handleEmailBounced(event);
+  if (
+    event.type === "email.bounced" ||
+    event.type === "email.suppressed" ||
+    event.type === "email.failed" ||
+    event.type === "email.complained"
+  ) {
+    await handleEmailUndelivered(event);
   }
 
   return Response.json({ ok: true });

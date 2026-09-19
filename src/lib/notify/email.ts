@@ -190,22 +190,25 @@ type BatchMessage = {
  * Anything an email needs to *show* has to be a hosted URL — which is why
  * the ticket QR is a route rather than a file on the message.
  */
-async function deliverBatch(messages: BatchMessage[]): Promise<boolean> {
+export type BatchResult = { ok: true } | { ok: false; error: string };
+
+async function deliverBatch(messages: BatchMessage[]): Promise<BatchResult> {
   const { apiKey } = resendAccount();
-  if (!apiKey || messages.length === 0) return false;
+  if (!apiKey) return { ok: false, error: "No Resend API key for the active account." };
+  if (messages.length === 0) return { ok: false, error: "Nothing to send." };
 
   try {
     const result = await new Resend(apiKey).batch.send(messages);
     if (result.error) {
       console.error("Resend batch responded with an error", result.error);
-      return false;
+      return { ok: false, error: result.error.message };
     }
   } catch (error) {
     console.error("Resend batch request failed", error);
-    return false;
+    return { ok: false, error: error instanceof Error ? error.message : "Request failed." };
   }
 
-  return true;
+  return { ok: true };
 }
 
 /** Shared setup for a batch: the configured sender and the absolute site URL. */
@@ -223,7 +226,7 @@ export async function sendEvaluationInviteBatch(
   const context = batchContext();
   if (!context) return false;
 
-  return deliverBatch(
+  const result = await deliverBatch(
     recipients.map((recipient) => {
       const built = buildEvaluationInviteEmail({
         fullName: recipient.fullName,
@@ -232,6 +235,7 @@ export async function sendEvaluationInviteBatch(
       return { from: context.from, to: recipient.to, ...built };
     }),
   );
+  return result.ok;
 }
 
 /**
@@ -246,9 +250,11 @@ export async function sendReceiptBacklogBatch(
     ticketCode: string | null;
     receiptIds: string[];
   }[],
-): Promise<boolean> {
+): Promise<BatchResult> {
   const context = batchContext();
-  if (!context) return false;
+  if (!context) {
+    return { ok: false, error: "Missing API key or NEXT_PUBLIC_SITE_URL for the active account." };
+  }
 
   return deliverBatch(
     recipients.map((recipient) => {

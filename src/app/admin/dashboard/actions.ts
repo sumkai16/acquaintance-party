@@ -85,7 +85,7 @@ const NO_DOMAIN_ERROR =
   "your own domain and redeploy — see docs/setup/resend.md.";
 
 export type SendTicketEmailsResult =
-  | { ok: true; sent: number; failed: number }
+  | { ok: true; sent: number; failed: number; reason?: string }
   | { ok: false; error: string };
 
 /**
@@ -121,12 +121,13 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
 
   let sent = 0;
   let failed = 0;
+  let reason: string | undefined;
 
   for (let start = 0; start < recipients.length; start += EMAIL_BATCH_LIMIT) {
     if (start > 0) await new Promise((resolve) => setTimeout(resolve, BATCH_PAUSE_MS));
 
     const chunk = recipients.slice(start, start + EMAIL_BATCH_LIMIT);
-    const delivered = await sendReceiptBacklogBatch(
+    const delivery = await sendReceiptBacklogBatch(
       chunk.map((recipient) => ({
         to: recipient.email,
         fullName: recipient.fullName,
@@ -136,7 +137,7 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
       })),
     );
 
-    if (delivered) {
+    if (delivery.ok) {
       await markReceiptsEmailed(chunk.flatMap((recipient) => recipient.receiptIds));
       // The QR went out in the same email, so the old ticket-email queue
       // shouldn't still list these people.
@@ -146,6 +147,7 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
       sent += chunk.length;
     } else {
       failed += chunk.length;
+      reason ??= delivery.error;
     }
   }
 
@@ -160,7 +162,7 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
   }
 
   revalidatePath("/admin/dashboard");
-  return { ok: true, sent, failed };
+  return { ok: true, sent, failed, ...(reason ? { reason } : {}) };
 }
 
 /**
