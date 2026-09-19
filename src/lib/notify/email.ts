@@ -10,6 +10,7 @@ import {
   type BuiltEmail,
   type EmailInput,
 } from "./email-message";
+import { resendAccount } from "./resend-account";
 
 type SendInput = {
   to: string;
@@ -50,14 +51,14 @@ async function send(
   input: SendInput,
   build: (args: EmailInput) => BuiltEmail,
 ): Promise<SendStatus> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const { apiKey, from: configuredFrom } = resendAccount();
   // NEXT_PUBLIC_SITE_URL specifically gates sending here, not just link
   // quality: an email whose only purpose is a working link back to the
   // ticket is worse than no email if that link can't be absolute.
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
   if (!apiKey || !siteUrl) return "skipped"; // Not configured — skip silently, not an error.
 
-  const from = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+  const from = configuredFrom || "onboarding@resend.dev";
   const built = build({
     fullName: input.fullName,
     url: `${siteUrl}${input.path}`,
@@ -160,8 +161,8 @@ export const EMAIL_BATCH_LIMIT = 100;
  * So the bulk send asks this first. See docs/setup/resend.md §2.
  */
 export function sendingDomainReady(): boolean {
-  const from = process.env.RESEND_FROM_EMAIL;
-  if (!process.env.RESEND_API_KEY || !process.env.NEXT_PUBLIC_SITE_URL) return false;
+  const { apiKey, from } = resendAccount();
+  if (!apiKey || !process.env.NEXT_PUBLIC_SITE_URL) return false;
   if (!from) return false; // Unset means the code falls back to resend.dev.
   return !/@resend\.dev>?\s*$/i.test(from.trim());
 }
@@ -190,7 +191,7 @@ type BatchMessage = {
  * the ticket QR is a route rather than a file on the message.
  */
 async function deliverBatch(messages: BatchMessage[]): Promise<boolean> {
-  const apiKey = process.env.RESEND_API_KEY;
+  const { apiKey } = resendAccount();
   if (!apiKey || messages.length === 0) return false;
 
   try {
@@ -210,8 +211,9 @@ async function deliverBatch(messages: BatchMessage[]): Promise<boolean> {
 /** Shared setup for a batch: the configured sender and the absolute site URL. */
 function batchContext(): { from: string; siteUrl: string } | null {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  if (!process.env.RESEND_API_KEY || !siteUrl) return null;
-  return { from: process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev", siteUrl };
+  const { apiKey, from } = resendAccount();
+  if (!apiKey || !siteUrl) return null;
+  return { from: from || "onboarding@resend.dev", siteUrl };
 }
 
 /** The post-event invites, up to a hundred at a time. */
