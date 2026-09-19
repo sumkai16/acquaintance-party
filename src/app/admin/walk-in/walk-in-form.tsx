@@ -117,6 +117,13 @@ export function WalkInForm() {
           name="email"
           type="email"
           required
+          // A phone keyboard's autocorrect and auto-capital rewrite what
+          // staff type into an address — turn both off, like Student ID.
+          inputMode="email"
+          autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="juan@example.com"
           defaultValue={values?.email ?? ""}
           className={inputClass}

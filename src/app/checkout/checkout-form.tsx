@@ -164,7 +164,11 @@ export function CheckoutForm() {
           name="email"
           type="email"
           required
+          inputMode="email"
           autoComplete="email"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="juan@example.com"
           defaultValue={values?.email ?? ""}
           className={inputClass}

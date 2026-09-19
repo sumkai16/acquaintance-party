@@ -413,6 +413,34 @@ activity row per ticket plus one `import_voided` summary. Admin-only:
 layout's staff allowlist is a prefix match and would let staff into anything
 under it.
 
+The Walk-in **"Type a list"** screen (`confirmTypedWalkIns`) records through
+this same table: it generates a small `.xlsx` from the typed rows
+(`Typed entry <date time>.xlsx`) so the batch keeps a file like any upload,
+and "Void this import" works on it unchanged.
+
+## walk_in_drafts
+
+Added in `0016_walk_in_drafts.sql`. The half-typed "Type a list" sheet, one row
+per staff member, so a paper sign-in sheet can be started on one phone and
+finished on another. Exists because the list first lived only in that phone's
+browser storage.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| user_id | uuid | PK, FK → `auth.users(id)` ON DELETE CASCADE | One draft per person — two staff typing different sheets never overwrite each other |
+| rows | jsonb | NOT NULL, default `[]` | Only `id, fullName, studentId, yearLevel, section, email` per row, at most 200, each value length-capped — see `sanitizeDraftRows()` in `src/lib/walk-in-drafts/sanitize.ts`. The client's JSON is never trusted |
+| updated_at | timestamptz | NOT NULL, default `now()` | Set by the save action |
+
+**RLS is on and there are no policies at all** — not even the usual
+authenticated `SELECT`. Names, student IDs and emails are personal data, so
+nothing reads this with the anon or authenticated key; the page and the save
+action go through the service-role client (`src/lib/walk-in-drafts/queries.ts`).
+
+An empty list deletes the row, so a finished sheet leaves nothing behind. It is
+a working copy, not a record: nothing else reads it, and approving the rows is
+what creates tickets. Last write wins between phones; the screen only saves
+after a real edit, so opening it on a stale phone can't overwrite a newer list.
+
 ## Row-level security
 
 RLS is **on** for every table. Every policy targets `authenticated` (i.e.

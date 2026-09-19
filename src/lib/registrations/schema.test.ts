@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSchema, walkInSchema } from "./schema";
+import { checkoutSchema, suggestEmail, walkInSchema } from "./schema";
 
 const valid = {
   fullName: "Juan Miguel Dela Cruz",
@@ -68,6 +68,59 @@ describe("checkoutSchema", () => {
     if (!result.success) {
       expect(result.error.issues[0].message).toMatch(/did you mean/i);
     }
+  });
+
+  // The quick-entry card reads every issue, so a mistyped email must be
+  // reported even while other fields (year, section) are still empty.
+  it("reports a mistyped email alongside unfilled fields", () => {
+    const result = walkInSchema.safeParse({
+      fullName: "Axcel",
+      studentId: "SCC-24-0012345",
+      yearLevel: "",
+      section: "",
+      email: "axceel@gamil.com",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const fields = result.error.issues.map((issue) => issue.path[0]);
+      expect(fields).toContain("yearLevel");
+      expect(fields).toContain("email");
+    }
+  });
+
+  it("suggests the full corrected address, keeping the part before the @", () => {
+    expect(suggestEmail("Maria.Santos@Gmial.com ")).toBe("maria.santos@gmail.com");
+    expect(suggestEmail("maria@gmail.com")).toBeNull();
+    expect(suggestEmail("maria@school.edu.ph")).toBeNull();
+    expect(suggestEmail("not-an-email")).toBeNull();
+  });
+
+  // gmail and icloud only exist at one address, so any other ending is wrong.
+  it.each([
+    "student@gmail.com.ph",
+    "student@gmail.ph",
+    "student@gmail.org",
+    "student@gmail.net",
+    "student@gmail.con",
+  ])("rejects a right name with a wrong ending: %s", (email) => {
+    const result = checkoutSchema.safeParse({ ...valid, email });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0].message).toContain("student@gmail.com");
+    }
+  });
+
+  // One letter from gmail.com, but real services — must not be blocked.
+  it.each([
+    "student@ymail.com",
+    "student@email.com",
+    "student@mail.com",
+    "student@live.com",
+    "student@yahoo.com.ph",
+    "student@hotmail.co.uk",
+    "student@outlook.ph",
+  ])("accepts a real domain that looks close to a provider: %s", (email) => {
+    expect(checkoutSchema.safeParse({ ...valid, email }).success).toBe(true);
   });
 
   it("does not flag a domain that just happens to share letters with a provider", () => {

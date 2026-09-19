@@ -122,6 +122,22 @@ const COMMON_EMAIL_DOMAINS = [
   "icloud.com",
 ];
 
+// Real providers that sit within two edits of one above — "ymail.com" is one
+// letter from "gmail.com" but is its own service, so it must not be flagged.
+const KNOWN_LOOKALIKE_DOMAINS = [
+  "ymail.com",
+  "email.com",
+  "mail.com",
+  "live.com",
+  "msn.com",
+];
+
+// Providers that only exist at one address. Anything else starting with the
+// name ("gmail.ph", "gmail.com.ph", "gmail.org") is a mistake. Yahoo, Outlook
+// and Hotmail are left out on purpose: they run real regional domains
+// (yahoo.com.ph, outlook.ph, hotmail.co.uk) that this would wrongly reject.
+const SINGLE_DOMAIN_PROVIDERS = ["gmail.com", "icloud.com"];
+
 function levenshteinDistance(a: string, b: string): number {
   const dist: number[][] = Array.from({ length: a.length + 1 }, () =>
     new Array(b.length + 1).fill(0),
@@ -145,11 +161,19 @@ function levenshteinDistance(a: string, b: string): number {
  * A domain like "gamil.com" is still shaped like an email, so Resend
  * accepts the send and we stamp it delivered — the ticket just never
  * arrives, and nothing else ever flags the typo. Catches a near-miss of a
- * major provider (edit distance ≤2) before the registration is saved.
+ * major provider (edit distance ≤2), or a right name with a wrong ending on
+ * a provider that only has one address, before the registration is saved.
  */
 function suggestedDomainFor(domain: string): string | null {
+  if (COMMON_EMAIL_DOMAINS.includes(domain)) return null;
+  if (KNOWN_LOOKALIKE_DOMAINS.includes(domain)) return null;
+
+  for (const single of SINGLE_DOMAIN_PROVIDERS) {
+    const name = single.split(".")[0];
+    if (domain.startsWith(`${name}.`)) return single;
+  }
+
   for (const known of COMMON_EMAIL_DOMAINS) {
-    if (domain === known) return null;
     if (
       Math.abs(domain.length - known.length) <= 2 &&
       levenshteinDistance(domain, known) <= 2
@@ -160,18 +184,30 @@ function suggestedDomainFor(domain: string): string | null {
   return null;
 }
 
+/**
+ * The corrected address when the domain looks like a mistyped major provider
+ * (`juan@gmial.com` -> `juan@gmail.com`), otherwise null. Exported so a form
+ * can offer it as a one-tap fix instead of making staff retype the address.
+ */
+export function suggestEmail(value: string): string | null {
+  const normalized = value.trim().toLowerCase();
+  const at = normalized.lastIndexOf("@");
+  if (at < 1) return null;
+  const suggestion = suggestedDomainFor(normalized.slice(at + 1));
+  return suggestion ? `${normalized.slice(0, at)}@${suggestion}` : null;
+}
+
 const email = z
   .string()
   .trim()
   .toLowerCase()
   .pipe(z.email("Enter a valid email address."))
   .superRefine((value, ctx) => {
-    const domain = value.split("@")[1];
-    const suggestion = domain ? suggestedDomainFor(domain) : null;
+    const suggestion = suggestEmail(value);
     if (suggestion) {
       ctx.addIssue({
         code: "custom",
-        message: `Check the email — did you mean "...@${suggestion}"?`,
+        message: `Check the email — did you mean "${suggestion}"?`,
       });
     }
   });

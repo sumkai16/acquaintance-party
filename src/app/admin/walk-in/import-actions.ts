@@ -210,6 +210,24 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
     };
   }
 
+  const { created, failed } = await recordImportedRows(adminId, rows, batch.id);
+
+  await finishImportBatch(batch.id, created, failed.length);
+  if (created > 0) revalidatePath("/admin/imports");
+  return { created, failed };
+}
+
+/**
+ * The per-row work both entry points share — the Excel import above and the
+ * typed list below: create the approved cash registration, issue its receipt,
+ * queue the ticket email, log the activity. Re-validates every row here
+ * rather than trusting what the client held onto.
+ */
+async function recordImportedRows(
+  adminId: string,
+  rows: WalkInInput[],
+  batchId: string,
+): Promise<{ created: number; failed: ConfirmImportResult["failed"] }> {
   const profile = await currentProfile();
   const failed: ConfirmImportResult["failed"] = [];
   let created = 0;
@@ -225,7 +243,7 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
       ...parsed.data,
       amount: EVENT.ticketPriceCentavos,
       reviewedBy: adminId,
-      importBatchId: batch.id,
+      importBatchId: batchId,
     });
 
     if (!result.ok) {
@@ -268,7 +286,88 @@ export async function confirmWalkInImport(formData: FormData): Promise<ConfirmIm
     });
   }
 
-  await finishImportBatch(batch.id, created, failed.length);
-  if (created > 0) revalidatePath("/admin/imports");
   return { created, failed };
+}
+
+/**
+ * Which of these student IDs already hold an active ticket — the one check
+ * the typed list can't do in the browser. Normalizes first, same as the
+ * Excel parse, so a lowercase ID still matches.
+ */
+export async function findTicketedStudentIds(studentIds: string[]): Promise<string[]> {
+  const adminId = await currentAdminId();
+  if (!adminId) return [];
+
+  const normalized = studentIds.slice(0, MAX_IMPORT_ROWS).map(normalizeStudentId).filter(Boolean);
+  const existing = await findActiveStudentIds(normalized);
+  return normalized.filter((id) => existing.has(id));
+}
+
+/**
+ * Same columns as the downloadable template, so a typed batch's file in
+ * /admin/imports opens and re-imports like any uploaded sheet. It exists
+ * because a batch always keeps a file (import_batches.file_path is NOT NULL,
+ * and the audit page downloads it) — here it's generated from the typed rows.
+ */
+async function typedRowsToFile(rows: WalkInInput[]): Promise<File> {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet("Walk-in sales");
+  sheet.columns = [
+    { header: "Full name", key: "fullName", width: 28 },
+    { header: "Student ID", key: "studentId", width: 20 },
+    { header: "Year level", key: "yearLevel", width: 14 },
+    { header: "Section", key: "section", width: 12 },
+    { header: "Email", key: "email", width: 28 },
+  ];
+  sheet.getRow(1).font = { bold: true };
+  for (const row of rows) sheet.addRow(row);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+  return new File([buffer], `Typed entry ${stamp}.xlsx`, {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+/**
+ * Records the rows typed into the quick-entry list. Same batch, audit file
+ * and per-row path as an Excel import, so "void this whole sheet" in
+ * /admin/imports works on it too.
+ */
+export async function confirmTypedWalkIns(rows: WalkInInput[]): Promise<ConfirmImportResult> {
+  const adminId = await currentAdminId();
+  if (!adminId) return { created: 0, failed: [], error: "Sign in again." };
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { created: 0, failed: [], error: "Nothing to record." };
+  }
+  if (rows.length > MAX_IMPORT_ROWS) {
+    return { created: 0, failed: [], error: `Record at most ${MAX_IMPORT_ROWS} rows at once.` };
+  }
+
+  // Validated before the batch exists, so a bad row never leaves an
+  // empty batch or a stray file behind. recordImportedRows checks again.
+  const valid: WalkInInput[] = [];
+  const failed: ConfirmImportResult["failed"] = [];
+  for (const row of rows) {
+    const parsed = walkInSchema.safeParse(row);
+    if (parsed.success) valid.push(parsed.data);
+    else failed.push({ row, error: parsed.error.issues[0]?.message ?? "Invalid row." });
+  }
+  if (valid.length === 0) return { created: 0, failed };
+
+  const batch = await startImportBatch(adminId, await typedRowsToFile(valid));
+  if (!batch.ok) {
+    return {
+      created: 0,
+      failed: [],
+      error: "Could not save a copy of the list, so nothing was recorded. Try again.",
+    };
+  }
+
+  const recorded = await recordImportedRows(adminId, valid, batch.id);
+  failed.push(...recorded.failed);
+
+  await finishImportBatch(batch.id, recorded.created, failed.length);
+  if (recorded.created > 0) revalidatePath("/admin/imports");
+  return { created: recorded.created, failed };
 }

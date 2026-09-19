@@ -121,6 +121,10 @@ export function EditRegistration({
         value={email}
         onChange={(event) => setEmail(event.target.value)}
         type="email"
+        inputMode="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
         aria-label="Email"
         placeholder="juan@example.com"
         className={fieldClass}

@@ -1,18 +1,27 @@
 import Link from "next/link";
-import { currentProfile } from "@/lib/supabase/server";
+import { currentAdminId, currentProfile } from "@/lib/supabase/server";
+import { getWalkInDraft } from "@/lib/walk-in-drafts/queries";
 import { listPartialWalkIns } from "@/lib/registrations/queries";
 import { listAllProfileNames } from "@/lib/profiles/queries";
 import { BulkImportProvider, BulkImportToggle, WalkInLayout } from "./bulk-import";
 import { OutstandingBalances } from "./outstanding-balances";
+import { WalkInModeSwitch } from "./quick-entry";
 import { WalkInForm } from "./walk-in-form";
 
 export const metadata = { title: "Walk-in" };
 
 export default async function WalkInPage() {
-  const [profile, partialWalkIns, profileNames] = await Promise.all([
+  const [profile, partialWalkIns, profileNames, savedDraft] = await Promise.all([
     currentProfile(),
     listPartialWalkIns(),
     listAllProfileNames(),
+    // The half-typed list this staff member left, from any phone. A single
+    // primary-key lookup; null when there isn't one.
+    // Never allowed to break the page: if the lookup itself throws, the list
+    // just starts from this phone's copy.
+    currentAdminId()
+      .then((id) => (id ? getWalkInDraft(id) : null))
+      .catch(() => undefined),
   ]);
 
   // Who took the first payment — `reviewed_by` on a walk-in is the person who
@@ -52,7 +61,9 @@ export default async function WalkInPage() {
         </header>
 
         <WalkInLayout>
-          <WalkInForm />
+          <WalkInModeSwitch savedDraft={savedDraft}>
+            <WalkInForm />
+          </WalkInModeSwitch>
         </WalkInLayout>
 
         <OutstandingBalances registrations={partialWalkIns} recordedBy={recordedBy} />
