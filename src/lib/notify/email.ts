@@ -32,6 +32,8 @@ type SendInput = {
    * to un-mark. Omit only for mail nothing tracks a "sent" flag for.
    */
   registrationId?: string;
+  /** Filled in with Resend's error text when the send fails, for callers that show it. */
+  failure?: { reason?: string };
 };
 
 /**
@@ -85,10 +87,14 @@ async function send(
     });
     if (result.error) {
       console.error("Resend responded with an error", result.error);
+      if (input.failure) input.failure.reason = result.error.message;
       return "failed";
     }
   } catch (error) {
     console.error("Resend request failed", error);
+    if (input.failure) {
+      input.failure.reason = error instanceof Error ? error.message : "Request failed.";
+    }
     return "failed";
   }
   return "sent";
@@ -111,13 +117,18 @@ export async function sendTicketSubmittedEmail(
  * it's what puts the QR in the email rather than one click away.
  */
 export async function sendTicketApprovedEmail(
-  input: TicketInput & { ticketCode?: string; receiptIds?: string[] },
+  input: TicketInput & {
+    ticketCode?: string;
+    receiptIds?: string[];
+    failure?: { reason?: string };
+  },
 ): Promise<SendStatus> {
   return send(
     {
       to: input.to,
       fullName: input.fullName,
       path: `/ticket/${input.ticketId}`,
+      failure: input.failure,
       ...(input.ticketCode
         ? { qrPath: `/ticket/${input.ticketId}/qr`, ticketCode: input.ticketCode }
         : {}),

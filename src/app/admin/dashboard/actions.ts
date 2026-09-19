@@ -185,22 +185,30 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
   }
 
   const receiptIds = await receiptIdsFor(registration.id);
+  const failure: { reason?: string } = {};
   const status = await sendTicketApprovedEmail({
     to: registration.email,
     fullName: registration.full_name,
     ticketId: registration.id,
     ticketCode: registration.ticket_code,
     receiptIds,
+    failure,
   });
 
   if (status !== "sent") {
+    const why = failure.reason ? ` (${failure.reason})` : "";
     await logActivity({
       userId: adminId,
       activityType: "email_failed",
-      description: `Ticket email to ${registration.email} failed to send for ${registration.full_name}`,
+      description: `Ticket email to ${registration.email} failed to send for ${registration.full_name}${why}`,
       registrationId: id,
     });
-    return { ok: false, error: "Resend rejected it. Check /admin/activity." };
+    return {
+      ok: false,
+      error: failure.reason
+        ? `Resend said: ${failure.reason}`
+        : "Couldn't send. Check /admin/activity.",
+    };
   }
 
   await markTicketEmailSent([id]);
