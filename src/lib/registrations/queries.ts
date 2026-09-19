@@ -633,3 +633,20 @@ export async function markTicketEmailSent(registrationIds: string[]): Promise<vo
 
   if (error) console.error("markTicketEmailSent failed", error);
 }
+
+/**
+ * Puts a registration back in the "Send to N" queue after Resend reports
+ * the ticket email bounced — "accepted" and "delivered" aren't the same
+ * thing, and only the webhook (src/app/api/webhooks/resend) finds out which
+ * one actually happened. See markTicketEmailSent's comment: null is what
+ * means "still needs sending" here, same as it did before this was ever
+ * stamped.
+ */
+export async function clearTicketEmailSent(registrationId: string): Promise<void> {
+  const { error } = await adminClient()
+    .from("registrations")
+    .update({ ticket_email_sent_at: null })
+    .eq("id", registrationId);
+
+  if (error) console.error("clearTicketEmailSent failed", error);
+}

@@ -25,6 +25,12 @@ type SendInput = {
   owedCentavos?: number;
   /** Receipt ids to link, turned into absolute /receipt/<id> URLs. */
   receiptIds?: string[];
+  /**
+   * Echoed back on every Resend webhook event for this message — how
+   * /api/webhooks/resend traces a bounce back to the registration it needs
+   * to un-mark. Omit only for mail nothing tracks a "sent" flag for.
+   */
+  registrationId?: string;
 };
 
 /**
@@ -72,6 +78,9 @@ async function send(
       html: built.html,
       text: built.text,
       ...(input.attachments ? { attachments: input.attachments } : {}),
+      ...(input.registrationId
+        ? { tags: [{ name: "registration_id", value: input.registrationId }] }
+        : {}),
     });
     if (result.error) {
       console.error("Resend responded with an error", result.error);
@@ -112,6 +121,7 @@ export async function sendTicketApprovedEmail(
         ? { qrPath: `/ticket/${input.ticketId}/qr`, ticketCode: input.ticketCode }
         : {}),
       receiptIds: input.receiptIds,
+      registrationId: input.ticketId,
     },
     buildTicketApprovedEmail,
   );
@@ -128,6 +138,7 @@ export async function sendPartialPaymentEmail(
       paidCentavos: input.paidCentavos,
       owedCentavos: input.owedCentavos,
       receiptIds: input.receiptIds,
+      registrationId: input.ticketId,
     },
     buildPartialPaymentEmail,
   );
@@ -161,6 +172,7 @@ type BatchMessage = {
   subject: string;
   html: string;
   text: string;
+  tags?: { name: string; value: string }[];
 };
 
 /**
@@ -249,7 +261,12 @@ export async function sendReceiptBacklogBatch(
           : {}),
         receiptUrls: recipient.receiptIds.map((id) => `${context.siteUrl}/receipt/${id}`),
       });
-      return { from: context.from, to: recipient.to, ...built };
+      return {
+        from: context.from,
+        to: recipient.to,
+        ...built,
+        tags: [{ name: "registration_id", value: recipient.registrationId }],
+      };
     }),
   );
 }

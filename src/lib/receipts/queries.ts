@@ -251,3 +251,20 @@ export async function markReceiptsEmailed(receiptIds: string[]): Promise<void> {
     .in("id", receiptIds);
   if (error) console.error("markReceiptsEmailed failed", error);
 }
+
+/**
+ * Puts every receipt for a registration back in the backlog after Resend
+ * reports the email that carried them bounced — see
+ * clearTicketEmailSent's comment for why "accepted" and "delivered" get
+ * treated differently here. Whole registration, not one receipt: a single
+ * email carries every unemailed receipt a registration has, so a bounce
+ * means none of them arrived.
+ */
+export async function clearReceiptsEmailedFor(registrationId: string): Promise<void> {
+  const { error } = await adminClient()
+    .from("receipts")
+    .update({ emailed_at: null })
+    .eq("registration_id", registrationId)
+    .not("emailed_at", "is", null);
+  if (error) console.error("clearReceiptsEmailedFor failed", error);
+}

@@ -99,3 +99,38 @@ If nothing arrives, check the server logs:
   that case, not failing loudly.
 
 None of this affects checkout or approval on its own. That's the point.
+
+## 5. Webhook — catching a bounce Resend already knew about
+
+**Status as of 2026-09-19.** `ticket_email_sent_at` / `receipts.emailed_at`
+are stamped the moment Resend *accepts* a send (see step 4's own "check it
+works" and the schema comments) — never once checked back on whether the
+mailbox actually got it. Confirmed on production: several walk-in tickets
+sent right after each other, all synchronously "accepted" with no error,
+and Resend's own delivery log later showed three of them as `bounced`. The
+Dashboard kept showing "QR sent" for all three anyway, because nothing told
+it otherwise.
+
+`src/app/api/webhooks/resend/route.ts` closes that gap — Resend calls it
+the moment a send it already accepted turns out to have bounced, and it
+puts that registration's ticket/receipt back in the queue (same "null is
+the queue" contract `markTicketEmailSent` already uses) with an
+`email_failed` row in `/admin/activity` explaining why. It only works for
+mail that carries a `registration_id` tag — every send this app tracks a
+"sent" flag for already does (see `src/lib/notify/email.ts`).
+
+To turn it on:
+
+1. **Resend → Webhooks → Add Endpoint.**
+2. **Endpoint URL:** `https://itech2026.site/api/webhooks/resend`
+   (must be the live deployment — Resend can't reach `localhost`).
+3. **Events to send:** tick `email.bounced` only. (Nothing else is handled;
+   ticking more just means Resend calls an endpoint that no-ops on them.)
+4. Save, then copy the **Signing Secret** it shows you (`whsec_...`).
+5. Add it as `RESEND_WEBHOOK_SECRET` in Vercel's **Settings → Environment
+   Variables**, redeploy.
+
+Skip it and nothing breaks — sending still works exactly as before, the
+route just returns 500 until configured (fails closed, not silently). But
+until it's set, a bounce still shows as "sent" with nothing to catch it,
+same as before this section existed.
