@@ -33,12 +33,10 @@
   justify-content: center;
   padding: clamp(12px, 3dvh, 40px) 20px clamp(16px, 3.5dvh, 48px);
   /*
-   * No `perspective` property here, deliberately. It would give the sway its
-   * depth, but a perspective ancestor also becomes the containing block for
-   * `position: fixed` descendants — which would pin the modal to this box
-   * instead of the viewport and, on a phone where the letter runs longer
-   * than the screen, open it somewhere the reader has to scroll to find.
-   * The depth comes from a perspective() inside the sway transform instead.
+   * No `perspective` here, and none anywhere in the wind: 3D tilts blur the
+   * text (see bannerSway). A perspective ancestor would also become the
+   * containing block for `position: fixed`, pinning the form's modal to this
+   * box instead of the viewport.
    */
 }
 
@@ -98,8 +96,14 @@
  * The curled edge of the roll, riding just above the reveal line. It is its
  * own animation on `top` (percent of the card) rather than a second
  * clip-path so it needs no @property, and it shares the unroll's duration and
- * easing so the two cannot drift apart. It fades before the end so it is
- * never left hanging under the finished card.
+ * easing so the two cannot drift apart.
+ *
+ * It MUST be fully invisible before the reveal line passes the card's bottom
+ * edge. The clip runs 90px past that edge (so the drop shadow is not cut), and
+ * the strip rides that same line — so any strip still visible late in the
+ * animation hangs in the empty space under the card, over the button. With
+ * this easing the line crosses the card bottom at roughly 65% of the time, so
+ * the fade finishes by then.
  */
 @keyframes rollEdge {
   from {
@@ -109,8 +113,11 @@
   8% {
     opacity: 1;
   }
-  78% {
+  50% {
     opacity: 1;
+  }
+  64% {
+    opacity: 0;
   }
   to {
     top: calc(100% + 90px);
@@ -119,60 +126,45 @@
 }
 
 /*
- * The idle wind — three slow drifts on three different clocks (11s, 7s, 13s),
- * each on its own property, so they beat against each other and the pattern
- * takes minutes to repeat instead of seconds. One loop on one clock reads as
- * a machine; a real flag never does the same thing twice.
+ * The idle wind — two slow drifts on two different clocks (11s and 13s), so
+ * they beat against each other and the pattern takes minutes to repeat.
  *
- * All three are pinned at the top edge (transform-origin), so the bottom
- * travels while the title barely moves. Amplitudes are small on purpose:
- * bigger stops reading as wind and starts reading as a page that will not
- * sit still. Every keyframe eases in and out, and each loop starts and ends
- * at rest, so nothing ever jerks.
+ * FLAT 2D ONLY, on purpose. An earlier version tilted the card in 3D
+ * (perspective + rotateX/rotateY + skewX) for depth, and every glyph on it
+ * went soft while it moved: a 3D-tilted layer is resampled each frame, and
+ * text does not survive that. A plain rotate/translate resamples far less.
+ * Any motion at all softens text slightly while it is in flight — that is a
+ * property of moving a raster — so the amplitudes are kept small to hold it
+ * to the least the effect can get away with.
+ *
+ * Pinned at the top edge (transform-origin), so the bottom travels while the
+ * title barely moves. Each loop starts and ends at rest.
  */
 @keyframes bannerSway {
   0%,
   100% {
-    transform: perspective(1100px) rotateX(0deg) rotateY(0deg) skewX(0deg);
-  }
-  25% {
-    transform: perspective(1100px) rotateX(0.7deg) rotateY(1.5deg) skewX(0.35deg);
-  }
-  50% {
-    transform: perspective(1100px) rotateX(-0.4deg) rotateY(0.2deg) skewX(-0.2deg);
-  }
-  75% {
-    transform: perspective(1100px) rotateX(0.5deg) rotateY(-1.4deg) skewX(-0.35deg);
-  }
-}
-
-/* The slow twist of the whole cloth — the individual `rotate` property, so it
-   composes with the transform above instead of replacing it. */
-@keyframes bannerFlutter {
-  0%,
-  100% {
-    rotate: 0deg;
+    transform: rotate(0deg);
   }
   30% {
-    rotate: 0.32deg;
+    transform: rotate(0.45deg);
   }
-  70% {
-    rotate: -0.32deg;
+  65% {
+    transform: rotate(-0.4deg);
   }
 }
 
-/* The lift and drift as a gust catches it — the individual `translate`
-   property, for the same reason. */
+/* The lift and drift as a gust catches it — the separate `translate`
+   property, so it composes with the transform above instead of replacing it. */
 @keyframes bannerBillow {
   0%,
   100% {
     translate: 0 0;
   }
   35% {
-    translate: 1.5px 2px;
+    translate: 2px 1px;
   }
   70% {
-    translate: -1.5px 0.5px;
+    translate: -2px 0;
   }
 }
 
@@ -205,7 +197,6 @@
   animation:
     bannerUnroll 1.4s cubic-bezier(0.4, 0, 0.2, 1) backwards,
     bannerSway 11s ease-in-out 0.9s infinite,
-    bannerFlutter 7s ease-in-out 0.9s infinite,
     bannerBillow 13s ease-in-out 0.9s infinite;
 }
 

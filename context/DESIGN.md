@@ -93,29 +93,35 @@ in the markup without making anything reusable.
 opened it unrolls from the top down like paper coming off a roll
 (`bannerUnroll`, a clip-path reveal with a curled edge riding the reveal line),
 eases to a soft stop, and then drifts in the wind like a flag for as long as it
-is on screen. The wind is three slow loops on three different clocks —
-`bannerSway` (11s, tilt), `bannerFlutter` (7s, twist) and `bannerBillow` (13s,
-drift) — so they beat against each other and the pattern takes minutes to
-repeat rather than seconds. It is pinned at its top edge, so the bottom travels
-while the title stays readable. Amplitudes are small on purpose (~1.5° peak):
-larger stops reading as wind and starts reading as a page that will not sit
-still. All of it stops under `prefers-reduced-motion: reduce`.
+is on screen. The wind is two slow loops on two different clocks —
+`bannerSway` (11s, a small rotation) and `bannerBillow` (13s, a small drift) —
+so they beat against each other and the pattern takes minutes to repeat rather
+than seconds. It is pinned at its top edge, so the bottom travels while the
+title stays readable. Amplitudes are small on purpose: larger stops reading as
+wind and starts reading as a page that will not sit still. All of it stops
+under `prefers-reduced-motion: reduce`.
+
+**The wind is flat 2D, never 3D.** An earlier version tilted the card with
+`perspective` + `rotateX`/`rotateY` + `skewX` for depth, and every glyph went
+blurry while it moved — a 3D-tilted layer is resampled each frame. Do not add
+depth back. Any motion softens text slightly in flight, which is why the
+amplitudes stay small.
 
 **There is deliberately no snap or bounce at the end of the unroll.** One was
 built and removed the same day: a whip-and-settle on the bottom edge read as a
 spring, and the request was for cloth. Do not re-add one.
 
 Two traps worth not rediscovering:
-- **The depth comes from `perspective()` inside the sway transform, never the
-  `perspective` property on an ancestor.** A perspective ancestor also becomes
-  the containing block for `position: fixed`, which would pin the form's modal
-  to the page box instead of the viewport — and open it off-screen on a phone
-  where the letter runs longer than the display.
-- **The three wind loops stay independent by using different properties.**
-  `bannerSway` owns `transform`; `bannerFlutter` uses the separate `rotate`
-  property and `bannerBillow` the separate `translate` property, which compose
-  with `transform` instead of replacing it. Putting all three on `transform`
-  would make the last one win and the other two do nothing.
+- **A `perspective` ancestor breaks the form's modal.** It becomes the
+  containing block for `position: fixed`, pinning the modal to the page box
+  instead of the viewport — off-screen on a phone where the letter runs longer
+  than the display.
+- **The curled roll edge must be invisible before the reveal line leaves the
+  card.** The clip runs 90px past the card's bottom (so the shadow is not cut),
+  and the strip rides that line, so a strip still visible late hangs in the
+  empty space under the card — over the button. `rollEdge` fades out by 64%.
+  The two wind loops sit on different properties (`transform` and the separate
+  `translate`) so they compose rather than one replacing the other.
 
 ## 4. The QR rule — camera constraint, not style
 The ticket QR (`src/lib/tickets/qr.ts` → `ticketQrDataUrl`) renders **pure
