@@ -3,7 +3,7 @@ import { Table, Th, Tr } from "../table";
 import { Stat } from "../stat";
 import { listAcknowledgements } from "@/lib/faculty/queries";
 import { LETTER_VERSION } from "@/lib/faculty/letter";
-import { qrDataUrl } from "@/lib/tickets/qr";
+import { themedQrDataUrl } from "@/lib/tickets/themed-qr";
 import { formatDateTimePH } from "@/lib/format/datetime";
 import { RemoveEntry } from "./remove-entry";
 
@@ -27,7 +27,9 @@ export default async function FacultyPage() {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? null;
   const invitationUrl = siteUrl ? `${siteUrl}${INVITATION_PATH}` : null;
-  const qr = invitationUrl ? await qrDataUrl(invitationUrl) : null;
+  // The themed one, not qr.ts's black-on-white: this code is printed on a
+  // letter and scanned at leisure, unlike the ticket QR read at the door.
+  const qr = invitationUrl ? themedQrDataUrl(invitationUrl) : null;
 
   // A stale wording is worth noticing: an entry recorded against an older
   // letter means that person agreed to something the current page no longer
@@ -68,7 +70,7 @@ export default async function FacultyPage() {
           <img
             src={qr}
             alt={`QR code linking to ${invitationUrl}`}
-            className="h-44 w-44 shrink-0 rounded bg-white p-2"
+            className="h-44 w-44 shrink-0 rounded-md"
           />
         ) : null}
 
@@ -78,8 +80,17 @@ export default async function FacultyPage() {
             <>
               <p className="text-sm text-ground/70">
                 One QR for every faculty member — put it on the letter, or send
-                it in a group chat. Right-click the image to save it.
+                it in a group chat.
               </p>
+              {/* An SVG, so it stays sharp at any print size — a PNG saved
+                  from the screen would blur on a letter. */}
+              <a
+                href={qr ?? undefined}
+                download="faculty-invitation-qr.svg"
+                className="self-start rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              >
+                Download QR (SVG)
+              </a>
               <p className="break-all rounded border border-ground/15 bg-black/20 px-3 py-2 font-mono text-sm">
                 {invitationUrl}
               </p>

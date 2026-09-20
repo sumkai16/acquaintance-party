@@ -131,6 +131,17 @@ textured grounds, and the door is the worst possible place to discover that.
 The themed ticket header stops at the edge of the white card
 (`src/app/ticket/[id]/page.tsx` → `ApprovedTicket`) — never theme that block.
 
+**The one QR that is themed: the faculty invitation code** (`/admin/faculty`,
+`src/lib/tickets/themed-qr.ts`). Dusk plum modules on sand, rounded modules and
+eyes, delivered as an SVG so it prints sharp. It is allowed because it is
+printed on a letter and scanned at leisure, not read at the door in the dark —
+and it stays a real QR: dark-on-light only, roughly 10:1 contrast, four-module
+quiet zone, error correction H to pay for the rounder modules. Its test
+(`themed-qr.test.ts`) rasterises the code and decodes it with a real reader,
+including at 180px, because a styled QR that merely *looks* right is the
+failure mode. **Never use gold or sage modules** — they read as mid-tones and
+lose scans — and **never invert it**. The ticket QR above is unchanged.
+
 ## 5. Admin — themed shell, semantic color for status only
 **Implemented:** `src/app/admin/layout.tsx` wraps every `/admin/*` route in a
 `bg-deep text-ground` shell — the same Sunset Soiree tokens as the public
