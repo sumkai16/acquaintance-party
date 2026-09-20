@@ -105,8 +105,6 @@ export default async function InvitationPage() {
 
           <hr className={styles.rule} />
 
-          <p className={styles.closing}>{LETTER.closing}</p>
-
           <ul className={styles.signatories}>
             {LETTER.signatories.map((signatory) => (
               <li key={signatory.name} className={styles.signatory}>
@@ -121,8 +119,8 @@ export default async function InvitationPage() {
           <div className={styles.entered} role="status">
             <p className={styles.enteredTitle}>You&apos;re on the list</p>
             <p className={styles.enteredBody}>
-              Entered as {enteredAs}. Nothing else to do — the giveaway is drawn
-              during the programme.
+              Entered as {enteredAs}. Nothing else to do — we look forward to
+              seeing you.
             </p>
           </div>
         ) : (

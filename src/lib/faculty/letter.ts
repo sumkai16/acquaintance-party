@@ -30,7 +30,6 @@ export type Letter = {
   paragraphs: readonly string[];
   when: string;
   where: string;
-  closing: string;
   /** Rendered as one row of three, so the roles must stay short. */
   signatories: readonly { name: string; role: string }[];
 };
@@ -68,7 +67,6 @@ export const LETTER: Letter = {
 
   when: whenLine(),
   where: EVENT.venue,
-  closing: "Respectfully yours,",
 
   /**
    * Not EVENT.certificate.signatories: the mockup reverses that order and

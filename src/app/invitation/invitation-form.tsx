@@ -37,7 +37,7 @@ export function InvitationForm() {
       <div className={styles.entered} role="status">
         <p className={styles.enteredTitle}>You&apos;re on the list</p>
         <p className={styles.enteredBody}>
-          {state.message} The giveaway is drawn during the programme.
+          {state.message} We look forward to seeing you.
         </p>
       </div>
     );
@@ -74,11 +74,10 @@ export function InvitationForm() {
             </button>
 
             <h2 id="confirm-title" className={styles.modalTitle}>
-              Confirm and Enter
+              Confirm
             </h2>
             <p className={styles.modalIntro}>
-              Tick the box, then give your name. That&apos;s your entry to the
-              faculty giveaway.
+              Tick the box, then give your name so we know you have read it.
             </p>
 
             <form action={action} noValidate>
@@ -139,7 +138,7 @@ export function InvitationForm() {
                 disabled={pending || !acknowledged}
                 className={styles.submit}
               >
-                {pending ? "Sending…" : "Confirm and Enter"}
+                {pending ? "Sending…" : "Confirm"}
               </button>
             </form>
           </div>
