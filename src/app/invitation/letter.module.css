@@ -1,8 +1,8 @@
 /*
  * The faculty letter of invitation — design 11a ("Great Vibes script") from
  * the Landing page redesign mockups, plus the banner motion asked for on
- * 2026-09-20: it unfurls like a flag when the link is opened, then breathes
- * in the wind for as long as it is on screen.
+ * 2026-09-20: it unrolls like paper when the link is opened, then drifts
+ * in the wind like a flag for as long as it is on screen.
  *
  * A CSS module rather than Tailwind utilities or globals.css, for the same
  * reason the certificate is its own artwork: this is one designed surface
@@ -75,7 +75,9 @@
 /* ---- The banner motion ---- */
 
 /*
- * Opening the link: the letter UNROLLS, then its bottom edge SNAPS taut.
+ * Opening the link: the letter UNROLLS smoothly and eases to a stop, then the
+ * wind takes over. There is deliberately no snap or bounce at the end — a
+ * bounce reads as a spring, and cloth does not spring.
  *
  * Unroll is a clip-path reveal from the top down, not a scaleY. Scaling the
  * card squashes the text while it grows, which reads as a box being
@@ -117,61 +119,60 @@
 }
 
 /*
- * The snap. The top edge is pinned, so a positive rotateX swings the bottom
- * edge toward the reader: it whips out, overshoots the other way, and rings
- * down — each swing about half the last, the way cloth loses energy — with a
- * touch of scaleY on the first pull so the fabric looks stretched taut for a
- * moment. Ends exactly at rest so the idle sway picks up from identity.
- */
-@keyframes bannerSnap {
-  0% {
-    transform: perspective(1100px) rotateX(0deg) scaleY(1);
-  }
-  14% {
-    transform: perspective(1100px) rotateX(11deg) scaleY(1.012);
-  }
-  34% {
-    transform: perspective(1100px) rotateX(-6.5deg) scaleY(1);
-  }
-  54% {
-    transform: perspective(1100px) rotateX(3.6deg);
-  }
-  72% {
-    transform: perspective(1100px) rotateX(-1.8deg);
-  }
-  88% {
-    transform: perspective(1100px) rotateX(0.7deg);
-  }
-  100% {
-    transform: perspective(1100px) rotateX(0deg) scaleY(1);
-  }
-}
-
-/*
- * The idle wind. Pinned at the top edge (transform-origin), so the bottom of
- * the letter travels several pixels while the title barely moves — which is
- * how a hanging banner actually behaves, and what keeps the body text
- * readable while it drifts.
+ * The idle wind — three slow drifts on three different clocks (11s, 7s, 13s),
+ * each on its own property, so they beat against each other and the pattern
+ * takes minutes to repeat instead of seconds. One loop on one clock reads as
+ * a machine; a real flag never does the same thing twice.
  *
- * Amplitudes are small on purpose (~1.4deg peak). Anything larger stops
- * reading as wind and starts reading as a page that will not sit still.
+ * All three are pinned at the top edge (transform-origin), so the bottom
+ * travels while the title barely moves. Amplitudes are small on purpose:
+ * bigger stops reading as wind and starts reading as a page that will not
+ * sit still. Every keyframe eases in and out, and each loop starts and ends
+ * at rest, so nothing ever jerks.
  */
 @keyframes bannerSway {
   0%,
   100% {
-    transform: perspective(1100px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+    transform: perspective(1100px) rotateX(0deg) rotateY(0deg) skewX(0deg);
   }
-  20% {
-    transform: perspective(1100px) rotateX(0.55deg) rotateY(1.4deg) rotateZ(0.28deg);
+  25% {
+    transform: perspective(1100px) rotateX(0.7deg) rotateY(1.5deg) skewX(0.35deg);
   }
-  40% {
-    transform: perspective(1100px) rotateX(-0.3deg) rotateY(0.5deg) rotateZ(-0.12deg);
+  50% {
+    transform: perspective(1100px) rotateX(-0.4deg) rotateY(0.2deg) skewX(-0.2deg);
   }
-  60% {
-    transform: perspective(1100px) rotateX(0.4deg) rotateY(-1.2deg) rotateZ(-0.3deg);
+  75% {
+    transform: perspective(1100px) rotateX(0.5deg) rotateY(-1.4deg) skewX(-0.35deg);
   }
-  80% {
-    transform: perspective(1100px) rotateX(-0.25deg) rotateY(-0.4deg) rotateZ(0.1deg);
+}
+
+/* The slow twist of the whole cloth — the individual `rotate` property, so it
+   composes with the transform above instead of replacing it. */
+@keyframes bannerFlutter {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  30% {
+    rotate: 0.32deg;
+  }
+  70% {
+    rotate: -0.32deg;
+  }
+}
+
+/* The lift and drift as a gust catches it — the individual `translate`
+   property, for the same reason. */
+@keyframes bannerBillow {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  35% {
+    translate: 1.5px 2px;
+  }
+  70% {
+    translate: -1.5px 0.5px;
   }
 }
 
@@ -196,17 +197,16 @@
   text-align: center;
   position: relative;
   /*
-   * Three animations in sequence, on different properties where possible:
-   *   unroll  0s     – 1.25s   clip-path
-   *   snap    1.15s  – 2.15s   transform   (starts as the edge lands)
-   *   sway    2.25s  – forever transform   (starts once the snap is at rest)
-   * `backwards`, not `both`, on the unroll: holding its final clip-path
-   * forever would keep the card clipped to that inset.
+   * The unroll runs once; the wind starts underneath it near the end
+   * (0.9s), each loop beginning at rest so there is no seam. `backwards`,
+   * not `both`, on the unroll: holding its final clip-path forever would
+   * keep the card clipped to that inset.
    */
   animation:
-    bannerUnroll 1.25s cubic-bezier(0.55, 0.05, 0.4, 1) backwards,
-    bannerSnap 1s ease-in-out 1.15s backwards,
-    bannerSway 9s ease-in-out 2.25s infinite;
+    bannerUnroll 1.4s cubic-bezier(0.4, 0, 0.2, 1) backwards,
+    bannerSway 11s ease-in-out 0.9s infinite,
+    bannerFlutter 7s ease-in-out 0.9s infinite,
+    bannerBillow 13s ease-in-out 0.9s infinite;
 }
 
 .letter::after {
@@ -232,7 +232,7 @@
      opacity 0 once that finishes. Same duration and easing as bannerUnroll so
      the edge stays glued to the reveal line. */
   opacity: 0;
-  animation: rollEdge 1.25s cubic-bezier(0.55, 0.05, 0.4, 1) both;
+  animation: rollEdge 1.4s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 /* ---- The letter itself ---- */

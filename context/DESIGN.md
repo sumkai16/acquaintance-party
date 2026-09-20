@@ -89,13 +89,21 @@ is its own artwork: one designed surface with its own type scale, where
 `font: 400 62px/.85 Great Vibes` as arbitrary Tailwind values would be noise
 in the markup without making anything reusable.
 
-**The letter is a banner, and the motion is the point.** It unfurls from a
-thin line when the link is opened (`bannerUnfurl`), then drifts in the wind
-for as long as it is on screen (`bannerSway`) — pinned at its top edge, so
-the bottom travels while the title stays readable. Peak sway is ~1.4°
-deliberately: larger stops reading as wind and starts reading as a page that
-will not sit still. Both stop entirely under
-`prefers-reduced-motion: reduce`.
+**The letter is a banner, and the motion is the point.** When the link is
+opened it unrolls from the top down like paper coming off a roll
+(`bannerUnroll`, a clip-path reveal with a curled edge riding the reveal line),
+eases to a soft stop, and then drifts in the wind like a flag for as long as it
+is on screen. The wind is three slow loops on three different clocks —
+`bannerSway` (11s, tilt), `bannerFlutter` (7s, twist) and `bannerBillow` (13s,
+drift) — so they beat against each other and the pattern takes minutes to
+repeat rather than seconds. It is pinned at its top edge, so the bottom travels
+while the title stays readable. Amplitudes are small on purpose (~1.5° peak):
+larger stops reading as wind and starts reading as a page that will not sit
+still. All of it stops under `prefers-reduced-motion: reduce`.
+
+**There is deliberately no snap or bounce at the end of the unroll.** One was
+built and removed the same day: a whip-and-settle on the bottom edge read as a
+spring, and the request was for cloth. Do not re-add one.
 
 Two traps worth not rediscovering:
 - **The depth comes from `perspective()` inside the sway transform, never the
@@ -103,9 +111,11 @@ Two traps worth not rediscovering:
   the containing block for `position: fixed`, which would pin the form's modal
   to the page box instead of the viewport — and open it off-screen on a phone
   where the letter runs longer than the display.
-- The two animations share `transform`. `bannerSway` is delayed to start as
-  `bannerUnfurl`'s forwards fill ends, so the later one takes the property
-  cleanly rather than the two fighting.
+- **The three wind loops stay independent by using different properties.**
+  `bannerSway` owns `transform`; `bannerFlutter` uses the separate `rotate`
+  property and `bannerBillow` the separate `translate` property, which compose
+  with `transform` instead of replacing it. Putting all three on `transform`
+  would make the last one win and the other two do nothing.
 
 ## 4. The QR rule — camera constraint, not style
 The ticket QR (`src/lib/tickets/qr.ts` → `ticketQrDataUrl`) renders **pure
