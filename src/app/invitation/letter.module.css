@@ -1,0 +1,524 @@
+/*
+ * The faculty letter of invitation — design 11a ("Great Vibes script") from
+ * the Landing page redesign mockups, plus the banner motion asked for on
+ * 2026-09-20: it unfurls like a flag when the link is opened, then breathes
+ * in the wind for as long as it is on screen.
+ *
+ * A CSS module rather than Tailwind utilities or globals.css, for the same
+ * reason the certificate is its own artwork: this is one designed surface
+ * with its own type scale and its own palette, and expressing
+ * "Great Vibes 62px/.85" as arbitrary values would be noise in the markup
+ * without making anything reusable. Nothing here leaks to another page.
+ *
+ * The palette below is deliberately NOT the Sunset Soiree tokens. It is the
+ * mockup's own warm-paper set, scoped to this surface — see context/DESIGN.md.
+ */
+
+.page {
+  --letter-gold: #c89a4a;
+  --letter-orange: #b9662e;
+  --letter-brown: #5b3a34;
+  --letter-ink: #2a160d;
+  --letter-rule: #e3a695;
+  --letter-role: #d98878;
+  --letter-field: #f0cfc3;
+
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px 56px;
+  /*
+   * No `perspective` property here, deliberately. It would give the sway its
+   * depth, but a perspective ancestor also becomes the containing block for
+   * `position: fixed` descendants — which would pin the modal to this box
+   * instead of the viewport and, on a phone where the letter runs longer
+   * than the screen, open it somewhere the reader has to scroll to find.
+   * The depth comes from a perspective() inside the sway transform instead.
+   */
+}
+
+/* ---- Backdrop: the palm sunset, darkened, under a red dusk wash ---- */
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  filter: brightness(0.4) saturate(1.15);
+}
+
+.wash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    rgba(107, 15, 15, 0.68),
+    rgba(30, 6, 10, 0.78)
+  );
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ---- The banner motion ---- */
+
+/*
+ * Opening the link unfurls the letter downward from a thin line, with a
+ * cloth-like overshoot and settle rather than a linear stretch — a banner
+ * dropped from a rail, not a box being scaled.
+ */
+@keyframes bannerUnfurl {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.015);
+  }
+  35% {
+    opacity: 1;
+  }
+  65% {
+    transform: scaleY(1.03);
+  }
+  82% {
+    transform: scaleY(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/*
+ * The idle wind. Pinned at the top edge (transform-origin), so the bottom of
+ * the letter travels several pixels while the title barely moves — which is
+ * how a hanging banner actually behaves, and what keeps the body text
+ * readable while it drifts.
+ *
+ * Amplitudes are small on purpose (~1.4deg peak). Anything larger stops
+ * reading as wind and starts reading as a page that will not sit still.
+ */
+@keyframes bannerSway {
+  0%,
+  100% {
+    transform: perspective(1100px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  20% {
+    transform: perspective(1100px) rotateX(0.55deg) rotateY(1.4deg) rotateZ(0.28deg);
+  }
+  40% {
+    transform: perspective(1100px) rotateX(-0.3deg) rotateY(0.5deg) rotateZ(-0.12deg);
+  }
+  60% {
+    transform: perspective(1100px) rotateX(0.4deg) rotateY(-1.2deg) rotateZ(-0.3deg);
+  }
+  80% {
+    transform: perspective(1100px) rotateX(-0.25deg) rotateY(-0.4deg) rotateZ(0.1deg);
+  }
+}
+
+.letter {
+  /* Pinned along the top edge, like a banner on a rail — this is what makes
+     the bottom travel further than the title. */
+  transform-origin: 50% 0%;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 6px;
+  box-shadow: 0 16px 32px rgba(120, 60, 50, 0.22);
+  padding: 44px 30px;
+  text-align: center;
+  /* Unfurl once, then hand `transform` over to the sway, which starts just
+     as the unfurl finishes. The later animation wins the property while it
+     is running, so the two never fight. */
+  animation:
+    bannerUnfurl 1.15s cubic-bezier(0.22, 1, 0.36, 1) both,
+    bannerSway 9s ease-in-out 1.25s infinite;
+}
+
+@media (min-width: 420px) {
+  .letter {
+    padding: 44px 36px;
+  }
+}
+
+/* ---- The letter itself ---- */
+
+.eyebrow {
+  font:
+    600 10px/1 var(--font-body);
+  letter-spacing: 0.24em;
+  color: var(--letter-orange);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.title {
+  font:
+    400 58px/0.85 var(--font-great-vibes), cursive;
+  color: var(--letter-brown);
+  margin-bottom: 16px;
+}
+
+@media (min-width: 420px) {
+  .title {
+    font-size: 62px;
+  }
+}
+
+.titleLine {
+  display: block;
+}
+
+.rule {
+  width: 40px;
+  height: 1px;
+  background: var(--letter-rule);
+  margin: 0 auto 18px;
+  border: 0;
+}
+
+.overline {
+  font:
+    600 12px/1.6 var(--font-body);
+  letter-spacing: 0.12em;
+  color: var(--letter-brown);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.org {
+  font:
+    600 20px/1.3 var(--font-body);
+  letter-spacing: 0.04em;
+  color: var(--letter-ink);
+  margin-bottom: 22px;
+}
+
+.body {
+  font:
+    400 13.5px/1.7 var(--font-eb-garamond), serif;
+  color: rgba(42, 22, 13, 0.78);
+  margin: 0 0 14px;
+  text-align: left;
+}
+
+.body:last-of-type {
+  margin-bottom: 22px;
+}
+
+.when {
+  font:
+    600 13px/1.6 var(--font-body);
+  letter-spacing: 0.1em;
+  color: var(--letter-ink);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.where {
+  font:
+    400 12.5px/1.6 var(--font-eb-garamond), serif;
+  color: rgba(42, 22, 13, 0.65);
+  margin-bottom: 22px;
+}
+
+.closing {
+  font:
+    400 12.5px/1.5 var(--font-eb-garamond), serif;
+  color: rgba(42, 22, 13, 0.7);
+  margin-bottom: 14px;
+}
+
+.signatories {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.signatory {
+  flex: 1;
+  min-width: 0;
+}
+
+.signatoryName {
+  font:
+    600 11px/1.2 var(--font-body);
+  letter-spacing: 0.02em;
+  color: var(--letter-ink);
+  white-space: nowrap;
+}
+
+.signatoryRole {
+  font:
+    italic 400 9.5px/1.3 var(--font-eb-garamond), serif;
+  color: var(--letter-role);
+  white-space: nowrap;
+}
+
+/* ---- The gold call to action under the banner ---- */
+
+.actions {
+  text-align: center;
+  margin-top: 26px;
+}
+
+.cta {
+  display: inline-block;
+  border: 1px solid var(--letter-gold);
+  background: transparent;
+  padding: 13px 28px;
+  font:
+    600 12px/1 var(--font-cinzel), serif;
+  letter-spacing: 0.08em;
+  color: var(--letter-gold);
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 2px;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.cta:hover {
+  background: rgba(200, 154, 74, 0.14);
+}
+
+.cta:focus-visible {
+  outline: 2px solid var(--letter-gold);
+  outline-offset: 3px;
+}
+
+.entered {
+  margin-top: 26px;
+  border: 1px solid rgba(200, 154, 74, 0.5);
+  border-radius: 10px;
+  background: rgba(30, 6, 10, 0.45);
+  padding: 18px 20px;
+  text-align: center;
+}
+
+.enteredTitle {
+  font:
+    400 30px/1 var(--font-great-vibes), cursive;
+  color: var(--letter-gold);
+  margin-bottom: 6px;
+}
+
+.enteredBody {
+  font:
+    400 13px/1.6 var(--font-eb-garamond), serif;
+  color: rgba(255, 241, 232, 0.8);
+  margin: 0;
+}
+
+/* ---- The form, in a modal over the letter ---- */
+
+@keyframes modalFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.overlay {
+  /* Fixed, not the mockup's absolute: that was positioned inside a 460px
+     art board, and on a real page it has to cover the viewport. */
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(20, 4, 4, 0.68);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+  animation: modalFade 0.25s ease-out both;
+}
+
+.modal {
+  position: relative;
+  max-width: 320px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid var(--letter-gold);
+  border-radius: 16px;
+  padding: 28px 26px;
+  text-align: left;
+  animation: modalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  font:
+    400 18px/1 var(--font-body);
+  color: var(--letter-brown);
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.close:focus-visible {
+  outline: 2px solid var(--letter-gold);
+  outline-offset: 1px;
+}
+
+.modalTitle {
+  text-align: center;
+  font:
+    400 30px/1 var(--font-great-vibes), cursive;
+  color: var(--letter-orange);
+  margin: 0 0 14px;
+}
+
+.modalIntro {
+  font:
+    400 12.5px/1.5 var(--font-eb-garamond), serif;
+  color: rgba(91, 58, 52, 0.75);
+  margin: 0 0 16px;
+}
+
+.tick {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 18px;
+  font:
+    400 12.5px/1.35 var(--font-eb-garamond), serif;
+  color: var(--letter-brown);
+  cursor: pointer;
+}
+
+.tick input {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--letter-orange);
+}
+
+.label {
+  display: block;
+  font:
+    600 11px/1 var(--font-body);
+  letter-spacing: 0.04em;
+  color: var(--letter-brown);
+  margin-bottom: 8px;
+}
+
+.optional {
+  font-weight: 400;
+  color: rgba(91, 58, 52, 0.55);
+}
+
+.input {
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--letter-field);
+  border-radius: 10px;
+  padding: 11px 12px;
+  font:
+    400 13px/1.2 var(--font-eb-garamond), serif;
+  color: var(--letter-ink);
+  margin-bottom: 14px;
+}
+
+.input::placeholder {
+  color: rgba(91, 58, 52, 0.4);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--letter-gold);
+  outline-offset: 1px;
+  border-color: var(--letter-gold);
+}
+
+.submit {
+  width: 100%;
+  border: 1.5px solid var(--letter-gold);
+  background: transparent;
+  border-radius: 10px;
+  padding: 13px 12px;
+  margin-top: 4px;
+  text-align: center;
+  font:
+    600 12px/1 var(--font-cinzel), serif;
+  letter-spacing: 0.06em;
+  color: var(--letter-orange);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.submit:not(:disabled):hover {
+  background: rgba(200, 154, 74, 0.12);
+}
+
+.submit:focus-visible {
+  outline: 2px solid var(--letter-gold);
+  outline-offset: 2px;
+}
+
+.error {
+  font:
+    400 12px/1.45 var(--font-eb-garamond), serif;
+  color: #a8341b;
+  margin: -8px 0 12px;
+}
+
+.formError {
+  font:
+    400 12.5px/1.45 var(--font-eb-garamond), serif;
+  color: #a8341b;
+  border: 1px solid rgba(168, 52, 27, 0.3);
+  background: rgba(168, 52, 27, 0.07);
+  border-radius: 8px;
+  padding: 9px 11px;
+  margin: 0 0 14px;
+}
+
+/*
+ * Wind is decoration. Someone who has asked their device to reduce motion
+ * gets the letter with no unfurl and no sway at all — not a slower one, and
+ * the modal stops springing too.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .letter,
+  .overlay,
+  .modal {
+    animation: none;
+  }
+}

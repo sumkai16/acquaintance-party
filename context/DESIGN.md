@@ -65,7 +65,47 @@ a stated functional reason rather than taste:
 | Admin — scanner setup | Full theme, gradient wash | The one remaining single-focus screen; themed 2026-09-03 |
 | Raffle projector | Full theme, same tokens as the rest of admin | Previously had its own separate "Night Set" dark palette; retired 2026-09-03 in favor of one consistent language — see §1 |
 | Door scanner — **live scan results only** | Semantic color only, no theme accent | The one surviving carve-out: read at arm's length, in the dark, by a volunteer under time pressure, where an ambiguous color reads as a wrong answer instantly. Only the *result* screens (green/red/amber) — the setup screen before scanning starts is themed |
+| Faculty invitation (`/invitation`) | **Its own palette and type**, scoped to the route | The one deliberate exception to §1 — see §3.1 |
 | Admin login | Not yet themed | Out of scope for the 2026-09-03 pass; flagged as the next inconsistency to fix, not forgotten |
+
+### 3.1 The faculty letter is the one surface off the token set
+
+`/invitation` is built from mockup **11a** ("Great Vibes script") of the
+*Landing page redesign mockups*, picked 2026-09-20. It carries its own warm
+paper palette — gold `#C89A4A`, terracotta `#B9662E`, brown `#5B3A34` — over a
+darkened `public/landing-hero.jpg` with a red dusk wash, and three faces this
+page alone loads (Great Vibes, EB Garamond, Cinzel).
+
+**This does not reopen §1.** Those hexes are CSS custom properties scoped to
+one class in `src/app/invitation/letter.module.css`, not values sprinkled
+through components, and nothing outside that route can reach them. The letter
+is a formal document addressed to faculty, and it is the only surface whose
+audience never sees another page of the site — so matching the ticketing
+theme buys nothing and costs the thing being designed. A hardcoded hex in any
+*component* is still a bug.
+
+It is a CSS module rather than utilities for the same reason the certificate
+is its own artwork: one designed surface with its own type scale, where
+`font: 400 62px/.85 Great Vibes` as arbitrary Tailwind values would be noise
+in the markup without making anything reusable.
+
+**The letter is a banner, and the motion is the point.** It unfurls from a
+thin line when the link is opened (`bannerUnfurl`), then drifts in the wind
+for as long as it is on screen (`bannerSway`) — pinned at its top edge, so
+the bottom travels while the title stays readable. Peak sway is ~1.4°
+deliberately: larger stops reading as wind and starts reading as a page that
+will not sit still. Both stop entirely under
+`prefers-reduced-motion: reduce`.
+
+Two traps worth not rediscovering:
+- **The depth comes from `perspective()` inside the sway transform, never the
+  `perspective` property on an ancestor.** A perspective ancestor also becomes
+  the containing block for `position: fixed`, which would pin the form's modal
+  to the page box instead of the viewport — and open it off-screen on a phone
+  where the letter runs longer than the display.
+- The two animations share `transform`. `bannerSway` is delayed to start as
+  `bannerUnfurl`'s forwards fill ends, so the later one takes the property
+  cleanly rather than the two fighting.
 
 ## 4. The QR rule — camera constraint, not style
 The ticket QR (`src/lib/tickets/qr.ts` → `ticketQrDataUrl`) renders **pure
