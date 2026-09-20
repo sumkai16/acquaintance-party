@@ -431,7 +431,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 12px;
   overflow-y: auto;
   animation: modalFade 0.25s ease-out both;
 }
@@ -620,15 +620,19 @@
    page behind — which is sized to fit one screen — never has to. */
 .sheet {
   position: relative;
-  max-width: 360px;
+  max-width: 430px;
   width: 100%;
-  max-height: min(86dvh, 680px);
+  /* The whole screen minus the overlay's own padding: the running order is
+     long, so every pixel of height is another row read without scrolling. An
+     old fixed cap of 680px left a tall phone with a third of its screen empty. */
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
   overflow-y: auto;
   overscroll-behavior: contain;
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--letter-gold);
   border-radius: 16px;
-  padding: 30px 24px 26px;
+  padding: 34px 26px 30px;
   text-align: left;
   animation: modalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -641,14 +645,14 @@
   margin: 0 0 10px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--letter-rule);
-  font: 600 12px/1 var(--font-cinzel), serif;
+  font: 600 13px/1 var(--font-cinzel), serif;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--letter-orange);
 }
 
 .slot {
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .slotHead {
@@ -660,14 +664,14 @@
 }
 
 .slotTime {
-  font: 600 10.5px/1.3 var(--font-body);
+  font: 600 11.5px/1.3 var(--font-body);
   letter-spacing: 0.06em;
   color: var(--letter-orange);
   white-space: nowrap;
 }
 
 .slotTitle {
-  font: 600 12px/1.3 var(--font-body);
+  font: 600 13px/1.3 var(--font-body);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--letter-ink);
@@ -676,8 +680,8 @@
 .slotItems {
   margin: 0;
   padding: 0 0 0 16px;
-  font: 400 13px/1.5 var(--font-eb-garamond), serif;
-  color: rgba(42, 22, 13, 0.8);
+  font: 400 15px/1.5 var(--font-eb-garamond), serif;
+  color: rgba(42, 22, 13, 0.82);
 }
 
 .slotWho {
