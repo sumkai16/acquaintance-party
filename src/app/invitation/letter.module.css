@@ -75,27 +75,75 @@
 /* ---- The banner motion ---- */
 
 /*
- * Opening the link unfurls the letter downward from a thin line, with a
- * cloth-like overshoot and settle rather than a linear stretch — a banner
- * dropped from a rail, not a box being scaled.
+ * Opening the link: the letter UNROLLS, then its bottom edge SNAPS taut.
+ *
+ * Unroll is a clip-path reveal from the top down, not a scaleY. Scaling the
+ * card squashes the text while it grows, which reads as a box being
+ * stretched; clipping shows the letter at full size being uncovered, which
+ * reads as paper coming off a roll. The bottom inset runs past zero (to
+ * -90px) so the card's drop shadow is not cut off at the end.
  */
-@keyframes bannerUnfurl {
-  0% {
-    opacity: 0;
-    transform: scaleY(0.015);
+@keyframes bannerUnroll {
+  from {
+    clip-path: inset(0 -60px 100% -60px);
   }
-  35% {
+  to {
+    clip-path: inset(0 -60px -90px -60px);
+  }
+}
+
+/*
+ * The curled edge of the roll, riding just above the reveal line. It is its
+ * own animation on `top` (percent of the card) rather than a second
+ * clip-path so it needs no @property, and it shares the unroll's duration and
+ * easing so the two cannot drift apart. It fades before the end so it is
+ * never left hanging under the finished card.
+ */
+@keyframes rollEdge {
+  from {
+    top: 0%;
+    opacity: 0;
+  }
+  8% {
     opacity: 1;
   }
-  65% {
-    transform: scaleY(1.03);
+  78% {
+    opacity: 1;
   }
-  82% {
-    transform: scaleY(0.985);
+  to {
+    top: calc(100% + 90px);
+    opacity: 0;
+  }
+}
+
+/*
+ * The snap. The top edge is pinned, so a positive rotateX swings the bottom
+ * edge toward the reader: it whips out, overshoots the other way, and rings
+ * down — each swing about half the last, the way cloth loses energy — with a
+ * touch of scaleY on the first pull so the fabric looks stretched taut for a
+ * moment. Ends exactly at rest so the idle sway picks up from identity.
+ */
+@keyframes bannerSnap {
+  0% {
+    transform: perspective(1100px) rotateX(0deg) scaleY(1);
+  }
+  14% {
+    transform: perspective(1100px) rotateX(11deg) scaleY(1.012);
+  }
+  34% {
+    transform: perspective(1100px) rotateX(-6.5deg) scaleY(1);
+  }
+  54% {
+    transform: perspective(1100px) rotateX(3.6deg);
+  }
+  72% {
+    transform: perspective(1100px) rotateX(-1.8deg);
+  }
+  88% {
+    transform: perspective(1100px) rotateX(0.7deg);
   }
   100% {
-    opacity: 1;
-    transform: scaleY(1);
+    transform: perspective(1100px) rotateX(0deg) scaleY(1);
   }
 }
 
@@ -146,14 +194,46 @@
   box-shadow: 0 16px 32px rgba(120, 60, 50, 0.22);
   padding: 3.25em 2.3em;
   text-align: center;
-  /* Unfurl once, then hand `transform` over to the sway, which starts just
-     as the unfurl finishes. The later animation wins the property while it
-     is running, so the two never fight. */
+  position: relative;
+  /*
+   * Three animations in sequence, on different properties where possible:
+   *   unroll  0s     – 1.25s   clip-path
+   *   snap    1.15s  – 2.15s   transform   (starts as the edge lands)
+   *   sway    2.25s  – forever transform   (starts once the snap is at rest)
+   * `backwards`, not `both`, on the unroll: holding its final clip-path
+   * forever would keep the card clipped to that inset.
+   */
   animation:
-    bannerUnfurl 1.15s cubic-bezier(0.22, 1, 0.36, 1) both,
-    bannerSway 9s ease-in-out 1.25s infinite;
+    bannerUnroll 1.25s cubic-bezier(0.55, 0.05, 0.4, 1) backwards,
+    bannerSnap 1s ease-in-out 1.15s backwards,
+    bannerSway 9s ease-in-out 2.25s infinite;
 }
 
+.letter::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2.6em;
+  transform: translateY(-100%);
+  pointer-events: none;
+  border-radius: 6px;
+  /* Shadow where the paper curls away, a bright highlight on the curl, then
+     the dark underside right at the edge. */
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(90, 50, 40, 0.1) 45%,
+    rgba(255, 255, 255, 0.92) 72%,
+    rgba(120, 70, 55, 0.3) 100%
+  );
+  /* Invisible at rest; only rollEdge ever shows it, and `both` keeps it at
+     opacity 0 once that finishes. Same duration and easing as bannerUnroll so
+     the edge stays glued to the reveal line. */
+  opacity: 0;
+  animation: rollEdge 1.25s cubic-bezier(0.55, 0.05, 0.4, 1) both;
+}
 
 /* ---- The letter itself ---- */
 
@@ -531,5 +611,10 @@
   .overlay,
   .modal {
     animation: none;
+  }
+
+  /* The roll edge only exists to be seen moving. */
+  .letter::after {
+    display: none;
   }
 }
