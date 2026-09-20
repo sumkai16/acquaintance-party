@@ -10,6 +10,7 @@ import { sectionsFor } from "@/lib/registrations/sections";
 import { Option } from "../option";
 import { useFlash } from "../flash";
 import type { Registration } from "@/lib/supabase/types";
+import { useEmailCheck } from "../../use-email-check";
 import { editRegistration } from "./actions";
 
 const fieldClass =
@@ -43,6 +44,7 @@ export function EditRegistration({
   const [yearLevel, setYearLevel] = useState(registration.year_level);
   const [section, setSection] = useState(registration.section);
   const [email, setEmail] = useState(registration.email);
+  const emailCheck = useEmailCheck(email);
 
   function save() {
     startTransition(async () => {
@@ -127,8 +129,24 @@ export function EditRegistration({
         spellCheck={false}
         aria-label="Email"
         placeholder="juan@example.com"
-        className={fieldClass}
+        {...emailCheck.focusProps}
+        aria-invalid={emailCheck.message ? true : undefined}
+        className={`${fieldClass} ${emailCheck.message ? "border-red-300/80" : ""}`}
       />
+      {emailCheck.message ? (
+        <p role="alert" className="font-medium text-red-300">
+          {emailCheck.message}
+        </p>
+      ) : null}
+      {emailCheck.fix ? (
+        <button
+          type="button"
+          onClick={() => setEmail(emailCheck.fix!)}
+          className="self-start rounded-full bg-accent-2 px-3 py-1 font-semibold text-deep focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+        >
+          Use {emailCheck.fix}
+        </button>
+      ) : null}
 
       <div className="flex items-center gap-3 pt-0.5">
         <button

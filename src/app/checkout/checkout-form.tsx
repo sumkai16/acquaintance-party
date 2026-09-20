@@ -9,6 +9,7 @@ import {
 import { sectionsFor } from "@/lib/registrations/sections";
 import { submitRegistration, type FormState } from "./actions";
 import { readReferenceFromImage } from "./read-reference";
+import { useEmailCheck } from "../use-email-check";
 
 const initial: FormState = { status: "idle", attempt: 0 };
 
@@ -29,6 +30,9 @@ export function CheckoutForm() {
   const [state, action, pending] = useActionState(submitRegistration, initial);
   const errors = state.fieldErrors ?? {};
   const values = state.values;
+
+  const [emailValue, setEmailValue] = useState(values?.email ?? "");
+  const emailCheck = useEmailCheck(emailValue);
 
   const referenceRef = useRef<HTMLInputElement>(null);
   const [readStatus, setReadStatus] = useState<ReadStatus>("idle");
@@ -156,10 +160,9 @@ export function CheckoutForm() {
         label="Personal email"
         name="email"
         hint="Your ticket is tied to this address, so we can find it if you lose the link."
-        error={errors.email}
+        error={emailCheck.message ?? errors.email}
       >
         <input
-          key={keyed("email")}
           id="email"
           name="email"
           type="email"
@@ -170,9 +173,21 @@ export function CheckoutForm() {
           autoCorrect="off"
           spellCheck={false}
           placeholder="juan@example.com"
-          defaultValue={values?.email ?? ""}
+          value={emailValue}
+          onChange={(event) => setEmailValue(event.target.value)}
+          {...emailCheck.focusProps}
+          aria-invalid={emailCheck.message ? true : undefined}
           className={inputClass}
         />
+        {emailCheck.fix ? (
+          <button
+            type="button"
+            onClick={() => setEmailValue(emailCheck.fix!)}
+            className="self-start rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white focus:outline-2 focus:outline-offset-2 focus:outline-accent"
+          >
+            Use {emailCheck.fix}
+          </button>
+        ) : null}
       </Field>
 
       {/* Above the reference field, so the number can be read from it first. */}

@@ -10,6 +10,7 @@ import {
 import { sectionsFor } from "@/lib/registrations/sections";
 import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { useFlash } from "../flash";
+import { useEmailCheck } from "../../use-email-check";
 import { Option } from "../option";
 import { submitWalkIn, type FormState } from "./actions";
 
@@ -31,6 +32,8 @@ export function WalkInForm() {
   const errors = state.fieldErrors ?? {};
   const values = state.values;
   const flash = useFlash();
+  const [emailValue, setEmailValue] = useState(values?.email ?? "");
+  const emailCheck = useEmailCheck(emailValue);
 
   // Recording a walk-in stays on this page — no ticket-page redirect — so
   // the next sale can be entered right away. A flash is the only signal
@@ -109,10 +112,9 @@ export function WalkInForm() {
         label="Email"
         name="email"
         hint="So they still get a copy of their ticket link."
-        error={errors.email}
+        error={emailCheck.message ?? errors.email}
       >
         <input
-          key={keyed("email")}
           id="email"
           name="email"
           type="email"
@@ -125,9 +127,21 @@ export function WalkInForm() {
           autoCorrect="off"
           spellCheck={false}
           placeholder="juan@example.com"
-          defaultValue={values?.email ?? ""}
+          value={emailValue}
+          onChange={(event) => setEmailValue(event.target.value)}
+          {...emailCheck.focusProps}
+          aria-invalid={emailCheck.message ? true : undefined}
           className={inputClass}
         />
+        {emailCheck.fix ? (
+          <button
+            type="button"
+            onClick={() => setEmailValue(emailCheck.fix!)}
+            className="min-h-11 self-start rounded-full bg-accent-2 px-4 text-sm font-semibold text-deep focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            Use {emailCheck.fix}
+          </button>
+        ) : null}
       </Field>
 
       <AmountSection

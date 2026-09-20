@@ -220,6 +220,22 @@ const email = z
     }
   });
 
+/**
+ * What is wrong with an email as typed, or null when it is fine or still
+ * empty — the same rules the server applies, so a form can show the problem
+ * as someone types instead of after a failed submit. `fix` is the corrected
+ * address when the domain looks like a mistyped provider.
+ */
+export function emailProblem(value: string): { message: string; fix: string | null } | null {
+  if (value.trim() === "") return null;
+  const result = email.safeParse(value);
+  if (result.success) return null;
+  return {
+    message: result.error.issues[0]?.message ?? "Enter a valid email address.",
+    fix: suggestEmail(value),
+  };
+}
+
 export const checkoutSchema = z.object({
   fullName,
   studentId,
