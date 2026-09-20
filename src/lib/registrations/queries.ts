@@ -425,6 +425,8 @@ export async function searchRegistrations(
     direction?: "asc" | "desc";
     /** One of YEAR_LEVELS, already validated by the caller. */
     yearLevel?: string;
+    /** A section letter from SECTIONS_BY_YEAR, already validated by the caller. */
+    section?: string;
     /**
      * Who is still owed an email — the same two groups the Dashboard's
      * Receipts card counts. `qr`: paid in full, QR never emailed. `receipt`:
@@ -439,9 +441,9 @@ export async function searchRegistrations(
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  const { sort = null, direction = "desc", yearLevel, delivery } = options;
+  const { sort = null, direction = "desc", yearLevel, section, delivery } = options;
 
-  if (!hasQuery && !status && !paymentMethod && !yearLevel && !delivery) {
+  if (!hasQuery && !status && !paymentMethod && !yearLevel && !section && !delivery) {
     return { rows: [], total: 0 };
   }
 
@@ -454,6 +456,8 @@ export async function searchRegistrations(
   if (status && status !== "all") builder = builder.eq("status", status);
   if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
   if (yearLevel) builder = builder.eq("year_level", yearLevel);
+  // ilike with no wildcards: old rows can hold a lowercase section.
+  if (section) builder = builder.ilike("section", section);
   if (delivery === "qr") {
     builder = builder.eq("status", "approved").is("ticket_email_sent_at", null);
   }
@@ -473,7 +477,7 @@ export async function searchRegistrations(
     builder = builder.order(REGISTRATION_SORT_COLUMNS[sort], {
       ascending: direction === "asc",
     });
-  } else if (yearLevel) {
+  } else if (yearLevel || section) {
     // Narrowing to one year is how you read a year *by section* — which
     // sections have paid, who is missing from D. Newest-first scatters those
     // sections down the list, so a year filter brings its own default order:

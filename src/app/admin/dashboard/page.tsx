@@ -14,6 +14,7 @@ import { listAllProfileNames } from "@/lib/profiles/queries";
 import { SORT_COLUMNS, type RegistrationSortColumn } from "@/lib/registrations/sort";
 import { buildSectionReport } from "@/lib/registrations/section-report";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { allSections, sectionsFor } from "@/lib/registrations/sections";
 import { formatPeso } from "@/lib/config/event";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
@@ -38,6 +39,7 @@ export default async function RegistrationsPage({
     dir?: string;
     page?: string;
     year?: string;
+    section?: string;
     delivery?: string;
   }>;
 }) {
@@ -49,6 +51,7 @@ export default async function RegistrationsPage({
     dir,
     page: rawPage,
     year: rawYear,
+    section: rawSection,
     delivery: rawDelivery,
   } = await searchParams;
   const delivery =
@@ -64,6 +67,11 @@ export default async function RegistrationsPage({
   // column can never hold.
   const yearLevel = YEAR_LEVELS.includes(rawYear as (typeof YEAR_LEVELS)[number])
     ? rawYear
+    : undefined;
+  // Same rule for the section, checked against the chosen year's list (or every
+  // year's, when none is chosen).
+  const section = (yearLevel ? sectionsFor(yearLevel) : allSections()).includes(rawSection ?? "")
+    ? rawSection
     : undefined;
   const paymentMethod = VALID_PAYMENT_METHODS.includes(
     rawPaymentMethod as (typeof VALID_PAYMENT_METHODS)[number],
@@ -100,6 +108,7 @@ export default async function RegistrationsPage({
       sort: sortColumn,
       direction,
       yearLevel,
+      section,
       delivery,
     }),
     approvedCount(),
@@ -120,6 +129,7 @@ export default async function RegistrationsPage({
     if (rawStatus) next.set("status", rawStatus);
     if (rawPaymentMethod) next.set("paymentMethod", rawPaymentMethod);
     if (yearLevel) next.set("year", yearLevel);
+    if (section) next.set("section", section);
     if (delivery) next.set("delivery", delivery);
     if (sort) next.set("sort", sort);
     if (dir) next.set("dir", dir);
@@ -224,6 +234,8 @@ export default async function RegistrationsPage({
                   params.set("dir", nextDir);
                   if (q) params.set("q", q);
                   if (status !== "all") params.set("status", status);
+                  if (yearLevel) params.set("year", yearLevel);
+                  if (section) params.set("section", section);
                   if (delivery) params.set("delivery", delivery);
                   return { href: `?${params.toString()}`, active };
                 };

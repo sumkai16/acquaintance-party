@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
+import { allSections, sectionsFor } from "@/lib/registrations/sections";
 import { Option } from "../option";
 
 const QUERY_DEBOUNCE_MS = 300;
@@ -42,16 +43,22 @@ export function RegistrationFilters() {
   const status = searchParams.get("status") ?? "";
   const paymentMethod = searchParams.get("paymentMethod") ?? "";
   const year = searchParams.get("year") ?? "";
+  const section = searchParams.get("section") ?? "";
   const delivery = searchParams.get("delivery") ?? "";
   const [q, setQ] = useState(searchParams.get("q") ?? "");
 
   function setParam(
-    key: "q" | "status" | "paymentMethod" | "year" | "delivery",
+    key: "q" | "status" | "paymentMethod" | "year" | "section" | "delivery",
     value: string,
   ) {
     const params = new URLSearchParams(searchParams);
     if (value) params.set(key, value);
     else params.delete(key);
+    // 4th year has no E–G, so a section carried over from a bigger year would
+    // filter on something that year can never hold.
+    if (key === "year" && !(value ? sectionsFor(value) : allSections()).includes(section)) {
+      params.delete("section");
+    }
     // Any filter change re-shapes the result set, so the page number that
     // came with the old one is meaningless — narrowing to 1st year while
     // sitting on page 4 would otherwise land on an empty table that looks
@@ -100,6 +107,20 @@ export function RegistrationFilters() {
         {YEAR_LEVELS.map((level) => (
           <Option key={level} value={level}>
             {level}
+          </Option>
+        ))}
+      </select>
+
+      <select
+        value={section}
+        onChange={(event) => setParam("section", event.target.value)}
+        aria-label="Filter by section"
+        className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
+      >
+        <Option value="">All sections</Option>
+        {(year ? sectionsFor(year) : allSections()).map((name) => (
+          <Option key={name} value={name}>
+            Section {name}
           </Option>
         ))}
       </select>

@@ -44,3 +44,8 @@ export function sectionsFor(yearLevel: string): readonly string[] {
 export function normalizeSection(value: string): string {
   return value.trim().toUpperCase();
 }
+
+/** Every section letter any year level offers, for a filter with no year picked. */
+export function allSections(): string[] {
+  return [...new Set(Object.values(SECTIONS_BY_YEAR).flat())].sort();
+}
