@@ -39,10 +39,13 @@ function describe(event: UndeliveredEvent): string {
 }
 
 /**
- * A bounce, a suppression or a send failure means the student never got the
- * email, so they go back in the queue. A spam complaint means they did get it
- * and didn't want it: that is logged but never re-queued, because sending it
- * again is exactly what they objected to.
+ * A bounce or a send failure means the student never got the email, so they
+ * go back in the queue. Two cases are logged but never re-queued:
+ * - A spam complaint: they got it and didn't want it, and sending it again is
+ *   exactly what they objected to.
+ * - A suppression: Resend will refuse that address every time, so re-queuing
+ *   only makes "Send" report success and the same people bounce straight back.
+ *   It needs a corrected address or a manual removal from Resend's list.
  */
 export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<void> {
   const registrationId = event.data.tags?.registration_id;
@@ -54,7 +57,7 @@ export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<v
   }
 
   const registration = await getRegistration(registrationId);
-  const requeue = event.type !== "email.complained";
+  const requeue = event.type !== "email.complained" && event.type !== "email.suppressed";
   if (requeue) {
     await Promise.all([
       clearTicketEmailSent(registrationId),
@@ -68,7 +71,11 @@ export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<v
     description:
       `Email to ${recipient} ${describe(event)}` +
       (registration ? ` for ${registration.full_name}` : "") +
-      (requeue ? " — back in the send queue." : " — not re-sent."),
+      (requeue
+        ? " — back in the send queue."
+        : event.type === "email.suppressed"
+          ? " — not re-queued, it would be refused again. Fix the address, or remove it from Resend's suppression list, then use “Resend QR email” on their row."
+          : " — not re-sent."),
     registrationId,
   });
 }
