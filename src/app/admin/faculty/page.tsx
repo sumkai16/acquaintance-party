@@ -5,6 +5,7 @@ import { listAcknowledgements } from "@/lib/faculty/queries";
 import { LETTER_VERSION } from "@/lib/faculty/letter";
 import { themedQrDataUrl } from "@/lib/tickets/themed-qr";
 import { formatDateTimePH } from "@/lib/format/datetime";
+import { DownloadQr } from "./download-qr";
 import { RemoveEntry } from "./remove-entry";
 
 export const metadata = { title: "Faculty" };
@@ -82,15 +83,9 @@ export default async function FacultyPage() {
                 One QR for every faculty member — put it on the letter, or send
                 it in a group chat.
               </p>
-              {/* An SVG, so it stays sharp at any print size — a PNG saved
-                  from the screen would blur on a letter. */}
-              <a
-                href={qr ?? undefined}
-                download="faculty-invitation-qr.svg"
-                className="self-start rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-              >
-                Download QR (SVG)
-              </a>
+              {qr ? (
+                <DownloadQr svgDataUrl={qr} filename="faculty-invitation-qr.png" />
+              ) : null}
               <p className="break-all rounded border border-ground/15 bg-black/20 px-3 py-2 font-mono text-sm">
                 {invitationUrl}
               </p>
