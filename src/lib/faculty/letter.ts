@@ -83,3 +83,129 @@ export const LETTER: Letter = {
     { name: "Kenneth Canon", role: "Treasurer" },
   ],
 };
+
+/**
+ * One line of the running order. `who` is whoever is up for that line, when
+ * the program names someone.
+ */
+export type ProgramItem = { label: string; who?: string };
+
+export type ProgramSlot = {
+  /** "5:00 – 5:15 PM", as printed. */
+  time: string;
+  title: string;
+  items: readonly ProgramItem[];
+};
+
+export type ProgramPart = { title: string; slots: readonly ProgramSlot[] };
+
+/**
+ * The program proper, from docs/ProgramFlow.docx (the committee's working
+ * copy). This is what a guest needs to plan an evening around, so it is
+ * deliberately NOT the whole document:
+ *
+ * - Left out on purpose: the "Preparation for the Registration" slot (a
+ *   committee call time, not a guest one), the placeholder "-" intermission
+ *   rows, and the Performance Order / Mechanics / Judging Criteria pages.
+ *   The last three are the contestants' rules, not the guests' program.
+ * - "Words of inspiration" carries no speaker: the source reads "Ms. Tapere
+ *   or Ms. Bacordo", an undecided choice that would read as an unfinished
+ *   letter. Add the name here once it is settled.
+ *
+ * The times are the document's own, and they do not fully agree with
+ * EVENT.startsAt/endsAt: the program runs to 8:10 PM where the event is
+ * configured to end at 8:00, and nothing is scheduled between 4:30 and 5:00.
+ * That is for the organisers to reconcile, not this file to hide.
+ */
+export const PROGRAM: readonly ProgramPart[] = [
+  {
+    title: "Part I",
+    slots: [
+      {
+        time: "3:30 – 4:30 PM",
+        title: "Registration",
+        items: [
+          { label: "Opening of registration", who: "Board Members and PRO Officers" },
+          { label: "Giving of souvenirs" },
+        ],
+      },
+      {
+        time: "5:00 – 5:15 PM",
+        title: "Invocation",
+        items: [
+          { label: "Opening prayer", who: "Mr. Kingsly Cabiles, Vice Governor" },
+          { label: "National Anthem" },
+          { label: "Cecilian Hymn" },
+        ],
+      },
+      {
+        time: "5:15 – 5:45 PM",
+        title: "Opening Remarks",
+        items: [
+          {
+            label: "Walk of the Luminous Leaders",
+            who: "AVP, College Dean, guests and ITech officers",
+          },
+          { label: "Welcome remarks", who: "Ms. Hitchean Lisondra, College Dean" },
+          { label: "Words of inspiration" },
+          { label: "Acknowledgement of dignitaries" },
+          { label: "Oath-taking of officers", who: "Ms. Hitchean Lisondra, College Dean" },
+          { label: "Intermission number", who: "ITech officers" },
+          { label: "Band serenade", who: "IT Band, 3 songs" },
+        ],
+      },
+      {
+        time: "5:45 – 6:30 PM",
+        title: "Entertainment and Performances",
+        items: [
+          { label: "Early bird — the first five students to register" },
+          { label: "Bring Me" },
+          { label: "Games and Battle of the Bands" },
+          { label: "Four raffle draws, with the raffle packages" },
+        ],
+      },
+      {
+        time: "6:30 – 7:00 PM",
+        title: "Dinner Break",
+        items: [
+          { label: "Dinner" },
+          { label: "Band serenade", who: "IT Band, 5 songs" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "Part II",
+    slots: [
+      {
+        time: "7:00 – 7:30 PM",
+        title: "Shining Stars Recognition",
+        items: [
+          { label: "Sunset Walk and Grand Entrance", who: "Selected pairs" },
+          { label: "Battle of the Bands — awarding" },
+          { label: "Mr. & Ms. Sunset Soiree" },
+          { label: "Mr. & Ms. Golden Glow" },
+          { label: "Mr. & Ms. Sunset Charm" },
+          { label: "Mr. & Ms. Evening Radiance" },
+          { label: "Mr. & Ms. Golden Elegance" },
+          { label: "Mr. & Ms. Sunset Personality" },
+        ],
+      },
+      {
+        time: "7:30 – 7:50 PM",
+        title: "Raffle Draws",
+        items: [{ label: "Raffle" }],
+      },
+      {
+        time: "7:50 – 8:00 PM",
+        title: "Closing Performance",
+        items: [{ label: "Band serenade", who: "IT Band, 3 songs" }],
+      },
+      {
+        time: "8:00 – 8:10 PM",
+        title: "Closing Remarks",
+        items: [{ label: "Closing remarks", who: "Ms. Rica Mae Patenio" }],
+      },
+    ],
+  },
+];

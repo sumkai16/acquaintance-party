@@ -4,6 +4,7 @@ import { EVENT } from "@/lib/config/event";
 import { ENTERED_COOKIE } from "@/lib/faculty/cookie";
 import { LETTER } from "@/lib/faculty/letter";
 import { InvitationForm } from "./invitation-form";
+import { ProgramButton } from "./program-button";
 import styles from "./letter.module.css";
 
 /**
@@ -127,6 +128,8 @@ export default async function InvitationPage() {
         ) : (
           <InvitationForm />
         )}
+
+        <ProgramButton />
       </div>
     </main>
   );

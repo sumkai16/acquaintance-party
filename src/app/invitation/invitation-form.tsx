@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import { MAX_DEPARTMENT_LENGTH } from "@/lib/faculty/schema";
 import { submitAcknowledgement, type FormState } from "./actions";
+import { useModal } from "./use-modal";
 import styles from "./letter.module.css";
 
 const initial: FormState = { status: "idle", attempt: 0 };
@@ -21,29 +22,10 @@ export function InvitationForm() {
   const [state, action, pending] = useActionState(submitAcknowledgement, initial);
   const [open, setOpen] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  const closeRef = useModal(open, close);
   const errors = state.fieldErrors ?? {};
   const entered = state.status === "entered";
-
-  // Escape closes, and the page behind stops scrolling while the modal owns
-  // the screen — both only while it is actually open.
-  useEffect(() => {
-    if (!open) return;
-
-    closeRef.current?.focus();
-    const { overflow } = document.body.style;
-    document.body.style.overflow = "hidden";
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
-    }
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = overflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
 
   // Same remount-on-attempt trick as checkout-form.tsx: React resets an
   // uncontrolled field when the action finishes without redirecting, so
