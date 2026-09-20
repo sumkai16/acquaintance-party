@@ -31,7 +31,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px 56px;
+  padding: clamp(12px, 3dvh, 40px) 20px clamp(16px, 3.5dvh, 48px);
   /*
    * No `perspective` property here, deliberately. It would give the sway its
    * depth, but a perspective ancestor also becomes the containing block for
@@ -130,11 +130,21 @@
 .letter {
   /* Pinned along the top edge, like a banner on a rail — this is what makes
      the bottom travel further than the title. */
+  /*
+   * The whole letter is sized in em off this one value, which tracks the
+   * screen HEIGHT. The letter is a fixed amount of text, so on a shorter
+   * phone the only way to keep it (and the button under it) on one screen
+   * is to shrink all of it together — a fixed-px letter scrolled, and the
+   * call to action landed below the fold. 13.5px is the mockup's body size,
+   * reached at ~900px of height.
+   */
+  font-size: 13.5px;
+  font-size: clamp(9.5px, 1.5dvh, 13.5px);
   transform-origin: 50% 0%;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 6px;
   box-shadow: 0 16px 32px rgba(120, 60, 50, 0.22);
-  padding: 44px 30px;
+  padding: 3.25em 2.3em;
   text-align: center;
   /* Unfurl once, then hand `transform` over to the sway, which starts just
      as the unfurl finishes. The later animation wins the property while it
@@ -144,104 +154,86 @@
     bannerSway 9s ease-in-out 1.25s infinite;
 }
 
-@media (min-width: 420px) {
-  .letter {
-    padding: 44px 36px;
-  }
-}
 
 /* ---- The letter itself ---- */
 
 .eyebrow {
-  font:
-    600 10px/1 var(--font-body);
+  font: 600 0.74em/1 var(--font-body);
   letter-spacing: 0.24em;
   color: var(--letter-orange);
   text-transform: uppercase;
-  margin-bottom: 14px;
+  margin-bottom: 1em;
 }
 
 .title {
-  font:
-    400 58px/0.85 var(--font-great-vibes), cursive;
+  font: 400 4.4em/0.85 var(--font-great-vibes), cursive;
   color: var(--letter-brown);
-  margin-bottom: 16px;
+  margin-bottom: 0.9em;
 }
 
-@media (min-width: 420px) {
-  .title {
-    font-size: 62px;
-  }
-}
 
 .titleLine {
   display: block;
 }
 
 .rule {
-  width: 40px;
+  width: 3em;
   height: 1px;
   background: var(--letter-rule);
-  margin: 0 auto 18px;
+  margin: 0 auto 1.2em;
   border: 0;
 }
 
 .overline {
-  font:
-    600 12px/1.6 var(--font-body);
+  font: 600 0.89em/1.6 var(--font-body);
   letter-spacing: 0.12em;
   color: var(--letter-brown);
   text-transform: uppercase;
-  margin-bottom: 4px;
+  margin-bottom: 0.3em;
 }
 
 .org {
-  font:
-    600 20px/1.3 var(--font-body);
+  font: 600 1.48em/1.3 var(--font-body);
   letter-spacing: 0.04em;
   color: var(--letter-ink);
-  margin-bottom: 22px;
+  margin-bottom: 1.2em;
 }
 
 .body {
-  font:
-    400 13.5px/1.7 var(--font-eb-garamond), serif;
+  font: 400 1em/1.62 var(--font-eb-garamond), serif;
   color: rgba(42, 22, 13, 0.78);
-  margin: 0 0 14px;
+  margin: 0 0 0.85em;
   text-align: left;
 }
 
 .body:last-of-type {
-  margin-bottom: 22px;
+  margin-bottom: 1.3em;
 }
 
 .when {
-  font:
-    600 13px/1.6 var(--font-body);
+  font: 600 0.96em/1.5 var(--font-body);
   letter-spacing: 0.1em;
   color: var(--letter-ink);
   text-transform: uppercase;
-  margin-bottom: 6px;
+  margin-bottom: 0.4em;
 }
 
 .where {
-  font:
-    400 12.5px/1.6 var(--font-eb-garamond), serif;
+  font: 400 0.93em/1.5 var(--font-eb-garamond), serif;
   color: rgba(42, 22, 13, 0.65);
-  margin-bottom: 22px;
+  margin-bottom: 1.3em;
 }
 
 .closing {
-  font:
-    400 12.5px/1.5 var(--font-eb-garamond), serif;
+  font: 400 0.93em/1.5 var(--font-eb-garamond), serif;
   color: rgba(42, 22, 13, 0.7);
-  margin-bottom: 14px;
+  margin-bottom: 0.8em;
 }
 
 .signatories {
   display: flex;
   justify-content: space-between;
-  gap: 4px;
+  gap: 0.4em;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -260,12 +252,10 @@
  */
 .signatoryName {
   display: block;
-  font:
-    600 10px/1.25 var(--font-body);
+  font: 600 0.78em/1.25 var(--font-body);
   letter-spacing: 0.01em;
   color: var(--letter-ink);
-  /* A broken name reads worse than a tight column, so names never wrap. The
-     sizes here are set so all three fit at the narrowest card width. */
+  /* A broken name reads worse than a tight column, so names never wrap. */
   white-space: nowrap;
 }
 
@@ -276,25 +266,10 @@
  */
 .signatoryRole {
   display: block;
-  font:
-    italic 400 8.5px/1.3 var(--font-eb-garamond), serif;
+  font: italic 400 0.7em/1.3 var(--font-eb-garamond), serif;
   color: var(--letter-role);
 }
 
-@media (min-width: 420px) {
-  .signatories {
-    gap: 6px;
-  }
-
-  .signatoryName {
-    font-size: 11px;
-    letter-spacing: 0.02em;
-  }
-
-  .signatoryRole {
-    font-size: 9.5px;
-  }
-}
 
 /* ---- The gold call to action under the banner ---- */
 
@@ -307,7 +282,7 @@
 .actions {
   display: flex;
   justify-content: center;
-  margin-top: 38px;
+  margin-top: clamp(14px, 2.6dvh, 26px);
 }
 
 .cta {
@@ -337,7 +312,7 @@
 }
 
 .entered {
-  margin-top: 38px;
+  margin-top: clamp(14px, 2.6dvh, 26px);
   border: 1px solid rgba(200, 154, 74, 0.5);
   border-radius: 10px;
   background: rgba(30, 6, 10, 0.45);
