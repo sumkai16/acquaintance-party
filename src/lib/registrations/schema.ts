@@ -197,11 +197,19 @@ export function suggestEmail(value: string): string | null {
   return suggestion ? `${normalized.slice(0, at)}@${suggestion}` : null;
 }
 
+/**
+ * Zod's own email pattern with letters like ñ allowed before the @ — students
+ * type their names, and the stock check rejects any non-ASCII letter. The
+ * domain part stays strict so "a@b" still fails.
+ */
+const EMAIL_PATTERN =
+  /^(?!\.)(?!.*\.\.)([\p{L}\p{M}0-9_'+\-.]*)[\p{L}\p{M}0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]{2,}$/u;
+
 const email = z
   .string()
   .trim()
   .toLowerCase()
-  .pipe(z.email("Enter a valid email address."))
+  .pipe(z.email({ pattern: EMAIL_PATTERN, error: "Enter a valid email address." }))
   .superRefine((value, ctx) => {
     const suggestion = suggestEmail(value);
     if (suggestion) {
