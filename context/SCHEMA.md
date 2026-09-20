@@ -192,6 +192,55 @@ anything) is ever redrawable — see `latestDraw()` in `src/lib/raffle/draw.ts`.
 | drawn_by | uuid | NOT NULL, FK → `auth.users(id)` | The admin who ran the draw |
 | is_redraw | boolean | NOT NULL, default false | |
 | supersedes | uuid | FK → `raffle_draws(id)`, nullable, UNIQUE where set | The draw this replaced |
+| audience | text | NOT NULL, default `'student'`, `'student'` \| `'faculty'` | Added in `0017`. Which pool this draw ran against — see below |
+
+**Students and faculty are drawn separately, and `audience` is the whole
+mechanism.** `allDraws(audience)` filters on it, which is what scopes
+`latestDraw()` and `currentWinnerIds()` (`src/lib/raffle/pool.ts`) without
+either of them knowing audiences exist — they already take a draws array. Get
+this wrong and the bug is silent: drawing a faculty name makes the student
+draw before it stop being redrawable, discovered at the podium. Defaulted
+rather than backfilled, so the pre-`0017` insert in `recordDraw()` stayed
+valid while the column landed ahead of the code.
+
+## faculty_invitations
+
+Added in `0017_faculty_raffle.sql`. One row per faculty member who opened the
+letter at `/invitation` and ticked that they read it. That tick is both the
+RSVP and the entry in the faculty giveaway.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | Doubles as the `RaffleEntrant.registrationId` for a faculty entrant — same as `raffle_extra_entrants`, which is why `raffle_draws.winner_registration_id` has no FK |
+| full_name | text | NOT NULL, 2–120 chars trimmed | |
+| department | text | nullable | Optional on the form. Shown as the winner's sub-line via `entrantDetail()` |
+| letter_version | text | NOT NULL | Which wording they acknowledged — `LETTER_VERSION` in `src/lib/faculty/letter.ts`, the same reasoning as `evaluations.form_version`. `/admin/faculty` counts anyone sitting on an older one |
+| acknowledged_at | timestamptz | NOT NULL, default `now()` | |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+**Indexes:** `faculty_invitations_name_key` — unique on
+`lower(btrim(full_name))`.
+
+**That unique index is the duplicate rule, not a check in app code.** The QR
+is shared rather than per-person, so a second submission races here and loses
+with `23505`, which `recordAcknowledgement()` reports as `already_entered` —
+a normal outcome the page turns into "you're already on the list," never an
+error. Same shape as the index behind `saveEvaluation()`.
+
+**No attendance gate.** Unlike students (`eligiblePool()` requires an `ok`
+scan) a faculty member is eligible the moment they acknowledge, present or
+not — an explicit choice on 2026-09-20, with the emcee redrawing an empty
+chair as the accepted cost.
+
+**There is no "hasn't opened it yet" list, and there cannot be.** One shared
+QR means the app never learns who it was sent to. `/admin/faculty` shows who
+came forward, not a tick-off against a faculty directory; that would need a
+QR per person, which needs the roster up front.
+
+**RLS is on with no policies at all**, same as `walk_in_drafts` — names and
+departments are personal data. The public page writes through a server action
+on the service-role client, exactly as `evaluations` does for an
+unauthenticated student.
 
 **Why `finalists` snapshots rather than storing ids:** this row records what
 was announced on stage, not a live view. A past draw redisplays with no join
@@ -496,6 +545,12 @@ unauthenticated student, not an admin, and it still gets no `anon` policy.
 `submitEvaluation` re-derives their eligibility server-side on every submit
 and writes through the service-role client. If a feature seems to need an
 `anon` insert policy, that's the wrong layer.
+
+`faculty_invitations` (`0017`) is the same case one step further out: the
+writer is an anonymous visitor who scanned a shared QR, with no id in the URL
+to identify them at all, and it still gets no policy for any role — not even
+an authenticated `SELECT`. `submitAcknowledgement` re-validates everything
+(the checkbox included) and writes through the service-role client.
 
 ## Storage
 

@@ -52,6 +52,20 @@ export type Evaluation = {
   submitted_at: string;
 };
 
+/**
+ * One faculty member's acknowledgement of the letter at /invitation, which is
+ * also their entry in the faculty giveaway. No email: the QR is shared, so
+ * there is nothing to send anyone back.
+ */
+export type FacultyInvitation = {
+  id: string;
+  full_name: string;
+  department: string | null;
+  letter_version: string;
+  acknowledged_at: string;
+  created_at: string;
+};
+
 export type Profile = {
   id: string;
   fullName: string;

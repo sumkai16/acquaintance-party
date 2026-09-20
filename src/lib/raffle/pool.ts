@@ -7,6 +7,25 @@ import type { RaffleDrawRow, RaffleEntrant } from "./types";
  * same module as a client import touches a Node builtin, even code the
  * client never calls.
  */
+/**
+ * The sub-line under a winner's name: "2nd year · B" for a student, the
+ * department for a faculty member, and an em dash when there is nothing
+ * worth showing.
+ *
+ * Exists because the projector and the sidebar both used to format
+ * `yearLevel · section` inline, which reads as "— · —" for anyone who has no
+ * year level — every faculty entrant, and any extra entrant added by name
+ * alone.
+ */
+export function entrantDetail(entrant: RaffleEntrant): string {
+  if (entrant.source === "faculty") return entrant.department?.trim() || "Faculty";
+
+  const parts = [entrant.yearLevel, entrant.section].filter(
+    (part) => part && part !== "—",
+  );
+  return parts.length > 0 ? parts.join(" · ") : "—";
+}
+
 export function excludeEntrants(
   pool: readonly RaffleEntrant[],
   excludedIds: ReadonlySet<string>,

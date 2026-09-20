@@ -394,6 +394,41 @@ The decisions worth not relitigating:
   else. Answers are stored as jsonb stamped with a `form_version`, so
   rewording the questions needs no migration.
 
+### 4.9 Faculty invitation and the faculty giveaway
+
+Added 2026-09-20 at the adviser's request. Faculty never buy a ticket and are
+never scanned at the door, so they had no row in `registrations` and no way
+into the raffle pool at all.
+
+The flow: one shared QR goes out with the invitation; scanning it opens the
+letter at `/invitation`; ticking "I have read this" and giving a name is the
+entry. `/admin/faculty` is the adviser's list. On the night,
+`/admin/raffle?audience=faculty` draws from it, with its own winner history.
+
+The decisions worth not relitigating, all confirmed explicitly:
+- **One shared QR, not one per person.** No roster to prepare and one image to
+  send anywhere, at the cost of a real open door: anyone with the QR can
+  submit any name. The guards are a unique index on the normalized name (one
+  entry per name, enforced by the database), a cookie so a repeat scan skips
+  the form, and Remove on the admin list. Deliberately **no rate limit** — a
+  room full of faculty scanning at one meeting is the expected case, and a
+  burst cap would lock them out.
+- **The cost of that choice: there is no "hasn't opened it yet" list.** The
+  app never learns who the QR was sent to, so the adviser gets who came
+  forward plus a headcount, not a tick-off against a faculty directory. That
+  would need the per-person QR design, and the roster up front.
+- **No attendance gate.** Acknowledging is the whole entry, so a faculty
+  member who never turns up can still win and the emcee redraws on the spot.
+  The opposite of the student rule, on purpose.
+- **Students and faculty are separate pools, histories and exclusion sets**,
+  keyed on `raffle_draws.audience`. This also fixes a bug that would
+  otherwise have been found on stage — see `context/SCHEMA.md`.
+- **The letter is content-as-code** (`src/lib/faculty/letter.ts`), the same
+  swappable shape as `src/lib/evaluation/questions.ts`. Its body is a
+  **PLACEHOLDER** until the organisers supply the real text; `LETTER_VERSION`
+  is stamped on every acknowledgement so a later rewording doesn't rewrite
+  what anyone agreed to.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later

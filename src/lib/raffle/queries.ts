@@ -1,8 +1,9 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import { approvedManifest } from "@/lib/scans/queries";
+import { listAcknowledgements } from "@/lib/faculty/queries";
 import type { ParsedEntrantRow } from "./entrants";
-import type { RaffleDrawRow, RaffleEntrant } from "./types";
+import type { RaffleAudience, RaffleDrawRow, RaffleEntrant } from "./types";
 
 /**
  * Everyone eligible: the auto pool of approved, scanned-in students, plus
@@ -36,6 +37,31 @@ export async function eligiblePool(): Promise<RaffleEntrant[]> {
     }));
 
   return [...ticketPool, ...extras];
+}
+
+/**
+ * Every faculty member who acknowledged the invitation.
+ *
+ * Unlike the student pool there is no attendance gate — acknowledging the
+ * letter is the whole entry, by explicit choice (2026-09-20), so a faculty
+ * member who never turns up can still win and the emcee redraws on the spot.
+ */
+export async function facultyPool(): Promise<RaffleEntrant[]> {
+  const entries = await listAcknowledgements();
+
+  return entries.map((entry) => ({
+    registrationId: entry.id,
+    fullName: entry.full_name,
+    yearLevel: "—",
+    section: "—",
+    source: "faculty",
+    department: entry.department,
+  }));
+}
+
+/** The pool for one audience — what a draw actually runs against. */
+export async function poolFor(audience: RaffleAudience): Promise<RaffleEntrant[]> {
+  return audience === "faculty" ? facultyPool() : eligiblePool();
 }
 
 /** Extra entrants as `RaffleEntrant`s, ready to fold into the pool. */
@@ -175,13 +201,22 @@ function toDrawRow(row: DrawRecord): RaffleDrawRow | null {
   };
 }
 
-/** Every draw ever recorded, oldest first. */
-export async function allDraws(): Promise<RaffleDrawRow[]> {
+/**
+ * Every draw recorded for one audience, oldest first.
+ *
+ * Filtering here rather than in the caller is what keeps latestDraw() and
+ * currentWinnerIds() (./pool.ts) correct without either of them learning
+ * about audiences: they already take a draws array, so a scoped read scopes
+ * them too. Without it, drawing a faculty name would silently make the
+ * student draw before it un-redrawable.
+ */
+export async function allDraws(audience: RaffleAudience): Promise<RaffleDrawRow[]> {
   const { data, error } = await adminClient()
     .from("raffle_draws")
     .select(
       "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
     )
+    .eq("audience", audience)
     .order("drawn_at", { ascending: true });
 
   if (error) {
@@ -200,6 +235,7 @@ export type RecordDrawInput = {
   poolSize: number;
   drawnBy: string;
   supersedes: string | null;
+  audience: RaffleAudience;
 };
 
 export async function recordDraw(
@@ -214,6 +250,7 @@ export async function recordDraw(
       drawn_by: input.drawnBy,
       is_redraw: input.supersedes !== null,
       supersedes: input.supersedes,
+      audience: input.audience,
     })
     .select(
       "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",

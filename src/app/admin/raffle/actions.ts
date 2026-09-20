@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { drawFromPool } from "@/lib/raffle/draw";
 import { currentWinnerIds, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
-import { allDraws, eligiblePool, recordDraw } from "@/lib/raffle/queries";
-import type { RaffleDrawRow } from "@/lib/raffle/types";
+import { allDraws, poolFor, recordDraw } from "@/lib/raffle/queries";
+import type { RaffleAudience, RaffleDrawRow } from "@/lib/raffle/types";
 import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
 export type DrawActionResult =
@@ -12,6 +12,7 @@ export type DrawActionResult =
   | { ok: false; error: string };
 
 export async function drawNext(input: {
+  audience: RaffleAudience;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
 }): Promise<DrawActionResult> {
@@ -19,6 +20,7 @@ export async function drawNext(input: {
 }
 
 export async function redrawLast(input: {
+  audience: RaffleAudience;
   supersedesDrawId: string;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
@@ -33,6 +35,7 @@ export async function redrawLast(input: {
  * about to run can only ever show a result that is already in the database.
  */
 async function runDraw(input: {
+  audience: RaffleAudience;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
   supersedesDrawId: string | null;
@@ -41,14 +44,22 @@ async function runDraw(input: {
   if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
   const adminId = admin.id;
 
+  const { audience } = input;
   const isRedraw = input.supersedesDrawId !== null;
-  const [fullPool, draws] = await Promise.all([eligiblePool(), allDraws()]);
+  // Both scoped to this audience, so students and faculty keep separate
+  // pools, separate winner histories and separate redraw state.
+  const [fullPool, draws] = await Promise.all([
+    poolFor(audience),
+    allDraws(audience),
+  ]);
   // Scanned tickets are the pool by default. Extra entrants only join a
   // specific draw when the operator opts them in for it — a per-draw
-  // choice, not a global setting.
-  const pool = input.includeExtraEntrants
-    ? fullPool
-    : fullPool.filter((entrant) => entrant.source === "ticket");
+  // choice, not a global setting. The faculty pool has no such split: every
+  // entrant there came in the one way, so the filter would empty it.
+  const pool =
+    audience === "faculty" || input.includeExtraEntrants
+      ? fullPool
+      : fullPool.filter((entrant) => entrant.source === "ticket");
   const standing = latestDraw(draws);
 
   let supersedes: string | null = null;
@@ -81,15 +92,7 @@ async function runDraw(input: {
   const outcome = drawFromPool(candidates);
 
   if (!outcome.ok) {
-    return {
-      ok: false,
-      error:
-        pool.length === 0
-          ? !input.includeExtraEntrants && fullPool.length > 0
-            ? "Nobody with a scanned ticket is eligible yet. Turn on “Include added names” to draw from Setup instead, or wait for check-ins."
-            : "Nobody has been scanned in yet, so there is nobody to draw from."
-          : "Everyone eligible has already won. Turn off “exclude previous winners” to draw again.",
-    };
+    return { ok: false, error: emptyPoolError(input, pool.length, fullPool.length) };
   }
 
   const recorded = await recordDraw({
@@ -98,10 +101,34 @@ async function runDraw(input: {
     poolSize: candidates.length,
     drawnBy: adminId,
     supersedes,
+    audience,
   });
 
   if (!recorded.ok) return recorded;
 
   revalidatePath("/admin/raffle");
   return { ok: true, draw: recorded.draw };
+}
+
+/**
+ * Why the draw found nobody — three different fixes, so three different
+ * sentences rather than one vague "no entries". Read at the podium with a
+ * room waiting, so each one names the next action.
+ */
+function emptyPoolError(
+  input: { audience: RaffleAudience; includeExtraEntrants: boolean },
+  poolSize: number,
+  fullPoolSize: number,
+): string {
+  if (poolSize > 0) {
+    return "Everyone eligible has already won. Turn off “exclude previous winners” to draw again.";
+  }
+
+  if (input.audience === "faculty") {
+    return "No faculty member has acknowledged the invitation yet, so there is nobody to draw from.";
+  }
+
+  return !input.includeExtraEntrants && fullPoolSize > 0
+    ? "Nobody with a scanned ticket is eligible yet. Turn on “Include added names” to draw from Setup instead, or wait for check-ins."
+    : "Nobody has been scanned in yet, so there is nobody to draw from.";
 }

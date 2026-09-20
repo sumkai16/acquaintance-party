@@ -30,6 +30,7 @@ const ADMIN_GROUPS = [
   ],
   [
     { href: "/admin/raffle", label: "Raffle" },
+    { href: "/admin/faculty", label: "Faculty" },
     { href: "/admin/evaluations", label: "Evaluation" },
   ],
   [{ href: "/admin/activity", label: "Activity" }],

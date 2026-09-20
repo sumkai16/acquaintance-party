@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { latestDraw } from "@/lib/raffle/pool";
-import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
+import { entrantDetail, latestDraw } from "@/lib/raffle/pool";
+import type { RaffleAudience, RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { useSetNavHidden } from "../admin-nav";
 import { useFlash } from "../flash";
 import { drawNext, redrawLast } from "./actions";
@@ -27,14 +27,17 @@ type Stage = "idle" | "wheel" | "revealed";
  * as every other admin page.
  */
 export function RaffleProjector({
+  audience,
   initialPool,
   initialDraws,
   ticketsSold,
 }: {
+  audience: RaffleAudience;
   initialPool: RaffleEntrant[];
   initialDraws: RaffleDrawRow[];
   ticketsSold: number;
 }) {
+  const isFaculty = audience === "faculty";
   const [draws, setDraws] = useState(initialDraws);
   const [pool, setPool] = useState(initialPool);
   const [excludePreviousWinners, setExcludePreviousWinners] = useState(true);
@@ -48,9 +51,12 @@ export function RaffleProjector({
   const animating = stage === "wheel";
   useSetNavHidden(animating);
   const standing = latestDraw(draws);
-  const effectivePool = includeExtraEntrants
-    ? pool
-    : pool.filter((entrant) => entrant.source === "ticket");
+  // Mirrors runDraw()'s own filter in actions.ts — the faculty pool has no
+  // ticket/extra split, so filtering to "ticket" there would read as empty.
+  const effectivePool =
+    isFaculty || includeExtraEntrants
+      ? pool
+      : pool.filter((entrant) => entrant.source === "ticket");
 
   function run(action: () => Promise<{ ok: true; draw: RaffleDrawRow } | { ok: false; error: string }>) {
     startTransition(async () => {
@@ -79,6 +85,7 @@ export function RaffleProjector({
       <div className="flex flex-1">
         {!animating ? (
           <RaffleSidebar
+            audience={audience}
             draws={draws}
             pool={pool}
             onPoolChange={setPool}
@@ -94,12 +101,12 @@ export function RaffleProjector({
           {stage === "idle" || active === null ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
               <p className="font-display text-6xl uppercase text-accent-2 md:text-8xl">
-                Raffle
+                {isFaculty ? "Faculty Raffle" : "Raffle"}
               </p>
               <p className="max-w-prose text-ground/70">
-                Draw a name whenever you&apos;re ready. Everyone scanned in
-                at the door is in the running — turn on “Include added
-                names” to pull in anyone added under Setup too.
+                {isFaculty
+                  ? "Draw a name whenever you’re ready. Every faculty member who acknowledged the invitation is in the running."
+                  : "Draw a name whenever you’re ready. Everyone scanned in at the door is in the running — turn on “Include added names” to pull in anyone added under Setup too."}
               </p>
             </div>
           ) : null}
@@ -123,10 +130,11 @@ export function RaffleProjector({
                 {active.winner.fullName}
               </p>
               <p className="text-2xl text-ground/80">
-                {active.winner.yearLevel} · {active.winner.section}
+                {entrantDetail(active.winner)}
               </p>
               <p className="text-sm text-ground/50">
-                Drawn from {active.poolSize} eligible students
+                Drawn from {active.poolSize} eligible{" "}
+                {isFaculty ? "faculty" : "students"}
               </p>
             </div>
           ) : null}
@@ -139,7 +147,9 @@ export function RaffleProjector({
                   disabled={pending || effectivePool.length === 0}
                   onClick={() => {
                     setLastAction("draw");
-                    run(() => drawNext({ excludePreviousWinners, includeExtraEntrants }));
+                    run(() =>
+                      drawNext({ audience, excludePreviousWinners, includeExtraEntrants }),
+                    );
                   }}
                   className="rounded-full bg-accent-2 px-8 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
                 >
@@ -159,6 +169,7 @@ export function RaffleProjector({
                         setLastAction("redraw");
                         run(() =>
                           redrawLast({
+                            audience,
                             supersedesDrawId: standing.id,
                             excludePreviousWinners,
                             includeExtraEntrants,
