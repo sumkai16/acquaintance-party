@@ -2,8 +2,9 @@ import QRCode from "qrcode";
 import { THEME } from "@/lib/config/theme";
 
 /**
- * A QR in the party's own colours: dusk plum modules on sand, with rounded
- * squares in place of hard pixels and rounded finder "eyes".
+ * A QR in the party's own colours — "Sunset Fade", chosen 2026-09-20 from ten
+ * mockups: rounded modules on sand that shade from dusk plum at the top to
+ * deep clay at the bottom, with rounded finder "eyes".
  *
  * For the faculty invitation only. The TICKET QR stays pure black on pure
  * white (see qr.ts and context/DESIGN.md §4) — that one is read at the door,
@@ -11,10 +12,12 @@ import { THEME } from "@/lib/config/theme";
  * letter and scanned at leisure, so it can afford some style, but it is still
  * a QR and the style is held to what a phone camera tolerates:
  *
- * - Contrast stays high. Plum on sand is roughly 10:1, and a scanner only
- *   cares about dark-versus-light luminance, so the palette is free while the
- *   contrast is not. Never swap in gold or sage modules: they read as
- *   mid-tones, and a code with no clear dark loses scans.
+ * - Contrast stays high along the WHOLE gradient. A scanner only cares about
+ *   dark-versus-light luminance, so the palette is free while the contrast is
+ *   not: plum starts at roughly 10:1 against sand and the deep clay it ends on
+ *   is still well clear of it. The end stop is deliberately darker than the
+ *   brand's own clay (#C2481F, about 3.3:1) for exactly that reason. Never
+ *   fade toward gold or sage — they read as mid-tones and lose scans.
  * - Dark on light only. An inverted code (light modules on a dark ground)
  *   fails on many scanners.
  * - A four-module quiet zone, unchanged.
@@ -27,6 +30,20 @@ import { THEME } from "@/lib/config/theme";
  * anywhere.
  */
 const QUIET_ZONE = 4;
+
+/**
+ * The fade's three stops, top to bottom. Plum is the theme's own `deep`. The
+ * other two are not theme tokens: they are the darkest shades that still read
+ * as wine and clay while keeping every module a firm dark against the sand.
+ */
+const FADE = {
+  top: THEME.colors.deep,
+  mid: "#6E2438",
+  bottom: "#9C3A1B",
+} as const;
+
+/** Gradient id. One per document is enough: a page shows a single themed QR. */
+const FADE_ID = "qr-fade";
 const FINDER = 7;
 
 /** Radius as a fraction of one module; 0 is a square, 0.5 a circle. */
@@ -70,8 +87,8 @@ function roundedRect(x: number, y: number, w: number, h: number, r: number): str
 /** The QR as an SVG string. Pure — no I/O — so it is unit-testable. */
 export function themedQrSvg(
   value: string,
-  colors: { dark: string; light: string } = {
-    dark: THEME.colors.deep,
+  palette: { fade: { top: string; mid: string; bottom: string }; light: string } = {
+    fade: FADE,
     light: THEME.colors.ground,
   },
 ): string {
@@ -79,6 +96,7 @@ export function themedQrSvg(
   const matrix = modules as unknown as Matrix;
   const { size } = matrix;
   const total = size + QUIET_ZONE * 2;
+  const ink = `url(#${FADE_ID})`;
 
   const dots: string[] = [];
   for (let row = 0; row < size; row++) {
@@ -91,14 +109,27 @@ export function themedQrSvg(
     }
   }
 
+  // userSpaceOnUse and spanning the code itself (not the quiet zone), so the
+  // fade runs across the modules rather than being spent on empty margin —
+  // and so every shape, the eyes included, samples one shared gradient
+  // instead of each starting its own.
+  const gradient =
+    `<defs><linearGradient id="${FADE_ID}" gradientUnits="userSpaceOnUse" ` +
+    `x1="0" y1="${QUIET_ZONE}" x2="0" y2="${QUIET_ZONE + size}">` +
+    `<stop offset="0" stop-color="${palette.fade.top}"/>` +
+    `<stop offset="0.55" stop-color="${palette.fade.mid}"/>` +
+    `<stop offset="1" stop-color="${palette.fade.bottom}"/>` +
+    `</linearGradient></defs>`;
+
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" ` +
     `width="${total * 16}" height="${total * 16}" shape-rendering="geometricPrecision">` +
-    `<rect width="${total}" height="${total}" fill="${colors.light}"/>` +
-    `<g fill="${colors.dark}">${dots.join("")}</g>` +
-    finder(QUIET_ZONE, QUIET_ZONE, colors.dark) +
-    finder(QUIET_ZONE + size - FINDER, QUIET_ZONE, colors.dark) +
-    finder(QUIET_ZONE, QUIET_ZONE + size - FINDER, colors.dark) +
+    gradient +
+    `<rect width="${total}" height="${total}" fill="${palette.light}"/>` +
+    `<g fill="${ink}">${dots.join("")}</g>` +
+    finder(QUIET_ZONE, QUIET_ZONE, ink) +
+    finder(QUIET_ZONE + size - FINDER, QUIET_ZONE, ink) +
+    finder(QUIET_ZONE, QUIET_ZONE + size - FINDER, ink) +
     `</svg>`
   );
 }

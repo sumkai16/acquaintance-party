@@ -132,15 +132,21 @@ The themed ticket header stops at the edge of the white card
 (`src/app/ticket/[id]/page.tsx` → `ApprovedTicket`) — never theme that block.
 
 **The one QR that is themed: the faculty invitation code** (`/admin/faculty`,
-`src/lib/tickets/themed-qr.ts`). Dusk plum modules on sand, rounded modules and
-eyes, delivered as an SVG so it prints sharp. It is allowed because it is
-printed on a letter and scanned at leisure, not read at the door in the dark —
-and it stays a real QR: dark-on-light only, roughly 10:1 contrast, four-module
-quiet zone, error correction H to pay for the rounder modules. Its test
-(`themed-qr.test.ts`) rasterises the code and decodes it with a real reader,
-including at 180px, because a styled QR that merely *looks* right is the
-failure mode. **Never use gold or sage modules** — they read as mid-tones and
-lose scans — and **never invert it**. The ticket QR above is unchanged.
+`src/lib/tickets/themed-qr.ts`). "Sunset Fade", picked 2026-09-20 from ten
+mockups: rounded modules on sand that shade from dusk plum at the top to deep
+clay at the bottom, rounded eyes, delivered as an SVG and downloaded as a PNG.
+It is allowed because it is printed on a letter and scanned at leisure, not
+read at the door in the dark — and it stays a real QR: dark-on-light only,
+four-module quiet zone, error correction H to pay for the rounder modules.
+
+The fade's end stop is `#9C3A1B`, **deliberately darker than the brand clay**
+(`#C2481F`, only ~3.3:1 against sand). Contrast has to hold along the whole
+gradient, and the bottom is where a scan fails first. Its test
+(`themed-qr.test.ts`) rasterises the code and decodes it with a real reader —
+including at 180px and with the whole code forced to that lightest stop —
+because a styled QR that merely *looks* right is the failure mode. **Never
+fade toward gold or sage** (they read as mid-tones and lose scans) and **never
+invert it**. The ticket QR above is unchanged.
 
 ## 5. Admin — themed shell, semantic color for status only
 **Implemented:** `src/app/admin/layout.tsx` wraps every `/admin/*` route in a
