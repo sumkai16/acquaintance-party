@@ -241,7 +241,7 @@
 .signatories {
   display: flex;
   justify-content: space-between;
-  gap: 6px;
+  gap: 4px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -252,26 +252,62 @@
   min-width: 0;
 }
 
+/*
+ * display: block is load-bearing, not tidiness. These are <span>s, and an
+ * inline name followed by an inline role runs the two together on one line —
+ * "Axcee F. CabusasTechnology Officer" — which then shoves the next
+ * signatory sideways. The mockup used block-level divs.
+ */
 .signatoryName {
+  display: block;
   font:
-    600 11px/1.2 var(--font-body);
-  letter-spacing: 0.02em;
+    600 10px/1.25 var(--font-body);
+  letter-spacing: 0.01em;
   color: var(--letter-ink);
+  /* A broken name reads worse than a tight column, so names never wrap. The
+     sizes here are set so all three fit at the narrowest card width. */
   white-space: nowrap;
 }
 
+/*
+ * Roles are the longest strings here ("BSIT Dept. Governor"), so unlike the
+ * names they are allowed to wrap rather than push the card sideways — the
+ * backstop if a future role is longer than any of today's.
+ */
 .signatoryRole {
+  display: block;
   font:
-    italic 400 9.5px/1.3 var(--font-eb-garamond), serif;
+    italic 400 8.5px/1.3 var(--font-eb-garamond), serif;
   color: var(--letter-role);
-  white-space: nowrap;
+}
+
+@media (min-width: 420px) {
+  .signatories {
+    gap: 6px;
+  }
+
+  .signatoryName {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .signatoryRole {
+    font-size: 9.5px;
+  }
 }
 
 /* ---- The gold call to action under the banner ---- */
 
+/*
+ * Flex rather than text-align + inline-block: the button sits outside the
+ * swaying card on purpose (the action should not drift while you aim at it),
+ * so it needs to centre against the stage on its own terms rather than
+ * inheriting the letter's centred text.
+ */
 .actions {
-  text-align: center;
-  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+  margin-top: 38px;
 }
 
 .cta {
@@ -301,7 +337,7 @@
 }
 
 .entered {
-  margin-top: 26px;
+  margin-top: 38px;
   border: 1px solid rgba(200, 154, 74, 0.5);
   border-radius: 10px;
   background: rgba(30, 6, 10, 0.45);
