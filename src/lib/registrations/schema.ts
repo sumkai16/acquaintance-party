@@ -114,7 +114,7 @@ function checkSectionMatchesYear(
 }
 
 // The big free providers a mistyped domain is almost always aiming for.
-const COMMON_EMAIL_DOMAINS = [
+export const COMMON_EMAIL_DOMAINS = [
   "gmail.com",
   "yahoo.com",
   "outlook.com",

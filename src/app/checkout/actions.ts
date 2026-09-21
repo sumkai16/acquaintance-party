@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { EVENT } from "@/lib/config/event";
 import { checkoutSchema } from "@/lib/registrations/schema";
+import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isThrottled, throttleWindowStart } from "@/lib/registrations/abuse";
 import {
   countRecentByEmail,
@@ -85,7 +86,12 @@ export async function submitRegistration(
     fieldErrors.receipt = "Use a JPG, PNG, or WebP image.";
   }
 
-  if (!parsed.success || fieldErrors.receipt) {
+  if (parsed.success && !fieldErrors.email) {
+    const domainProblem = await emailDomainProblem(parsed.data.email);
+    if (domainProblem) fieldErrors.email = domainProblem;
+  }
+
+  if (!parsed.success || fieldErrors.receipt || fieldErrors.email) {
     return {
       status: "error",
       message: "Check the highlighted fields.",

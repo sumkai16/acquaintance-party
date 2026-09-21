@@ -10,6 +10,7 @@ import {
   updateRegistrationIdentity,
 } from "@/lib/registrations/queries";
 import { walkInSchema } from "@/lib/registrations/schema";
+import { emailDomainProblem } from "@/lib/registrations/mx";
 import {
   EMAIL_BATCH_LIMIT,
   sendReceiptBacklogBatch,
@@ -266,6 +267,13 @@ export async function editRegistration(
     // One message, the first problem — this is a five-field inline form, not
     // the full checkout form with per-field errors underneath.
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the details." };
+  }
+
+  // Only when the address changed — re-saving a name fix shouldn't be blocked
+  // by a domain that was already on the row.
+  if (parsed.data.email !== before.email) {
+    const domainProblem = await emailDomainProblem(parsed.data.email);
+    if (domainProblem) return { ok: false, error: domainProblem };
   }
 
   const changes = EDITABLE_FIELDS.flatMap(([column, key, label]) => {

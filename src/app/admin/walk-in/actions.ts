@@ -5,6 +5,7 @@ import { after } from "next/server";
 import { EVENT, formatPeso } from "@/lib/config/event";
 import { walkInSchema } from "@/lib/registrations/schema";
 import { completeWalkInBalance, createWalkInRegistration } from "@/lib/registrations/queries";
+import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isValidPartialAmount } from "@/lib/registrations/partial";
 import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
@@ -94,7 +95,12 @@ export async function submitWalkIn(
     fieldErrors.amount = `A partial payment must be at least ${formatPeso(EVENT.partialPaymentMinCentavos)}.`;
   }
 
-  if (!parsed.success || fieldErrors.amount) {
+  if (parsed.success && !fieldErrors.email) {
+    const domainProblem = await emailDomainProblem(parsed.data.email);
+    if (domainProblem) fieldErrors.email = domainProblem;
+  }
+
+  if (!parsed.success || fieldErrors.amount || fieldErrors.email) {
     return {
       status: "error",
       message: "Check the highlighted fields.",
