@@ -10,7 +10,7 @@
 export const EVENT = {
   name: "Acquaintance Party",
   tagline: "Sunset Soiree",
-  host: "Itech Society",
+  host: "SCC Itech Society",
   startsAt: new Date("2026-10-03T14:30:00+08:00"),
   endsAt: new Date("2026-10-03T20:00:00+08:00"),
   venue: "SCC Annex Building",

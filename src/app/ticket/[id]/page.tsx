@@ -42,7 +42,11 @@ export default async function TicketPage({
         ) : registration.status === "partial" ? (
           <Partial paid={registration.amount_paid} owed={registration.amount - registration.amount_paid} />
         ) : (
-          <Pending />
+          <Pending
+            amount={registration.amount}
+            reference={registration.gcash_reference}
+            submittedAt={registration.created_at}
+          />
         )}
 
         <div className="px-5 pb-5">
@@ -76,17 +80,69 @@ async function ApprovedTicket({ code }: { code: string }) {
   );
 }
 
-function Pending() {
+function Pending({
+  amount,
+  reference,
+  submittedAt,
+}: {
+  amount: number;
+  reference: string | null;
+  submittedAt: string;
+}) {
+  const submitted = new Date(submittedAt).toLocaleString("en-PH", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "Asia/Manila",
+  });
+  const steps = ["Submitted", "Under review", "Ticket ready"];
+
   return (
-    <div className="m-5 rounded bg-amber-50 p-5 text-center">
-      <p className="font-display text-2xl uppercase text-amber-900">
-        Waiting for approval
+    <div className="m-5 rounded bg-amber-50 p-5 text-amber-900">
+      <ol className="flex items-start" aria-label="Ticket progress">
+        {steps.map((label, index) => {
+          const done = index === 0;
+          const current = index === 1;
+          return (
+            <li
+              key={label}
+              aria-current={current ? "step" : undefined}
+              className="flex flex-1 flex-col items-center gap-1.5 text-center text-xs font-semibold uppercase tracking-wide"
+            >
+              <span
+                aria-hidden
+                className={`h-3 w-3 rounded-full border-2 border-amber-700 ${
+                  done ? "bg-amber-700" : current ? "bg-amber-50" : "opacity-40"
+                }`}
+              />
+              <span className={done || current ? "" : "opacity-60"}>{label}</span>
+            </li>
+          );
+        })}
+      </ol>
+
+      <p className="mt-5 text-center font-display text-2xl uppercase">
+        Payment submitted
       </p>
-      <p className="mt-2 text-sm text-amber-900/80">
-        We check every payment by hand, in the order it arrives. Come back to
-        this page any time — it updates on its own, and we&apos;ll also email
-        you once it&apos;s approved.
+      <p className="mt-2 text-center text-sm text-amber-900/80">
+        An organiser checks every payment by hand, in the order it arrives. Come
+        back to this page any time — it updates on its own, and we&apos;ll also
+        email you once it&apos;s approved.
       </p>
+
+      <dl className="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-amber-900/15 pt-4 text-sm">
+        <dt className="text-amber-900/70">Amount sent</dt>
+        <dd className="text-right font-semibold">{formatPeso(amount)}</dd>
+        {reference ? (
+          <>
+            <dt className="text-amber-900/70">Ref No.</dt>
+            <dd className="text-right font-mono font-semibold">{reference}</dd>
+          </>
+        ) : null}
+        <dt className="text-amber-900/70">Submitted</dt>
+        <dd className="text-right font-semibold">{submitted}</dd>
+      </dl>
     </div>
   );
 }

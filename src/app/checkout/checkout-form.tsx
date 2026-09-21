@@ -7,6 +7,7 @@ import {
   YEAR_LEVELS,
 } from "@/lib/registrations/schema";
 import { sectionsFor } from "@/lib/registrations/sections";
+import { EVENT, formatPeso } from "@/lib/config/event";
 import { submitRegistration, type FormState } from "./actions";
 import { readReferenceFromImage } from "./read-reference";
 import { useEmailCheck } from "../use-email-check";
@@ -211,7 +212,7 @@ export function CheckoutForm() {
       <Field
         label="GCash reference number"
         name="gcashReference"
-        hint="The 13-digit number on your GCash receipt."
+        hint="The 13-digit number labelled Ref No. on your GCash receipt."
         error={errors.gcashReference}
       >
         <input
@@ -242,7 +243,9 @@ export function CheckoutForm() {
         disabled={pending}
         className="rounded bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {pending ? "Submitting…" : "Submit"}
+        {pending
+          ? "Submitting…"
+          : `Submit — I paid ${formatPeso(EVENT.ticketPriceCentavos)}`}
       </button>
 
       <p className="text-sm text-ink/70">

@@ -235,6 +235,7 @@ export function Scanner() {
           >
             <input
               name="label"
+              aria-label="Scanner name"
               required
               autoFocus
               placeholder="door-1"
@@ -250,11 +251,14 @@ export function Scanner() {
   }
 
   return (
-    <main className="relative min-h-screen bg-black">
-      <video ref={videoRef} muted className="h-screen w-full object-cover" />
+    // dvh, not vh: on a phone, 100vh includes the area behind the browser's
+    // address bar, so the camera and the full-screen result panel ran taller
+    // than what the volunteer can actually see.
+    <main className="relative min-h-dvh bg-black">
+      <video ref={videoRef} muted className="h-dvh w-full object-cover" />
 
       <div className="absolute inset-x-0 top-0 flex flex-col gap-1 bg-black/60 p-3 text-sm text-white">
-        <div className="flex justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
           <span>{deviceLabel}</span>
           <div className="flex items-center gap-3">
             <span>
@@ -268,7 +272,7 @@ export function Scanner() {
                 setRefreshing(true);
                 void refreshManifest().finally(() => setRefreshing(false));
               }}
-              className="rounded border border-white/40 px-2 py-1 text-xs disabled:opacity-50"
+              className="min-h-11 rounded border border-white/40 px-3 text-xs disabled:opacity-50"
             >
               {refreshing ? "Refreshing…" : "Refresh tickets"}
             </button>

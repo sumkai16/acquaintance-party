@@ -10,7 +10,7 @@ export default function CheckoutPage() {
     <main className="mx-auto w-full max-w-5xl px-5 py-10 md:py-16 2xl:max-w-7xl">
       <Link
         href="/"
-        className="text-sm font-semibold uppercase tracking-wide text-ink/70 hover:text-ink"
+        className="inline-block py-3 text-sm font-semibold uppercase tracking-wide text-ink/70 hover:text-ink"
       >
         ← {EVENT.name}
       </Link>
@@ -90,9 +90,16 @@ export default function CheckoutPage() {
           <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
             Step 2
           </p>
-          <h2 className="mt-2 mb-6 font-display text-4xl uppercase md:text-5xl">
+          <h2 className="mt-2 font-display text-4xl uppercase md:text-5xl">
             Your details
           </h2>
+          {/* The payment card is a screen above by the time a phone reaches
+              this form, so the amount and payee are restated here. */}
+          <p className="mt-3 mb-6 max-w-prose">
+            Paid {formatPeso(EVENT.ticketPriceCentavos)} to{" "}
+            <strong>{EVENT.gcash.name}</strong>? Keep the GCash receipt open —
+            the form asks for its screenshot and Ref No.
+          </p>
           <CheckoutForm />
         </section>
       </div>
