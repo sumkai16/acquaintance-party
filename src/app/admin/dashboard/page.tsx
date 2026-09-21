@@ -55,7 +55,9 @@ export default async function RegistrationsPage({
     delivery: rawDelivery,
   } = await searchParams;
   const delivery =
-    rawDelivery === "qr" || rawDelivery === "receipt" ? rawDelivery : undefined;
+    rawDelivery === "qr" || rawDelivery === "receipt" || rawDelivery === "bounced"
+      ? rawDelivery
+      : undefined;
   // No status in the URL means "all" — populated by default, same as
   // Attendance's Recent Scans needing no filter picked to show something.
   const status = VALID_STATUSES.includes(rawStatus as (typeof VALID_STATUSES)[number])
@@ -217,6 +219,8 @@ export default async function RegistrationsPage({
                   ? "Everyone who's paid in full has been emailed their QR."
                   : delivery === "receipt"
                     ? "Everyone who's paid has been emailed their receipt."
+                    : delivery === "bounced"
+                      ? "No emails have bounced."
                     : status === "all"
                   ? "No registrations yet."
                   : `No ${STATUS_LABEL[status].toLowerCase()} registrations.`

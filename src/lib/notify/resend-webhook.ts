@@ -5,7 +5,7 @@ import type {
   EmailFailedEvent,
   EmailSuppressedEvent,
 } from "resend";
-import { clearTicketEmailSent, getRegistration } from "@/lib/registrations/queries";
+import { clearTicketEmailSent, getRegistration, markEmailBounced } from "@/lib/registrations/queries";
 import { clearReceiptsEmailedFor } from "@/lib/receipts/queries";
 import { logActivity } from "@/lib/activity/queries";
 
@@ -58,6 +58,8 @@ export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<v
 
   const registration = await getRegistration(registrationId);
   const requeue = event.type !== "email.complained" && event.type !== "email.suppressed";
+  // A complaint means it arrived; every other event means it did not.
+  if (event.type !== "email.complained") await markEmailBounced(registrationId);
   if (requeue) {
     await Promise.all([
       clearTicketEmailSent(registrationId),

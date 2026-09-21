@@ -20,6 +20,7 @@ const DELIVERY_OPTIONS = [
   { value: "", label: "All emails" },
   { value: "qr", label: "Waiting for QR" },
   { value: "receipt", label: "Waiting for receipt" },
+  { value: "bounced", label: "Email bounced" },
 ] as const;
 
 const PAYMENT_METHOD_OPTIONS = [
@@ -141,7 +142,7 @@ export function RegistrationFilters() {
       <select
         value={delivery}
         onChange={(event) => setParam("delivery", event.target.value)}
-        aria-label="Filter by who is still waiting for an email"
+        aria-label="Filter by email delivery"
         className="rounded-md border border-ground/20 bg-ground/5 px-3 py-2 text-sm text-ground outline-none focus:border-accent-2 focus:ring-2 focus:ring-accent-2/30 [color-scheme:dark]"
       >
         {DELIVERY_OPTIONS.map((option) => (

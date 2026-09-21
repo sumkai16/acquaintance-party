@@ -256,6 +256,20 @@ function DeliveryMarkers({
   const qrSent = Boolean(registration.ticket_email_sent_at);
   const receiptSent = receipts.length > 0 && receipts.every((receipt) => receipt.emailed);
 
+  if (registration.email_bounced_at) {
+    return (
+      <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
+        <span
+          title={`Resend reported a bounce on ${new Date(registration.email_bounced_at).toLocaleString("en-PH")}. Edit the email, then resend.`}
+          className="flex items-center gap-1.5 text-red-300"
+        >
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-red-400" />
+          Email bounced — fix the address
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
       {registration.status === "approved" ? (

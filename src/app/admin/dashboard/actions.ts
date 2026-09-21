@@ -283,7 +283,7 @@ export async function editRegistration(
   });
   if (changes.length === 0) return { ok: true };
 
-  const result = await updateRegistrationIdentity(id, parsed.data);
+  const result = await updateRegistrationIdentity(id, parsed.data, parsed.data.email !== before.email);
   if (!result.ok) {
     return {
       ok: false,

@@ -84,6 +84,7 @@ export type UpdateIdentityResult =
 export async function updateRegistrationIdentity(
   id: string,
   input: WalkInInput,
+  clearBounce = false,
 ): Promise<UpdateIdentityResult> {
   const { error } = await adminClient()
     .from("registrations")
@@ -93,6 +94,9 @@ export async function updateRegistrationIdentity(
       year_level: input.yearLevel,
       section: input.section,
       email: input.email,
+      // A bounce belongs to the old address. If the email is unchanged the
+      // bounce still stands, so the caller passes it only when it changed.
+      ...(clearBounce ? { email_bounced_at: null } : {}),
     })
     .eq("id", id);
 
@@ -430,9 +434,10 @@ export async function searchRegistrations(
     /**
      * Who is still owed an email — the same two groups the Dashboard's
      * Receipts card counts. `qr`: paid in full, QR never emailed. `receipt`:
-     * has at least one receipt nobody has emailed them yet.
+     * has at least one receipt nobody has emailed them yet. `bounced`:
+     * Resend reported the address undeliverable and it hasn't been fixed.
      */
-    delivery?: "qr" | "receipt";
+    delivery?: "qr" | "receipt" | "bounced";
   } = {},
 ): Promise<RegistrationsPage> {
   const trimmed = query.trim();
@@ -460,6 +465,9 @@ export async function searchRegistrations(
   if (section) builder = builder.ilike("section", section);
   if (delivery === "qr") {
     builder = builder.eq("status", "approved").is("ticket_email_sent_at", null);
+  }
+  if (delivery === "bounced") {
+    builder = builder.not("email_bounced_at", "is", null);
   }
   if (delivery === "receipt") {
     // Voided tickets are excluded, same as the backlog — nobody is emailing them.
@@ -632,7 +640,9 @@ export async function markTicketEmailSent(registrationIds: string[]): Promise<vo
 
   const { error } = await adminClient()
     .from("registrations")
-    .update({ ticket_email_sent_at: new Date().toISOString() })
+    // A send Resend accepted supersedes an earlier bounce; if this one
+    // bounces too, the webhook stamps it again.
+    .update({ ticket_email_sent_at: new Date().toISOString(), email_bounced_at: null })
     .in("id", registrationIds);
 
   if (error) console.error("markTicketEmailSent failed", error);
@@ -653,4 +663,18 @@ export async function clearTicketEmailSent(registrationId: string): Promise<void
     .eq("id", registrationId);
 
   if (error) console.error("clearTicketEmailSent failed", error);
+}
+
+/**
+ * Flags the address as undeliverable so the Dashboard row can say so — the
+ * send queue alone can't, since null there also means "not sent yet". Cleared
+ * by updateRegistrationIdentity (address changed) and markTicketEmailSent.
+ */
+export async function markEmailBounced(registrationId: string): Promise<void> {
+  const { error } = await adminClient()
+    .from("registrations")
+    .update({ email_bounced_at: new Date().toISOString() })
+    .eq("id", registrationId);
+
+  if (error) console.error("markEmailBounced failed", error);
 }
