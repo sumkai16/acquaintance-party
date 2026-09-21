@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-22T00:00:00Z",
+  "title": "Design System: Acquaintance Party",
+  "extensions": {
+    "colorMeta": {
+      "burnt-clay": { "role": "primary", "displayName": "Burnt Clay", "canonical": "#C2481F" },
+      "sand": { "role": "neutral", "displayName": "Sand", "canonical": "#F2E3CB" },
+      "dusk-plum": { "role": "neutral", "displayName": "Dusk Plum", "canonical": "#3B2136" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Headlines and the event name, uppercase." },
+      "body": { "displayName": "Body", "purpose": "Forms and instructions." }
+    },
+    "shadows": [
+      { "name": "ticket-card", "value": "0 1px 2px rgba(0,0,0,0.05)", "purpose": "The one shadow, on the ticket card (Tailwind shadow-sm)." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main action on checkout and admin.",
+      "html": "<button class=\"ds-btn-primary\">SUBMIT</button>",
+      "css": ".ds-btn-primary{background:#C2481F;color:#fff;padding:14px 24px;border:none;border-radius:4px;font:600 16px 'DM Sans',sans-serif;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;transition:opacity .2s}.ds-btn-primary:hover{opacity:.9}.ds-btn-primary:focus-visible{outline:2px solid #C2481F;outline-offset:2px}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Checkout form field.",
+      "html": "<input class=\"ds-input\" placeholder=\"Juan Dela Cruz\">",
+      "css": ".ds-input{width:100%;box-sizing:border-box;background:#fff;color:#2E1D16;border:1px solid rgba(46,29,22,.25);border-radius:4px;padding:10px 12px;font:16px 'DM Sans',sans-serif}.ds-input::placeholder{color:rgba(46,29,22,.4)}.ds-input:focus-visible{border-color:#C2481F;outline:2px solid #C2481F;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Festival Poster",
+    "overview": "Loud where students decide, quiet where volunteers work. One token set across every surface; semantic color for status.",
+    "keyCharacteristics": ["One token set for every surface", "Anton headlines, DM Sans body", "Status is green/amber/red, never the accent", "QR is pure black on pure white"],
+    "rules": [
+      { "name": "The Headline-Only Rule", "body": "Burnt Clay on sand passes for large display type only. Body copy is Ink.", "section": "colors" },
+      { "name": "The Status-Is-Not-Theme Rule", "body": "Approved, pending and rejected are green, amber and red.", "section": "colors" }
+    ],
+    "dos": ["Do read colors and fonts from tokens.", "Do keep 44px tap targets on phone controls."],
+    "donts": ["Don't put the theme accent on status or scan results.", "Don't tint or texture the ticket QR."]
+  }
+}
