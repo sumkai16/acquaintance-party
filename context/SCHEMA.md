@@ -469,6 +469,35 @@ this same table: it generates a small `.xlsx` from the typed rows
 (`Typed entry <date time>.xlsx`) so the batch keeps a file like any upload,
 and "Void this import" works on it unchanged.
 
+## email_correction_requests
+
+Added in `0020_email_correction_requests.sql`. One row per "my email is
+wrong" request from `/find` — a student who typed the wrong email at
+checkout can't be matched by `/find`'s own exact-match lookup, since the
+email is exactly what's wrong. Exists as its own table rather than another
+`activity_logs` row (which the feature briefly used) because staff needed a
+queue with an open/resolved state, not free text to search by eye.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK | |
+| student_id | text | NOT NULL | As typed, after `normalizeStudentId` — may not match any real row |
+| full_name | text | NOT NULL | Self-reported, unverified — staff cross-checks it against whatever `registration_id` points at, if anything |
+| requested_email | text | NOT NULL | Validated at submit (format + MX/mail-server check), never applied automatically |
+| registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Best-effort match on `student_id` alone at submit time. Null is common — usually means the student also mistyped their own ID in this form, not that the feature failed |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+| resolved_at / resolved_by | | nullable | Set together by "Mark resolved" on `/admin/email-fixes`, once staff has actually changed the address via the Dashboard's edit flow. This table never changes a registration's email itself — see the comment on `requestEmailCorrection` in `src/app/find/actions.ts` for why that has to stay a human decision |
+
+`/admin/email-fixes` is `requireAdmin()`-gated and outside staff's route
+allowlist, matching `editRegistration` (the Dashboard action that actually
+performs the fix) — a queue whose fix step staff can't reach would be
+confusing to expose to them.
+
+Every submission also writes an `email_correction_requested` row to
+`activity_logs` (unchanged, generic system record), so this table and the
+Activity log both show it — this one is the working queue, that one is the
+permanent audit trail.
+
 ## walk_in_drafts
 
 Added in `0016_walk_in_drafts.sql`. The half-typed "Type a list" sheet, one row

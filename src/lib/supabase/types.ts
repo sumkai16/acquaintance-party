@@ -33,6 +33,23 @@ export type Registration = {
   import_batch_id: string | null;
 };
 
+/**
+ * One "my email is wrong" request from /find. registration_id is a
+ * best-effort match on student_id alone, resolved at submit time — null is
+ * common (the student typo'd their own ID, which is often exactly why
+ * they're here), not a sign of a broken request.
+ */
+export type EmailCorrectionRequest = {
+  id: string;
+  student_id: string;
+  full_name: string;
+  requested_email: string;
+  registration_id: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  resolved_by: string | null;
+};
+
 export type ImportBatch = {
   id: string;
   uploaded_by: string;

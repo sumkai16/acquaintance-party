@@ -471,6 +471,31 @@ points rather than one bigger email pipeline:
   `/find` and Save QR exist as the zero-email-required fallback rather than
   chasing delivery confirmation further.
 
+**Same-day follow-up: a typo'd checkout email locks a student out of `/find`
+too**, since it needs an exact match on both fields. Two additions, both
+2026-09-22:
+- **"Request a fix" on `/find`'s no-match screen** — student ID, name, and
+  the correct email. Two guards on the requested address, matching
+  checkout/walk-in/edit exactly: the same MX/mail-server reachability check
+  (`emailDomainProblem`), so a "fixed" address that still can't receive mail
+  doesn't just bounce again, and a 3-per-15-minutes throttle per student ID,
+  reusing the existing submission-throttle constants. Never changes the
+  address itself — anyone could claim any student ID, so a human still
+  verifies and edits it by hand on the Dashboard, same as every other review
+  step in this app.
+- **`/admin/email-fixes`** (`0020_email_correction_requests.sql`) — the
+  queue that request lands in, open by default with a Resolved history tab.
+  Admin-only, matching `editRegistration` (the Dashboard action that
+  actually performs the fix), which staff's route allowlist already can't
+  reach — a queue whose fix step staff can't get to would be confusing, not
+  convenient. Confirmed live against production data the same day: a real
+  request (Arron John Iway, one of the three students flagged bounced back
+  on 2026-09-19 — see `docs/setup/resend.md` §5) came in with a mistyped
+  student ID, which is exactly why its `registration_id` match came back
+  null — not a bug, just the student typo'ing their own ID on the way to
+  reporting a typo'd email. The row still links to a name search on the
+  Dashboard for that case.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later

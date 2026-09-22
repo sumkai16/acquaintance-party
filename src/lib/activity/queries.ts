@@ -50,28 +50,6 @@ export async function logActivities(entries: LogEntry[]): Promise<void> {
   if (error) console.error("logActivities failed", entries.length, error);
 }
 
-/**
- * How many email-correction requests this student ID has made recently —
- * the throttle for /find's "request a fix" form. No dedicated table for
- * these requests, so this matches against the logged description instead
- * of a real column; safe because `studentId` is always pre-validated
- * against STUDENT_ID_PATTERN (letters, digits, dashes only) before this is
- * called, so it can't smuggle an ilike wildcard into the pattern.
- */
-export async function countRecentEmailFixRequests(
-  studentId: string,
-  sinceIso: string,
-): Promise<number> {
-  const { count } = await adminClient()
-    .from("activity_logs")
-    .select("id", { count: "exact", head: true })
-    .eq("activity_type", "email_correction_requested")
-    .ilike("description", `%(${studentId})%`)
-    .gte("created_at", sinceIso);
-
-  return count ?? 0;
-}
-
 export type ActivityFilters = {
   userId?: string;
   activityType?: ActivityType;

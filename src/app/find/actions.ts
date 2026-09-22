@@ -7,7 +7,8 @@ import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isThrottled, throttleWindowStart } from "@/lib/registrations/abuse";
 import { findOwnRegistration, findRegistrationByStudentId } from "@/lib/registrations/queries";
 import { notifyEmailCorrectionRequest } from "@/lib/notify/discord";
-import { countRecentEmailFixRequests, logActivity } from "@/lib/activity/queries";
+import { logActivity } from "@/lib/activity/queries";
+import { countRecentEmailFixRequests, createEmailFixRequest } from "@/lib/email-fixes/queries";
 
 export type FindState = {
   status: "idle" | "error";
@@ -61,9 +62,11 @@ export type EmailFixState = {
 /**
  * Never changes the address itself — anyone could type any student ID here,
  * so the only safe outcome is putting the request in front of a human. It
- * logs to activity_logs (so it's never lost, even if the Discord ping is
- * unconfigured or fails) and best-effort pings Discord for immediate
- * visibility, same as a new registration does.
+ * writes to email_correction_requests, the queue /admin/email-fixes works
+ * through, and to activity_logs alongside it (the generic system record
+ * every action leaves, same as ticket_email_sent or payment_approved), and
+ * best-effort pings Discord for immediate visibility, same as a new
+ * registration does.
  */
 export async function requestEmailCorrection(
   _prev: EmailFixState,
@@ -106,16 +109,20 @@ export async function requestEmailCorrection(
   }
 
   const registration = await findRegistrationByStudentId(studentId);
+  const registrationId = registration?.id ?? null;
 
-  await logActivity({
-    userId: null,
-    activityType: "email_correction_requested",
-    description:
-      `${fullName} (${studentId}) says the email on file is wrong and asks for it to be ` +
-      `changed to ${requestedEmail}.` +
-      (registration ? "" : " No registration found with that student ID to check it against."),
-    registrationId: registration?.id,
-  });
+  await Promise.all([
+    createEmailFixRequest({ studentId, fullName, requestedEmail, registrationId }),
+    logActivity({
+      userId: null,
+      activityType: "email_correction_requested",
+      description:
+        `${fullName} (${studentId}) says the email on file is wrong and asks for it to be ` +
+        `changed to ${requestedEmail}.` +
+        (registration ? "" : " No registration found with that student ID to check it against."),
+      registrationId: registrationId ?? undefined,
+    }),
+  ]);
 
   after(async () => {
     await notifyEmailCorrectionRequest({ studentId, fullName, requestedEmail });
