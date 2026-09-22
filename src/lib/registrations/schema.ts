@@ -262,3 +262,16 @@ export const walkInSchema = z.object({
 }).superRefine(checkSectionMatchesYear);
 
 export type WalkInInput = z.infer<typeof walkInSchema>;
+
+// Submitted from /find when a student can't be located — the email on file
+// is exactly what's suspected wrong, so this asks for the corrected address
+// instead. No section/year: staff looks the student up by studentId and
+// verifies by hand before touching anything, same as every other review
+// step in this app.
+export const emailFixRequestSchema = z.object({
+  studentId,
+  fullName,
+  requestedEmail: email,
+});
+
+export type EmailFixRequestInput = z.infer<typeof emailFixRequestSchema>;

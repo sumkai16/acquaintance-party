@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildEmailCorrectionPayload,
   buildRegistrationPayload,
   hexToDiscordColor,
 } from "./discord-message";
@@ -75,5 +76,49 @@ describe("buildRegistrationPayload", () => {
     expect(Number.isNaN(new Date(payload.embeds[0].timestamp).getTime())).toBe(
       false,
     );
+  });
+});
+
+describe("buildEmailCorrectionPayload", () => {
+  const correction = {
+    studentId: "SCC-24-0012345",
+    fullName: "Juan Miguel Dela Cruz",
+    requestedEmail: "juan@gmail.com",
+    activityUrl: null as string | null,
+  };
+
+  it("puts the student, id, and requested email in the embed fields", () => {
+    const payload = buildEmailCorrectionPayload(correction);
+    const fieldText = payload.embeds[0].fields.map((f) => `${f.name} ${f.value}`).join(" ");
+
+    expect(fieldText).toContain("Juan Miguel Dela Cruz");
+    expect(fieldText).toContain("SCC-24-0012345");
+    expect(fieldText).toContain("juan@gmail.com");
+  });
+
+  it("makes the title a clickable link when an activity URL is configured", () => {
+    const payload = buildEmailCorrectionPayload({
+      ...correction,
+      activityUrl: "https://it2026.vercel.app/admin/activity",
+    });
+    expect(payload.embeds[0].url).toBe("https://it2026.vercel.app/admin/activity");
+  });
+
+  it("omits the url key entirely when no activity URL is configured", () => {
+    const payload = buildEmailCorrectionPayload(correction);
+    expect("url" in payload.embeds[0]).toBe(false);
+  });
+
+  it("uses a different color than the new-registration embed, so the two are distinguishable", () => {
+    const registrationColor = buildRegistrationPayload({
+      fullName: "Juan",
+      yearLevel: "3rd year",
+      section: "B",
+      amountCentavos: 50_000,
+      gcashReference: "1234567890123",
+      reviewUrl: null,
+    }).embeds[0].color;
+    const correctionColor = buildEmailCorrectionPayload(correction).embeds[0].color;
+    expect(correctionColor).not.toBe(registrationColor);
   });
 });

@@ -22,6 +22,7 @@ export const ACTIVITY_TYPES = [
   "email_failed",
   "ticket_email_sent",
   "receipt_failed",
+  "email_correction_requested",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -45,6 +46,7 @@ const LABELS: Record<ActivityType, string> = {
   email_failed: "Email Failed",
   ticket_email_sent: "Ticket Email Sent",
   receipt_failed: "Receipt Not Issued",
+  email_correction_requested: "Email Correction Requested",
 };
 
 export function describeActivity(type: ActivityType): string {

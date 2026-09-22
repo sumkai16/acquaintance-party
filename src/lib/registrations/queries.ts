@@ -311,12 +311,20 @@ export async function listPartialWalkIns(): Promise<Registration[]> {
 }
 
 /**
+ * Among a student's rows (across resubmits), the one worth showing: the
+ * active (non-rejected) registration if there is one, otherwise the most
+ * recently created rejected row — so a rejected student still sees why,
+ * rather than a blank result.
+ */
+function preferActiveRegistration(rows: Registration[]): Registration | null {
+  return rows.find((row) => row.status !== "rejected") ?? rows[0] ?? null;
+}
+
+/**
  * A student's own registration, for the self-service "Find my ticket" page —
  * both fields must match what was submitted, so knowing a classmate's
  * student ID (visible on their own ID card) isn't enough on its own to open
- * their ticket. Prefers the active (non-rejected) registration; a student
- * whose payment was rejected and hasn't resubmitted still has only rejected
- * rows, so the most recently created one of those is the fallback.
+ * their ticket.
  */
 export async function findOwnRegistration(
   studentId: string,
@@ -329,8 +337,26 @@ export async function findOwnRegistration(
     .eq("email", email)
     .order("created_at", { ascending: false });
 
-  const rows = (data as Registration[]) ?? [];
-  return rows.find((row) => row.status !== "rejected") ?? rows[0] ?? null;
+  return preferActiveRegistration((data as Registration[]) ?? []);
+}
+
+/**
+ * Looks up a registration by student ID alone, ignoring email — for the
+ * "request an email fix" flow, where the email on file is exactly what's
+ * wrong, so it can't be part of the match. Unlike findOwnRegistration this
+ * gives staff a lead to verify and act on by hand; it is never used to grant
+ * a student access to a ticket on its own.
+ */
+export async function findRegistrationByStudentId(
+  studentId: string,
+): Promise<Registration | null> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .eq("student_id", studentId)
+    .order("created_at", { ascending: false });
+
+  return preferActiveRegistration((data as Registration[]) ?? []);
 }
 
 export async function getRegistration(id: string): Promise<Registration | null> {
@@ -431,8 +457,10 @@ export const REGISTRATIONS_PAGE_SIZE = 10;
 export type RegistrationsPage = { rows: Registration[]; total: number };
 
 /**
- * Finds registrations by partial name or email, for a student at the door
- * who has lost their ticket link. One page at a time, with the total count
+ * Finds registrations by partial name, email, or student ID, for a student
+ * at the door who has lost their ticket link — student ID matters most when
+ * the email on file is wrong, which is exactly what a "request an email fix"
+ * submission hands staff to search on. One page at a time, with the total count
  * a pagination control needs — the old flat cap of 50 both hid rows past
  * the fiftieth and made the table taller than the screen once sales picked
  * up.
@@ -483,7 +511,11 @@ export async function searchRegistrations(
   let builder = adminClient()
     .from("registrations")
     .select(delivery === "receipt" ? "*, receipts!inner(id)" : "*", { count: "exact" });
-  if (hasQuery) builder = builder.or(`full_name.ilike.%${safe}%,email.ilike.%${safe}%`);
+  if (hasQuery) {
+    builder = builder.or(
+      `full_name.ilike.%${safe}%,email.ilike.%${safe}%,student_id.ilike.%${safe}%`,
+    );
+  }
   if (status && status !== "all") builder = builder.eq("status", status);
   if (paymentMethod && paymentMethod !== "all") builder = builder.eq("payment_method", paymentMethod);
   if (yearLevel) builder = builder.eq("year_level", yearLevel);

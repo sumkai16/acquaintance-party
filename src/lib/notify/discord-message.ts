@@ -66,3 +66,37 @@ export function buildRegistrationPayload(
 
   return { embeds: [embed] };
 }
+
+export type EmailCorrectionRequest = {
+  studentId: string;
+  fullName: string;
+  requestedEmail: string;
+  activityUrl: string | null;
+};
+
+/**
+ * Sent from /find when a student can't be located — the email on file is
+ * exactly what's suspected wrong. A different color from the new-registration
+ * embed (accent2, not accent) so the two are visually distinct at a glance in
+ * a channel that gets both.
+ */
+export function buildEmailCorrectionPayload(
+  input: EmailCorrectionRequest,
+): DiscordPayload {
+  const embed: DiscordEmbed = {
+    title: "Email correction requested",
+    color: hexToDiscordColor(THEME.colors.accent2),
+    fields: [
+      { name: "Student", value: `${input.fullName} (${input.studentId})` },
+      { name: "Requested email", value: input.requestedEmail },
+    ],
+    footer: { text: EVENT.name },
+    timestamp: new Date().toISOString(),
+  };
+
+  if (input.activityUrl) {
+    embed.url = input.activityUrl;
+  }
+
+  return { embeds: [embed] };
+}
