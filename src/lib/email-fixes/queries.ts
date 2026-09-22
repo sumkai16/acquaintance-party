@@ -38,6 +38,25 @@ export async function countRecentEmailFixRequests(
 }
 
 /**
+ * Same throttle, keyed on the destination address instead — catches someone
+ * cycling through several student IDs (typos, guesses, or someone else's)
+ * while aiming at the same inbox each time, which the student-ID throttle
+ * alone can't see since every ID it tries looks "fresh."
+ */
+export async function countRecentEmailFixRequestsByEmail(
+  requestedEmail: string,
+  sinceIso: string,
+): Promise<number> {
+  const { count } = await adminClient()
+    .from("email_correction_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("requested_email", requestedEmail)
+    .gte("created_at", sinceIso);
+
+  return count ?? 0;
+}
+
+/**
  * The admin queue at /admin/email-fixes — open (unresolved) requests by
  * default, oldest first so the longest-waiting student surfaces first;
  * `status: "resolved"` shows the history instead, newest first.

@@ -8,7 +8,11 @@ import { isThrottled, throttleWindowStart } from "@/lib/registrations/abuse";
 import { findOwnRegistration, findRegistrationByStudentId } from "@/lib/registrations/queries";
 import { notifyEmailCorrectionRequest } from "@/lib/notify/discord";
 import { logActivity } from "@/lib/activity/queries";
-import { countRecentEmailFixRequests, createEmailFixRequest } from "@/lib/email-fixes/queries";
+import {
+  countRecentEmailFixRequests,
+  countRecentEmailFixRequestsByEmail,
+  createEmailFixRequest,
+} from "@/lib/email-fixes/queries";
 
 export type FindState = {
   status: "idle" | "error";
@@ -68,6 +72,14 @@ export type EmailFixState = {
  * best-effort pings Discord for immediate visibility, same as a new
  * registration does.
  */
+const noRegistrationMessage =
+  "We couldn't find any registration with that student ID. Double-check it, " +
+  "or message an organiser if you haven't registered yet.";
+
+const throttledMessage =
+  "You've requested a fix several times already. Wait a moment, or message " +
+  "an organiser directly.";
+
 export async function requestEmailCorrection(
   _prev: EmailFixState,
   formData: FormData,
@@ -78,49 +90,70 @@ export async function requestEmailCorrection(
     requestedEmail: String(formData.get("requestedEmail") ?? ""),
   });
 
-  const fieldErrors: Record<string, string> = {};
   if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
     for (const issue of parsed.error.issues) {
       const field = String(issue.path[0]);
       fieldErrors[field] ??= issue.message;
     }
-  } else {
-    // Same check checkout/walk-in/edit already run: a well-formed address
-    // whose domain has no mail server would just bounce again once staff
-    // applies the "fix" — exactly the failure mode this form exists to close.
-    const domainProblem = await emailDomainProblem(parsed.data.requestedEmail);
-    if (domainProblem) fieldErrors.requestedEmail = domainProblem;
-  }
-
-  if (!parsed.success || fieldErrors.requestedEmail) {
     return { status: "error", message: "Check the highlighted fields.", fieldErrors };
   }
 
   const { studentId, fullName, requestedEmail } = parsed.data;
 
-  const recent = await countRecentEmailFixRequests(studentId, throttleWindowStart(new Date()));
-  if (isThrottled(recent)) {
+  // Checked before anything else, and cheap (one indexed read) — a request
+  // for a student ID with no registration at all can't be acted on by
+  // staff no matter what, so it shouldn't reach a DNS lookup, the throttle,
+  // activity_logs, or Discord. This is also most of what keeps the queue
+  // from filling with noise: a bogus ID stops here, for free.
+  const registration = await findRegistrationByStudentId(studentId);
+  if (!registration) {
     return {
       status: "error",
-      message:
-        "This student ID has requested a fix several times already. Wait a " +
-        "moment, or message an organiser directly.",
+      message: noRegistrationMessage,
+      fieldErrors: { studentId: noRegistrationMessage },
     };
   }
 
-  const registration = await findRegistrationByStudentId(studentId);
-  const registrationId = registration?.id ?? null;
+  // Same check checkout/walk-in/edit already run: a well-formed address
+  // whose domain has no mail server would just bounce again once staff
+  // applies the "fix" — exactly the failure mode this form exists to close.
+  const domainProblem = await emailDomainProblem(requestedEmail);
+  if (domainProblem) {
+    return {
+      status: "error",
+      message: "Check the highlighted fields.",
+      fieldErrors: { requestedEmail: domainProblem },
+    };
+  }
+
+  // Two keys, not one: a student ID throttle alone lets someone cycle
+  // through several IDs (typos, guesses, someone else's) while aiming at
+  // the same inbox every time — that address is the throttle the ID-based
+  // one can't see.
+  const since = throttleWindowStart(new Date());
+  const [recentById, recentByEmail] = await Promise.all([
+    countRecentEmailFixRequests(studentId, since),
+    countRecentEmailFixRequestsByEmail(requestedEmail, since),
+  ]);
+  if (isThrottled(recentById) || isThrottled(recentByEmail)) {
+    return { status: "error", message: throttledMessage };
+  }
 
   await Promise.all([
-    createEmailFixRequest({ studentId, fullName, requestedEmail, registrationId }),
+    createEmailFixRequest({
+      studentId,
+      fullName,
+      requestedEmail,
+      registrationId: registration.id,
+    }),
     logActivity({
       userId: null,
       activityType: "email_correction_requested",
       description:
         `${fullName} (${studentId}) says the email on file is wrong and asks for it to be ` +
-        `changed to ${requestedEmail}.` +
-        (registration ? "" : " No registration found with that student ID to check it against."),
-      registrationId: registrationId ?? undefined,
+        `changed to ${requestedEmail}.`,
+      registrationId: registration.id,
     }),
   ]);
 

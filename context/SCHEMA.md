@@ -481,12 +481,23 @@ queue with an open/resolved state, not free text to search by eye.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | uuid | PK | |
-| student_id | text | NOT NULL | As typed, after `normalizeStudentId` — may not match any real row |
-| full_name | text | NOT NULL | Self-reported, unverified — staff cross-checks it against whatever `registration_id` points at, if anything |
+| student_id | text | NOT NULL | As typed, after `normalizeStudentId`. Always matches a real registration — `requestEmailCorrection` rejects the submission outright otherwise, before anything is written (see below) |
+| full_name | text | NOT NULL | Self-reported, unverified — staff cross-checks it against `registration_id`'s row |
 | requested_email | text | NOT NULL | Validated at submit (format + MX/mail-server check), never applied automatically |
-| registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Best-effort match on `student_id` alone at submit time. Null is common — usually means the student also mistyped their own ID in this form, not that the feature failed |
+| registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Matched on `student_id` alone at submit time. Stays nullable at the schema level for old rows from before this gate existed, and so voiding/deleting the matched registration later doesn't block touching this row — but a fresh submission with no match never reaches an insert at all (see below) |
 | created_at | timestamptz | NOT NULL, default `now()` | |
 | resolved_at / resolved_by | | nullable | Set together by "Mark resolved" on `/admin/email-fixes`, once staff has actually changed the address via the Dashboard's edit flow. This table never changes a registration's email itself — see the comment on `requestEmailCorrection` in `src/app/find/actions.ts` for why that has to stay a human decision |
+
+**A student ID with no matching registration at all is rejected before it
+reaches this table** (2026-09-22, after a real submission for a student who
+had never registered showed up as pure noise with nothing staff could act
+on). `requestEmailCorrection` checks `findRegistrationByStudentId` first,
+before the MX check, the throttle, or any write — a bogus ID costs one
+indexed read and nothing else. The throttle itself is keyed on **both**
+`student_id` and `requested_email` (`countRecentEmailFixRequests` /
+`countRecentEmailFixRequestsByEmail`), since a student-ID-only throttle
+can't see someone cycling through several IDs while aiming at the same
+destination inbox each time.
 
 `/admin/email-fixes` is `requireAdmin()`-gated and outside staff's route
 allowlist, matching `editRegistration` (the Dashboard action that actually
