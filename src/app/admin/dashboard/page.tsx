@@ -55,7 +55,10 @@ export default async function RegistrationsPage({
     delivery: rawDelivery,
   } = await searchParams;
   const delivery =
-    rawDelivery === "qr" || rawDelivery === "receipt" || rawDelivery === "bounced"
+    rawDelivery === "qr" ||
+    rawDelivery === "receipt" ||
+    rawDelivery === "bounced" ||
+    rawDelivery === "undelivered"
       ? rawDelivery
       : undefined;
   // No status in the URL means "all" — populated by default, same as
@@ -221,6 +224,8 @@ export default async function RegistrationsPage({
                     ? "Everyone who's paid has been emailed their receipt."
                     : delivery === "bounced"
                       ? "No emails have bounced."
+                      : delivery === "undelivered"
+                        ? "Every sent QR has either been confirmed delivered or bounced."
                     : status === "all"
                   ? "No registrations yet."
                   : `No ${STATUS_LABEL[status].toLowerCase()} registrations.`

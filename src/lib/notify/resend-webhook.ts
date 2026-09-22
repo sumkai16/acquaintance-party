@@ -2,10 +2,16 @@ import "server-only";
 import type {
   EmailBouncedEvent,
   EmailComplainedEvent,
+  EmailDeliveredEvent,
   EmailFailedEvent,
   EmailSuppressedEvent,
 } from "resend";
-import { clearTicketEmailSent, getRegistration, markEmailBounced } from "@/lib/registrations/queries";
+import {
+  clearTicketEmailSent,
+  getRegistration,
+  markEmailBounced,
+  markTicketEmailDelivered,
+} from "@/lib/registrations/queries";
 import { clearReceiptsEmailedFor } from "@/lib/receipts/queries";
 import { logActivity } from "@/lib/activity/queries";
 
@@ -80,4 +86,18 @@ export async function handleEmailUndelivered(event: UndeliveredEvent): Promise<v
           : " — not re-sent."),
     registrationId,
   });
+}
+
+/**
+ * Confirms a ticket QR email actually reached the mailbox server — the
+ * Dashboard's answer to "did they actually get it?" that "accepted" alone
+ * can't give. Only sends tagged `kind=ticket` reach here (see
+ * src/lib/notify/email.ts): a partial-payment or evaluation-invite email
+ * carries no QR, so its delivery isn't tracked on this column.
+ */
+export async function handleEmailDelivered(event: EmailDeliveredEvent): Promise<void> {
+  const registrationId = event.data.tags?.registration_id;
+  if (!registrationId || event.data.tags?.kind !== "ticket") return;
+
+  await markTicketEmailDelivered(registrationId);
 }

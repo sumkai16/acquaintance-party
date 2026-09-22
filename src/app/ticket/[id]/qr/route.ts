@@ -11,7 +11,7 @@ import { qrPngBuffer } from "@/lib/tickets/qr";
  * /ticket/<id> already renders this same code to anyone holding the id.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -21,11 +21,15 @@ export async function GET(
   }
 
   const png = await qrPngBuffer(registration.ticket_code);
+  // ?download=1: the ticket page's "Save QR" button — a real file save
+  // rather than a long-press-to-save, which not every phone offers on an
+  // inline image the same way.
+  const download = new URL(request.url).searchParams.has("download");
 
   return new Response(new Uint8Array(png), {
     headers: {
       "content-type": "image/png",
-      "content-disposition": 'inline; filename="ticket-qr.png"',
+      "content-disposition": `${download ? "attachment" : "inline"}; filename="ticket-qr.png"`,
       // Same no-store as the certificate image route. Gmail and friends
       // proxy-cache the image on their side regardless; what matters here is
       // that a voided ticket stops serving one from *our* side immediately.

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT, formatPeso } from "@/lib/config/event";
 import { getRegistration } from "@/lib/registrations/queries";
@@ -36,7 +37,7 @@ export default async function TicketPage({
         </header>
 
         {registration.status === "approved" && registration.ticket_code ? (
-          <ApprovedTicket code={registration.ticket_code} />
+          <ApprovedTicket code={registration.ticket_code} id={registration.id} />
         ) : registration.status === "rejected" ? (
           <Rejected reason={registration.reject_reason} />
         ) : registration.status === "partial" ? (
@@ -58,24 +59,34 @@ export default async function TicketPage({
       </div>
 
       <p className="text-center text-sm text-ink/70">
-        Bookmark this page — it is your ticket. Lost it? Ask an organiser to
-        look you up by your email address.
+        Bookmark this page — it is your ticket. Lost the link? Use{" "}
+        <Link href="/find" className="font-semibold text-ink underline">
+          Find your ticket
+        </Link>{" "}
+        with your student ID and email to get back here.
       </p>
     </main>
   );
 }
 
-async function ApprovedTicket({ code }: { code: string }) {
+async function ApprovedTicket({ code, id }: { code: string; id: string }) {
   const qr = await ticketQrDataUrl(code);
   return (
     // The QR must sit on plain white. Do not theme this block — phone
     // cameras fail to focus on codes over tinted or textured grounds.
     <div className="m-5 flex flex-col items-center gap-3 rounded bg-white p-5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qr} alt="Your ticket QR code" width={160} height={160} />
+      <img src={qr} alt="Your ticket QR code" width={200} height={200} />
       <p className="font-mono text-sm tracking-widest text-ink/70">
         {formatTicketCode(code)}
       </p>
+      <a
+        href={`/ticket/${id}/qr?download=1`}
+        download
+        className="rounded border border-ink/25 px-4 py-2 text-sm font-semibold uppercase tracking-wide text-ink/80 hover:border-ink/40 hover:text-ink"
+      >
+        Save QR to phone
+      </a>
     </div>
   );
 }

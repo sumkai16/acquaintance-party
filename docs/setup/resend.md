@@ -125,14 +125,45 @@ To turn it on:
 2. **Endpoint URL:** `https://itech2026.site/api/webhooks/resend`
    (must be the live deployment — Resend can't reach `localhost`).
 3. **Events to send:** tick `email.bounced`, `email.suppressed`,
-   `email.failed` and `email.complained`. The first three put the student back
-   in the send queue; a spam complaint is logged but never re-sent. (Any other
-   event just no-ops.)
+   `email.failed`, `email.complained`, **and `email.delivered`**. The first
+   three put the student back in the send queue; a spam complaint is logged
+   but never re-sent; `email.delivered` confirms a QR send actually reached
+   the mailbox (see below). (Any other event just no-ops.)
 4. Save, then copy the **Signing Secret** it shows you (`whsec_...`).
 5. Add it as `RESEND_WEBHOOK_SECRET` in Vercel's **Settings → Environment
    Variables**, redeploy.
+
+If the endpoint already exists from before `email.delivered` was added:
+**Webhooks → your endpoint → Edit**, tick `email.delivered` alongside the
+existing four events, save. No new secret, no redeploy needed.
 
 Skip it and nothing breaks — sending still works exactly as before, the
 route just returns 500 until configured (fails closed, not silently). But
 until it's set, a bounce still shows as "sent" with nothing to catch it,
 same as before this section existed.
+
+## 6. "QR sent" vs. "QR delivered" — closing the other half of the gap
+
+**Status as of 2026-09-22.** Section 5 catches the *bad* outcome (a bounce).
+It says nothing about the good path: `ticket_email_sent_at` is stamped the
+moment Resend *accepts* the send, which is not the same as the mailbox
+server actually taking delivery — a send can sit in that gap for a while, or
+never resolve either way if `email.delivered` isn't enabled (step 5 above).
+
+`registrations.ticket_email_delivered_at` (`0019_ticket_email_delivered.sql`)
+closes that: the webhook sets it when Resend's `email.delivered` event
+arrives, and only for a send that actually carries the QR (a partial-payment
+or evaluation-invite email doesn't move this column). The Dashboard's ticket
+code column shows one of three states per approved row — **QR not sent**,
+**QR sent, not confirmed**, **QR delivered** — or **Email bounced** if that
+happened instead. A **QR sent, not confirmed** filter option surfaces
+exactly the group a bounce filter alone can't: sent, not bounced, but also
+not confirmed delivered.
+
+**This still can't tell you the mail landed in the inbox rather than spam.**
+Resend's `email.delivered` means the receiving mail server accepted it, same
+distinction spam filters sit on the far side of. For "the student swears they
+never got anything and the row says delivered," the self-service `/find`
+page (`src/app/find/`, student ID + email, no inbox required) and the ticket
+page's **Save QR to phone** button are the actual answer — both work with
+zero email in the loop.

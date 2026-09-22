@@ -81,6 +81,22 @@ describe("buildTicketApprovedEmail", () => {
     expect(email.html).not.toContain("<img");
     expect(email.html).toContain(base.url);
   });
+
+  it("points the image at the inline attachment when a cid is given", () => {
+    const email = buildTicketApprovedEmail({
+      ...base,
+      qrUrl: "https://it2026.vercel.app/ticket/abc-123/qr",
+      ticketCode: "A1B2C3D4E5F6",
+      qrCid: "ticket-qr",
+    });
+    expect(email.html).toContain('<img src="cid:ticket-qr"');
+    expect(email.html).not.toContain(
+      '<img src="https://it2026.vercel.app/ticket/abc-123/qr"',
+    );
+    // The hosted link still appears elsewhere (the CTA / plain-text
+    // fallback), for a client that can't render the inline attachment.
+    expect(email.html).toContain(base.url);
+  });
 });
 
 describe("buildEvaluationInviteEmail", () => {

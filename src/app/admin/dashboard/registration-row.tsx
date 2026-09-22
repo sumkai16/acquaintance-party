@@ -253,7 +253,6 @@ function DeliveryMarkers({
 }) {
   if (registration.status === "rejected" || registration.status === "pending") return null;
 
-  const qrSent = Boolean(registration.ticket_email_sent_at);
   const receiptSent = receipts.length > 0 && receipts.every((receipt) => receipt.emailed);
 
   if (registration.email_bounced_at) {
@@ -272,11 +271,36 @@ function DeliveryMarkers({
 
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
-      {registration.status === "approved" ? (
-        <Marker sent={qrSent}>{qrSent ? "QR sent" : "QR not sent"}</Marker>
-      ) : null}
+      {registration.status === "approved" ? <QrMarker registration={registration} /> : null}
       <Marker sent={receiptSent}>{receiptSent ? "Receipt sent" : "Receipt not sent"}</Marker>
     </div>
+  );
+}
+
+/**
+ * Three states, not two — "accepted by Resend" and "landed in the mailbox"
+ * are different moments (see ticket_email_delivered_at in context/SCHEMA.md),
+ * and collapsing them into one "QR sent" badge is what made "I never got my
+ * QR" reports impossible to tell from a genuinely dead address until the
+ * webhook was checked by hand. Bounces already have their own branch in
+ * DeliveryMarkers above, so this only ever sees not-sent, sent-unconfirmed,
+ * or delivered.
+ */
+function QrMarker({ registration }: { registration: Registration }) {
+  if (!registration.ticket_email_sent_at) {
+    return <Marker sent={false}>QR not sent</Marker>;
+  }
+  if (registration.ticket_email_delivered_at) {
+    return <Marker sent>QR delivered</Marker>;
+  }
+  return (
+    <span
+      title="Resend accepted this send but hasn't confirmed it reached the mailbox yet."
+      className="flex items-center gap-1.5 text-ground/50"
+    >
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ground/40" />
+      QR sent, not confirmed
+    </span>
   );
 }
 

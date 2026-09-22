@@ -28,6 +28,7 @@ export type Registration = {
   reviewed_by: string | null;
   evaluation_invited_at: string | null;
   ticket_email_sent_at: string | null;
+  ticket_email_delivered_at: string | null;
   email_bounced_at: string | null;
   import_batch_id: string | null;
 };

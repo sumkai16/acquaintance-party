@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import { resendAccount, resendWebhookSecrets } from "@/lib/notify/resend-account";
-import { handleEmailUndelivered } from "@/lib/notify/resend-webhook";
+import { handleEmailDelivered, handleEmailUndelivered } from "@/lib/notify/resend-webhook";
 
 /**
  * Resend calls this the moment a send it already accepted turns out not to
@@ -53,6 +53,8 @@ export async function POST(request: Request) {
     event.type === "email.complained"
   ) {
     await handleEmailUndelivered(event);
+  } else if (event.type === "email.delivered") {
+    await handleEmailDelivered(event);
   }
 
   return Response.json({ ok: true });

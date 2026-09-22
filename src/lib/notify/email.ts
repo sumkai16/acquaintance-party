@@ -1,5 +1,6 @@
 import "server-only";
 import { Resend } from "resend";
+import { qrPngBuffer } from "@/lib/tickets/qr";
 import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
@@ -61,17 +62,35 @@ async function send(
   if (!apiKey || !siteUrl) return "skipped"; // Not configured — skip silently, not an error.
 
   const from = configuredFrom || "onboarding@resend.dev";
+
+  // Inline the QR as a cid attachment rather than relying only on the
+  // hosted PNG route — "the QR is blank in Gmail" traces back to Gmail's
+  // own image proxy on that remote <img>, and an attachment needs no
+  // fetch at all. Single sends only, which this always is: deliverBatch
+  // (used by the bulk backlog/evaluation sends) refuses attachments.
+  const qrAttachment =
+    input.qrPath && input.ticketCode
+      ? {
+          filename: "ticket-qr.png",
+          content: await qrPngBuffer(input.ticketCode),
+          contentId: "ticket-qr",
+        }
+      : null;
+
   const built = build({
     fullName: input.fullName,
     url: `${siteUrl}${input.path}`,
     ...(input.qrPath ? { qrUrl: `${siteUrl}${input.qrPath}` } : {}),
     ...(input.ticketCode ? { ticketCode: input.ticketCode } : {}),
+    ...(qrAttachment ? { qrCid: qrAttachment.contentId } : {}),
     ...(input.paidCentavos !== undefined ? { paidCentavos: input.paidCentavos } : {}),
     ...(input.owedCentavos !== undefined ? { owedCentavos: input.owedCentavos } : {}),
     ...(input.receiptIds?.length
       ? { receiptUrls: input.receiptIds.map((id) => `${siteUrl}/receipt/${id}`) }
       : {}),
   });
+
+  const attachments = [...(input.attachments ?? []), ...(qrAttachment ? [qrAttachment] : [])];
 
   try {
     const result = await new Resend(apiKey).emails.send({
@@ -80,9 +99,18 @@ async function send(
       subject: built.subject,
       html: built.html,
       text: built.text,
-      ...(input.attachments ? { attachments: input.attachments } : {}),
+      ...(attachments.length ? { attachments } : {}),
       ...(input.registrationId
-        ? { tags: [{ name: "registration_id", value: input.registrationId }] }
+        ? {
+            tags: [
+              { name: "registration_id", value: input.registrationId },
+              // Lets the webhook's email.delivered handler tell a QR send
+              // apart from a partial-payment or evaluation-invite send that
+              // also tags registration_id — only a "kind=ticket" send should
+              // ever mark ticket_email_delivered_at.
+              ...(qrAttachment ? [{ name: "kind", value: "ticket" }] : []),
+            ],
+          }
         : {}),
     });
     if (result.error) {
@@ -284,7 +312,13 @@ export async function sendReceiptBacklogBatch(
         from: context.from,
         to: recipient.to,
         ...built,
-        tags: [{ name: "registration_id", value: recipient.registrationId }],
+        tags: [
+          { name: "registration_id", value: recipient.registrationId },
+          // Same "kind=ticket" marker send() adds for a single send — this
+          // recipient's backlog email carries the QR, so its delivery
+          // should count toward ticket_email_delivered_at too.
+          ...(recipient.ticketCode ? [{ name: "kind", value: "ticket" }] : []),
+        ],
       };
     }),
   );

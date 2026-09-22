@@ -21,6 +21,7 @@ const DELIVERY_OPTIONS = [
   { value: "qr", label: "Waiting for QR" },
   { value: "receipt", label: "Waiting for receipt" },
   { value: "bounced", label: "Email bounced" },
+  { value: "undelivered", label: "QR sent, not confirmed" },
 ] as const;
 
 const PAYMENT_METHOD_OPTIONS = [

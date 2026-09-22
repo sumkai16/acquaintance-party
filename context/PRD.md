@@ -429,6 +429,48 @@ The decisions worth not relitigating, all confirmed explicitly:
   is stamped on every acknowledgement so a later rewording doesn't rewrite
   what anyone agreed to.
 
+### 4.10 Self-service ticket lookup, an inline QR, and delivery confirmation
+
+Added 2026-09-22, driven by a growing pattern of "I never got my QR" /
+"the QR won't show in Gmail" complaints that were reaching the group chat
+one student at a time. The three fixes target three different failure
+points rather than one bigger email pipeline:
+
+- **`/find`** (`src/app/find/`) — a student who has no working email at all
+  (never sent, sent to a mistyped address, buried) reaches their ticket with
+  just their student ID and the email they registered with, both required
+  and checked together. One generic "no match" message either way, so a
+  classmate's student ID alone (visible on their own ID) can't be used to
+  probe for someone else's ticket. Linked from the landing page footer, the
+  ticket page, and — once approved — the approval and backlog emails
+  themselves. `findOwnRegistration()` prefers the active registration, and
+  falls back to the most recent rejected one so a rejected student can still
+  see the reason and resubmit.
+- **A "Save QR to phone" button** on the ticket page, and `?download=1` on
+  `/ticket/[id]/qr` to back it — a real file save rather than a long-press,
+  which not every phone offers the same way on an inline image.
+- **The QR is now a `cid:` inline attachment on every single send**
+  (approval, resend, walk-in — see `sendTicketApprovedEmail` in
+  `src/lib/notify/email.ts`), not just a hosted `<img>`. "The QR is blank in
+  Gmail" traced back to Gmail's own image proxy stalling on the remote fetch;
+  an attachment needs no fetch. The bulk backlog send is unaffected — Resend's
+  batch endpoint refuses attachments outright, so it keeps the hosted URL,
+  which is exactly what `/find` and the Save button now cover.
+- **`ticket_email_delivered_at`** (`0019_ticket_email_delivered.sql`) closes
+  the other half of the "QR sent" trust gap the 2026-09-19 bounce incident
+  found (`docs/setup/resend.md` §5): "accepted by Resend" and "delivered to
+  the mailbox" are different
+  moments, and only the second is what a student's complaint is actually
+  about. Set by the webhook's `email.delivered` event, tagged `kind=ticket`
+  so a partial-payment or evaluation email never marks it. The Dashboard now
+  shows **QR not sent** / **QR sent, not confirmed** / **QR delivered** (or
+  **Email bounced**, unchanged) per row, plus a **QR sent, not confirmed**
+  filter — the group a bounce filter alone can't surface. Requires ticking
+  `email.delivered` on the existing Resend webhook endpoint, `docs/setup/resend.md` §6.
+  **Still can't confirm inbox vs. spam** — Resend's own limit, which is why
+  `/find` and Save QR exist as the zero-email-required fallback rather than
+  chasing delivery confirmation further.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later

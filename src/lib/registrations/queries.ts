@@ -310,6 +310,29 @@ export async function listPartialWalkIns(): Promise<Registration[]> {
   return (data as Registration[]) ?? [];
 }
 
+/**
+ * A student's own registration, for the self-service "Find my ticket" page —
+ * both fields must match what was submitted, so knowing a classmate's
+ * student ID (visible on their own ID card) isn't enough on its own to open
+ * their ticket. Prefers the active (non-rejected) registration; a student
+ * whose payment was rejected and hasn't resubmitted still has only rejected
+ * rows, so the most recently created one of those is the fallback.
+ */
+export async function findOwnRegistration(
+  studentId: string,
+  email: string,
+): Promise<Registration | null> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("*")
+    .eq("student_id", studentId)
+    .eq("email", email)
+    .order("created_at", { ascending: false });
+
+  const rows = (data as Registration[]) ?? [];
+  return rows.find((row) => row.status !== "rejected") ?? rows[0] ?? null;
+}
+
 export async function getRegistration(id: string): Promise<Registration | null> {
   const { data } = await adminClient()
     .from("registrations")
@@ -436,8 +459,11 @@ export async function searchRegistrations(
      * Receipts card counts. `qr`: paid in full, QR never emailed. `receipt`:
      * has at least one receipt nobody has emailed them yet. `bounced`:
      * Resend reported the address undeliverable and it hasn't been fixed.
+     * `undelivered`: Resend accepted the QR send, hasn't bounced, but also
+     * hasn't confirmed delivery — the "did they actually get it?" group a
+     * bounce filter alone can't surface.
      */
-    delivery?: "qr" | "receipt" | "bounced";
+    delivery?: "qr" | "receipt" | "bounced" | "undelivered";
   } = {},
 ): Promise<RegistrationsPage> {
   const trimmed = query.trim();
@@ -468,6 +494,12 @@ export async function searchRegistrations(
   }
   if (delivery === "bounced") {
     builder = builder.not("email_bounced_at", "is", null);
+  }
+  if (delivery === "undelivered") {
+    builder = builder
+      .not("ticket_email_sent_at", "is", null)
+      .is("ticket_email_delivered_at", null)
+      .is("email_bounced_at", null);
   }
   if (delivery === "receipt") {
     // Voided tickets are excluded, same as the backlog — nobody is emailing them.
@@ -641,11 +673,34 @@ export async function markTicketEmailSent(registrationIds: string[]): Promise<vo
   const { error } = await adminClient()
     .from("registrations")
     // A send Resend accepted supersedes an earlier bounce; if this one
-    // bounces too, the webhook stamps it again.
-    .update({ ticket_email_sent_at: new Date().toISOString(), email_bounced_at: null })
+    // bounces too, the webhook stamps it again. ticket_email_delivered_at
+    // also resets: it described the *previous* send, and this one hasn't
+    // been confirmed delivered yet.
+    .update({
+      ticket_email_sent_at: new Date().toISOString(),
+      ticket_email_delivered_at: null,
+      email_bounced_at: null,
+    })
     .in("id", registrationIds);
 
   if (error) console.error("markTicketEmailSent failed", error);
+}
+
+/**
+ * Set by the Resend webhook's `email.delivered` event — the confirmation
+ * `ticket_email_sent_at` alone can't give, since "accepted" and "delivered"
+ * are different moments (see markEmailBounced below for the other outcome
+ * of that same gap). Only called for a send tagged `kind=ticket` — see
+ * src/lib/notify/email.ts — so a partial-payment or evaluation email never
+ * marks a QR as delivered.
+ */
+export async function markTicketEmailDelivered(registrationId: string): Promise<void> {
+  const { error } = await adminClient()
+    .from("registrations")
+    .update({ ticket_email_delivered_at: new Date().toISOString() })
+    .eq("id", registrationId);
+
+  if (error) console.error("markTicketEmailDelivered failed", error);
 }
 
 /**
@@ -659,7 +714,7 @@ export async function markTicketEmailSent(registrationIds: string[]): Promise<vo
 export async function clearTicketEmailSent(registrationId: string): Promise<void> {
   const { error } = await adminClient()
     .from("registrations")
-    .update({ ticket_email_sent_at: null })
+    .update({ ticket_email_sent_at: null, ticket_email_delivered_at: null })
     .eq("id", registrationId);
 
   if (error) console.error("clearTicketEmailSent failed", error);

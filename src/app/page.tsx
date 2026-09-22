@@ -268,7 +268,13 @@ export default function HomePage() {
         </div>
 
         <footer className="mx-auto w-full max-w-5xl px-5 pb-8 text-sm text-ground/60 2xl:max-w-7xl">
-          <p>Something wrong with your ticket? {EVENT.contact}</p>
+          <p>
+            Already registered?{" "}
+            <Link href="/find" className="font-semibold text-ground/85 underline">
+              Find your ticket
+            </Link>
+            . Something wrong with it? {EVENT.contact}
+          </p>
         </footer>
       </section>
     </main>

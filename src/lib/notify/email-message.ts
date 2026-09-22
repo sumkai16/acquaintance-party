@@ -12,6 +12,13 @@ export type EmailInput = {
    * which is what an unconfigured `NEXT_PUBLIC_SITE_URL` leaves us with.
    */
   qrUrl?: string;
+  /**
+   * When set, the QR image is a `cid:` reference to an inline attachment
+   * the caller adds to the message (see src/lib/notify/email.ts), rather
+   * than the hosted `qrUrl` above. `qrUrl` is still needed regardless — a
+   * batch send (which cannot carry attachments) always falls back to it.
+   */
+  qrCid?: string;
   /** The bare 12-character code, printed under the QR. */
   ticketCode?: string;
   /** Centavos already collected — only set for the partial walk-in email. */
@@ -117,21 +124,26 @@ export function buildTicketSubmittedEmail(input: EmailInput): BuiltEmail {
 /**
  * The QR itself, on plain white, with the code in text underneath.
  *
- * A hosted `<img>` rather than an attachment or a data URL: Gmail strips
- * data URLs outright, and Resend's batch endpoint — the only way to email
- * hundreds of students in one request — refuses attachments. Mail clients
- * that block remote images by default show the code and the link instead,
- * which is why neither is optional.
+ * `cid` (a Resend inline attachment, set for single sends — see email.ts)
+ * is preferred over the hosted `qrUrl` because "the QR is blank in Gmail"
+ * traces back to Gmail's image proxy stalling or being blocked on the
+ * remote `<img>`; a `cid:` attachment needs no fetch at all. Resend's
+ * batch endpoint — the only way to email hundreds of students in one
+ * request — refuses attachments outright, so a batch send has no `cid` and
+ * falls back to the hosted URL as before. Mail clients that block even
+ * inline images show the code and the ticket link instead, which is why
+ * neither is optional.
  *
  * The white block is the same door constraint the ticket page carries
  * (see src/lib/tickets/qr.ts): a phone camera needs black on white, so
  * this never picks up the theme even though everything around it does.
  */
-function qrBlock(qrUrl: string, ticketCode?: string): string {
+function qrBlock(qrUrl: string, ticketCode?: string, cid?: string): string {
+  const src = cid ? `cid:${cid}` : qrUrl;
   return (
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;background:#ffffff;border:1px solid ${ink}22;border-radius:8px">` +
     `<tr><td align="center" style="padding:20px">` +
-    `<img src="${qrUrl}" width="240" height="240" alt="Your ticket QR code" style="display:block;width:240px;height:240px;border:0" />` +
+    `<img src="${src}" width="240" height="240" alt="Your ticket QR code" style="display:block;width:240px;height:240px;border:0" />` +
     (ticketCode
       ? `<div style="margin-top:12px;font-family:'Courier New',Courier,monospace;font-size:15px;letter-spacing:0.15em;color:${ink}cc">${escapeHtml(formatTicketCode(ticketCode))}</div>`
       : "") +
@@ -173,7 +185,7 @@ export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
           ? `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. ` +
             `Here is your QR code — screenshot it, or open the link below at ` +
             `the door.</p>` +
-            qrBlock(input.qrUrl!, input.ticketCode)
+            qrBlock(input.qrUrl!, input.ticketCode, input.qrCid)
           : `<p style="margin:0">Your ${escapeHtml(EVENT.name)} ticket is approved. Your QR ` +
             `code is ready at the link below — screenshot it or keep the page ` +
             `bookmarked for the door.</p>`) +
