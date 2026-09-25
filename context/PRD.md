@@ -496,6 +496,30 @@ too**, since it needs an exact match on both fields. Two additions, both
   reporting a typo'd email. The row still links to a name search on the
   Dashboard for that case.
 
+### 4.11 The online payment line is closed (2026-09-24)
+
+The instructor announced payments are shut for good: the 2026-09-19
+deadline had been extended, and with the event a week out the caterer
+needs the final count — no further payments or participants can be
+accommodated. Closing it is a switch, not a redeploy: a `settings` row
+(`payments_open`, migration `0021`, seeded closed) flipped live from the
+Dashboard's **Online payments** toggle (`togglePaymentsOpen`,
+`requireAdmin()`, logged as `online_payments_toggled`).
+
+Closed means: `/checkout` renders a closed panel instead of the GCash
+instructions and form; `submitRegistration` rejects **before** the receipt
+upload, so a stale open tab leaves no orphaned file; the landing page's
+two CTAs become an outline "Payments are closed" and the "Three steps"
+section disappears; a rejected ticket's "Submit again" link becomes
+"contact an organiser". Everything reads the flag fresh (`force-dynamic`),
+so the flip takes effect on the next request.
+
+Deliberately unchanged: walk-in cash sales, bulk import, and partial
+balances — the flag gates the public GCash path only — and existing
+registrations; pending online submissions stay on the Payments queue for
+admins to approve or reject by hand. The flag fails closed: a missing row
+or a failed read renders as closed, never open.
+
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
 group purchasing, discount codes, a native mobile app. All addable later

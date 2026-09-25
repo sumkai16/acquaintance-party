@@ -18,8 +18,42 @@ import {
   sendingDomainReady,
 } from "@/lib/notify/email";
 import { markReceiptsEmailed, receiptBacklog, receiptIdsFor } from "@/lib/receipts/queries";
+import { setPaymentsOpen } from "@/lib/settings/queries";
 
 export type ActionResult = { ok: boolean; error?: string };
+
+/**
+ * Opens or closes the online payment line — the switch behind the public
+ * checkout's closed state. Admin-only, like every other action in this
+ * file: layout gating decides which pages staff can open, not which
+ * POSTs they can make (context/RULES.md). Walk-in sales never consult
+ * this flag; it only ever gates the GCash checkout.
+ */
+export async function togglePaymentsOpen(open: boolean): Promise<ActionResult> {
+  const adminId = (await requireAdmin())?.id;
+  if (!adminId) return { ok: false, error: ADMIN_ONLY_ERROR };
+
+  const saved = await setPaymentsOpen(open);
+  if (!saved) {
+    // Almost always migration 0021 not pasted yet — say which one, the
+    // same way sendReceiptEmails names 0014, rather than a vague failure.
+    return {
+      ok: false,
+      error:
+        "Couldn't save the change. Paste " +
+        "supabase/migrations/0021_settings.sql into Supabase first.",
+    };
+  }
+
+  await logActivity({
+    userId: adminId,
+    activityType: "online_payments_toggled",
+    description: open ? "Reopened online payments" : "Closed online payments",
+  });
+
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
 
 /**
  * Frees a student's ID for a fresh submission without going through the

@@ -532,6 +532,38 @@ a working copy, not a record: nothing else reads it, and approving the rows is
 what creates tickets. Last write wins between phones; the screen only saves
 after a real edit, so opening it on a stale phone can't overwrite a newer list.
 
+## settings
+
+Added in `0021_settings.sql`. Runtime switches an admin can flip without a
+redeploy. Currently one row matters: whether the online GCash payment line
+is open.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| key | text | PK | `payments_open` is the only key today |
+| value | text | NOT NULL | `"true"` or `"false"` — read through `readOpenFlag()`, which treats anything but the exact string `"true"` as closed |
+| updated_at | timestamptz | NOT NULL, default `now()` | |
+
+**Fail-closed, twice.** A missing row, an unrecognized value, or a failed
+read all render as *closed* (`readOpenFlag()` in `src/lib/settings/open.ts`,
+`paymentsOpen()` in `src/lib/settings/queries.ts`) — a payment gate that
+can't confirm its own state must not accept money. Seeded `false`: pasting
+this migration is how the line was shut (instructor's announcement,
+2026-09-24). From then on the Dashboard's **Online payments** toggle
+(`togglePaymentsOpen` in `admin/dashboard/actions.ts`, `requireAdmin()`,
+writes an `online_payments_toggled` activity row) opens or closes it live.
+
+**The flag gates the online checkout only** — the checkout page and its
+`submitRegistration` action (checked before the receipt upload), the
+landing page's CTAs and "Three steps" section, and the rejected ticket's
+"Submit again" link. Walk-in sales, bulk import, and partial balances
+never consult it. The toggle never touches existing rows; pending online
+submissions stay on the Payments queue for admins to decide by hand.
+
+**RLS is on with no policies at all**, same as `walk_in_drafts` and
+`faculty_invitations` — the service-role client is the only reader and
+writer.
+
 ## Row-level security
 
 RLS is **on** for every table. Every policy targets `authenticated` (i.e.

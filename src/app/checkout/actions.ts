@@ -12,6 +12,7 @@ import {
   createRegistration,
 } from "@/lib/registrations/queries";
 import { adminClient } from "@/lib/supabase/admin";
+import { paymentsOpen } from "@/lib/settings/queries";
 import { notifyNewRegistration } from "@/lib/notify/discord";
 import { sendTicketSubmittedEmail } from "@/lib/notify/email";
 import { logActivity } from "@/lib/activity/queries";
@@ -63,6 +64,23 @@ export async function submitRegistration(
 ): Promise<FormState> {
   const values = readValues(formData);
   const attempt = _prev.attempt + 1;
+
+  // Before validation, the throttle, and above all the receipt upload — so
+  // a student stuck on a tab opened while sales were still live gets a
+  // clear message and leaves no orphaned file behind. The gate lives here,
+  // not just on the page: this action is a POST endpoint anyone can call
+  // without the form. `values` rides along like every other error return,
+  // so the fields they already typed aren't wiped (see FormState.values).
+  if (!(await paymentsOpen())) {
+    return {
+      status: "error",
+      message:
+        "Online payments are closed. If you already paid, find your ticket " +
+        "with your student ID, or contact an organiser for help.",
+      values,
+      attempt,
+    };
+  }
 
   const parsed = checkoutSchema.safeParse(values);
   const fieldErrors: Record<string, string> = {};

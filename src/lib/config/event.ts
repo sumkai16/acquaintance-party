@@ -96,7 +96,7 @@ export const EVENT = {
     {
       question: "What if my receipt is rejected?",
       answer:
-        "Your ticket page shows the reason it was rejected. Fix what it says and submit again — a rejected attempt does not use up your GCash reference.",
+        "Your ticket page shows the reason it was rejected and what to do next. A rejected attempt does not use up your GCash reference.",
     },
     {
       question: "I lost my ticket link.",

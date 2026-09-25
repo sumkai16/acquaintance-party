@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT, formatPeso } from "@/lib/config/event";
 import { getRegistration } from "@/lib/registrations/queries";
+import { paymentsOpen } from "@/lib/settings/queries";
 import { formatTicketCode } from "@/lib/tickets/code";
 import { ticketQrDataUrl } from "@/lib/tickets/qr";
 
@@ -14,7 +15,10 @@ export default async function TicketPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const registration = await getRegistration(id);
+  const [registration, open] = await Promise.all([
+    getRegistration(id),
+    paymentsOpen(),
+  ]);
   if (!registration) notFound();
 
   return (
@@ -39,7 +43,7 @@ export default async function TicketPage({
         {registration.status === "approved" && registration.ticket_code ? (
           <ApprovedTicket code={registration.ticket_code} id={registration.id} />
         ) : registration.status === "rejected" ? (
-          <Rejected reason={registration.reject_reason} />
+          <Rejected reason={registration.reject_reason} canResubmit={open} />
         ) : registration.status === "partial" ? (
           <Partial paid={registration.amount_paid} owed={registration.amount - registration.amount_paid} />
         ) : (
@@ -173,7 +177,13 @@ function Partial({ paid, owed }: { paid: number; owed: number }) {
   );
 }
 
-function Rejected({ reason }: { reason: string | null }) {
+function Rejected({
+  reason,
+  canResubmit,
+}: {
+  reason: string | null;
+  canResubmit: boolean;
+}) {
   return (
     <div className="m-5 rounded bg-red-50 p-5 text-center">
       <p className="font-display text-2xl uppercase text-red-900">
@@ -182,9 +192,16 @@ function Rejected({ reason }: { reason: string | null }) {
       <p className="mt-2 text-sm text-red-900/80">
         {reason ?? "Contact an organiser for help."}
       </p>
-      <a href="/checkout" className="mt-3 inline-block font-semibold underline">
-        Submit again
-      </a>
+      {canResubmit ? (
+        <a href="/checkout" className="mt-3 inline-block font-semibold underline">
+          Submit again
+        </a>
+      ) : (
+        <p className="mt-3 text-sm text-red-900/80">
+          Payments are closed — you can&apos;t submit again. Contact an
+          organiser for help.
+        </p>
+      )}
     </div>
   );
 }

@@ -16,8 +16,10 @@ import { buildSectionReport } from "@/lib/registrations/section-report";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { allSections, sectionsFor } from "@/lib/registrations/sections";
 import { formatPeso } from "@/lib/config/event";
+import { paymentsOpen } from "@/lib/settings/queries";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
+import { PaymentLineToggle } from "./payment-line-toggle";
 import { receiptBacklog, receiptsForMany } from "@/lib/receipts/queries";
 import { SendReceiptEmails } from "./send-receipt-emails";
 import { Pagination } from "../pagination";
@@ -107,6 +109,7 @@ export default async function RegistrationsPage({
     online,
     approvedForReport,
     backlog,
+    checkoutOpen,
   ] = await Promise.all([
     searchRegistrations(q, status, paymentMethod, {
       page,
@@ -122,6 +125,7 @@ export default async function RegistrationsPage({
     onlinePaymentsSummary(),
     listApprovedForSectionReport(),
     receiptBacklog(),
+    paymentsOpen(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / REGISTRATIONS_PAGE_SIZE));
@@ -194,6 +198,8 @@ export default async function RegistrationsPage({
         <Stat label="Total cash" value={formatPeso(cash.totalCentavos)} />
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
+
+      <PaymentLineToggle open={checkoutOpen} />
 
       <SendReceiptEmails
         split={

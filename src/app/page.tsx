@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { EVENT, formatPeso, formatTimeRange } from "@/lib/config/event";
+import { paymentsOpen } from "@/lib/settings/queries";
 
 // One icon accent per inclusion, matched by position to the confirmed
 // design (circle / circle / diamond) — not tied to inclusion content, so
@@ -67,7 +68,14 @@ const INCLUSION_ICONS = [
   </span>,
 ];
 
-export default function HomePage() {
+// Reads the payments open/closed flag, so every request renders with the
+// current value — flipping the Dashboard toggle takes effect on the next
+// visit with no redeploy and no cache to invalidate. See
+// src/lib/settings/queries.ts.
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const open = await paymentsOpen();
   const date = EVENT.startsAt.toLocaleDateString("en-PH", {
     weekday: "long",
     day: "numeric",
@@ -139,15 +147,29 @@ export default function HomePage() {
               </div>
             </dl>
 
-            <Link
-              href="/checkout"
-              className="w-full rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-            >
-              Get your ticket{" "}
-              {/* Its own element so a narrow phone drops the price onto a
-                  second line cleanly, instead of stranding a dash. */}
-              <span className="whitespace-nowrap font-normal">{price}</span>
-            </Link>
+            {open ? (
+              <Link
+                href="/checkout"
+                className="w-full rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              >
+                Get your ticket{" "}
+                {/* Its own element so a narrow phone drops the price onto a
+                    second line cleanly, instead of stranding a dash. */}
+                <span className="whitespace-nowrap font-normal">{price}</span>
+              </Link>
+            ) : (
+              /* Same footprint as the buy CTA — the hero's whole point is
+                 this slot — but an outline instead of the accent fill, so
+                 "closed" reads at a glance before the words are parsed.
+                 Still a link: the checkout page explains the closure and
+                 offers Find your ticket. */
+              <Link
+                href="/checkout"
+                className="w-full rounded border border-ground/40 px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground/85 transition-colors hover:border-ground/70 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              >
+                Payments are closed
+              </Link>
+            )}
           </div>
         </div>
       </section>
@@ -178,50 +200,54 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <section className="bg-accent-3/15">
-        <div className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
-          <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
-            How it works
-          </p>
-          <h2 className="mt-2 font-display text-4xl uppercase md:text-5xl">
-            Three steps
-          </h2>
+      {/* The whole section is acquisition copy for the payment flow —
+          "Pay with GCash / Upload your receipt" reads as false advertising
+          once the line is closed, so it goes away with it. */}
+      {open && (
+        <section className="bg-accent-3/15">
+          <div className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
+            <p className="text-sm uppercase tracking-[0.2em] text-ink/70">
+              How it works
+            </p>
+            <h2 className="mt-2 font-display text-4xl uppercase md:text-5xl">
+              Three steps
+            </h2>
 
-          <ol className="mt-8 grid gap-8 md:grid-cols-3">
-            <li>
-              <p className="font-display text-5xl text-accent">01</p>
-              <h3 className="mt-2 font-display text-2xl uppercase">
-                Pay with GCash
-              </h3>
-              <p className="mt-2 text-ink/75">
-                Send {price} to the account shown at checkout, then keep the
-                receipt open — you will need its reference number.
-              </p>
-            </li>
-            <li>
-              <p className="font-display text-5xl text-accent">02</p>
-              <h3 className="mt-2 font-display text-2xl uppercase">
-                Upload your receipt
-              </h3>
-              <p className="mt-2 text-ink/75">
-                Fill in your details, attach the receipt screenshot, and type
-                the reference number. An organiser checks it by hand.
-              </p>
-            </li>
-            <li>
-              <p className="font-display text-5xl text-accent">03</p>
-              <h3 className="mt-2 font-display text-2xl uppercase">
-                Get your QR
-              </h3>
-              <p className="mt-2 text-ink/75">
-                You land on a permanent ticket link. Once it is approved, it
-                shows the QR code that gets you through the door.
-              </p>
-            </li>
-          </ol>
-        </div>
-      </section>
-
+            <ol className="mt-8 grid gap-8 md:grid-cols-3">
+              <li>
+                <p className="font-display text-5xl text-accent">01</p>
+                <h3 className="mt-2 font-display text-2xl uppercase">
+                  Pay with GCash
+                </h3>
+                <p className="mt-2 text-ink/75">
+                  Send {price} to the account shown at checkout, then keep the
+                  receipt open — you will need its reference number.
+                </p>
+              </li>
+              <li>
+                <p className="font-display text-5xl text-accent">02</p>
+                <h3 className="mt-2 font-display text-2xl uppercase">
+                  Upload your receipt
+                </h3>
+                <p className="mt-2 text-ink/75">
+                  Fill in your details, attach the receipt screenshot, and type
+                  the reference number. An organiser checks it by hand.
+                </p>
+              </li>
+              <li>
+                <p className="font-display text-5xl text-accent">03</p>
+                <h3 className="mt-2 font-display text-2xl uppercase">
+                  Get your QR
+                </h3>
+                <p className="mt-2 text-ink/75">
+                  You land on a permanent ticket link. Once it is approved, it
+                  shows the QR code that gets you through the door.
+                </p>
+              </li>
+            </ol>
+          </div>
+        </section>
+      )}
       <section className="mx-auto w-full max-w-5xl px-5 py-16 2xl:max-w-7xl">
         <h2 className="font-display text-4xl uppercase md:text-5xl">
           Questions
@@ -256,15 +282,26 @@ export default function HomePage() {
             </p>
           </div>
 
-          <Link
-            href="/checkout"
-            className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
-          >
-            Get your ticket{" "}
-            {/* Its own element so a narrow phone drops the price onto a
-                second line cleanly, instead of stranding a dash. */}
-            <span className="whitespace-nowrap font-normal">{price}</span>
-          </Link>
+          {open ? (
+            <Link
+              href="/checkout"
+              className="w-full shrink-0 rounded bg-accent px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
+            >
+              Get your ticket{" "}
+              {/* Its own element so a narrow phone drops the price onto a
+                  second line cleanly, instead of stranding a dash. */}
+              <span className="whitespace-nowrap font-normal">{price}</span>
+            </Link>
+          ) : (
+            /* Closed twin of the hero CTA — same outline treatment, same
+               destination (the checkout page's closed panel). */
+            <Link
+              href="/checkout"
+              className="w-full shrink-0 rounded border border-ground/40 px-8 py-4 text-center text-xl font-semibold uppercase tracking-wide text-ground/85 transition-colors hover:border-ground/70 hover:text-ground focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 sm:w-auto sm:self-start md:self-auto"
+            >
+              Payments are closed
+            </Link>
+          )}
         </div>
 
         <footer className="mx-auto w-full max-w-5xl px-5 pb-8 text-sm text-ground/60 2xl:max-w-7xl">

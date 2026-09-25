@@ -135,6 +135,9 @@ src/
 │   │   ├── discord.ts             # notifyNewRegistration, server-only
 │   │   ├── email-message.ts       # pure formatting, no server-only import
 │   │   └── email.ts               # sendTicketSubmittedEmail/Approved, server-only
+│   ├── settings/
+│   │   ├── open.ts                # pure: readOpenFlag (the payments switch, fail-closed)
+│   │   └── queries.ts             # server-only: paymentsOpen / setPaymentsOpen
 │   └── supabase/
 │       ├── admin.ts | server.ts | browser.ts
 │       └── types.ts
