@@ -181,7 +181,12 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
-The newest, `0021_settings.sql` (the `settings` table behind the
+`0022_ticket_rates.sql` (officer and free tickets) must be pasted **before**
+deploying the code that reads `ticket_rate`: the Dashboard and its backup
+export select that column, and a free ticket can't be inserted until the
+`amount > 0` check is relaxed. It is safe to paste twice.
+
+The previous one, `0021_settings.sql` (the `settings` table behind the
 Dashboard's online-payments switch), should be pasted **before** deploying
 any build that touches checkout: without it the site reads payments as
 closed — which is where it ships anyway — and the switch's save fails with

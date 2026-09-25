@@ -73,6 +73,12 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
       (a flat floor, not a percentage); no QR goes out until staff or admin
       record the balance on `/admin/walk-in`. Online payments are unaffected — there is
       no partial concept for GCash
+- [x] Officer and free tickets (`0022`) — an admin picks a **Ticket rate** on the
+      single `/admin/walk-in` form: Officer (₱250) or Free (₱0). Paid in full, so
+      approved on the spot with a QR; not partial, not available to staff, bulk
+      import or quick-entry. Free tickets issue no receipt. The Dashboard tags
+      those rows, counts them under Total payees, and the backup export gains a
+      Rate column. Cash totals needed no change (they sum `amount_paid`)
 - [x] Acknowledgement receipts (`0014`) — one per payment, at `/receipt/<id>`, printed
       through the browser. Linked from the ticket/partial email; the Dashboard's
       **Receipts** card emails the backlog with an apology, QR included for anyone
