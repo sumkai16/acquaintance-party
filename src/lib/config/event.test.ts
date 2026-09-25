@@ -28,7 +28,10 @@ describe("EVENT", () => {
 
   it("carries a GCash payee the student can actually pay", () => {
     expect(EVENT.gcash.name.length).toBeGreaterThan(0);
-    expect(EVENT.gcash.number).toMatch(/^09\d{9}$/);
+    // The number is stored spaced the way GCash itself displays it (see the
+    // comment on gcash.number in event.ts) — strip the spaces before
+    // checking it's still a dialable 11-digit number.
+    expect(EVENT.gcash.number?.replace(/\s+/g, "")).toMatch(/^09\d{9}$/);
   });
 
   it("ends after it starts", () => {
