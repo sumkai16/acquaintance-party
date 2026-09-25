@@ -8,6 +8,7 @@ import type {
   ReviewStatus,
 } from "@/lib/supabase/types";
 import type { CheckoutInput, WalkInInput } from "./schema";
+import type { TicketRate } from "./rates";
 import { REGISTRATION_SORT_COLUMNS, type RegistrationSortColumn } from "./sort";
 
 /** Postgres unique-violation SQLSTATE. */
@@ -138,6 +139,8 @@ export async function createWalkInRegistration(
     reviewedBy: string;
     importBatchId?: string;
     partialAmountCentavos?: number;
+    /** Omitted for a regular ticket, so an ordinary sale doesn't depend on migration 0022 existing. */
+    ticketRate?: TicketRate;
   },
 ): Promise<CreateWalkInResult> {
   const base = {
@@ -156,6 +159,9 @@ export async function createWalkInRegistration(
     // insert otherwise, so a single walk-in sale doesn't depend on
     // migration 0012 existing.
     ...(input.importBatchId ? { import_batch_id: input.importBatchId } : {}),
+    ...(input.ticketRate && input.ticketRate !== "regular"
+      ? { ticket_rate: input.ticketRate }
+      : {}),
   };
 
   if (input.partialAmountCentavos !== undefined) {
@@ -614,6 +620,25 @@ export async function listApprovedForSectionReport(): Promise<
     .eq("status", "approved");
 
   return (data as Pick<Registration, "year_level" | "section" | "amount">[]) ?? [];
+}
+
+/**
+ * How many approved tickets were sold below the regular price, by rate.
+ * Reads as zero rather than failing if migration 0022 isn't pasted yet — this
+ * only feeds a Dashboard sub-line, which shouldn't be able to break the page.
+ */
+export async function discountedTicketCounts(): Promise<{ officer: number; free: number }> {
+  const { data } = await adminClient()
+    .from("registrations")
+    .select("ticket_rate")
+    .eq("status", "approved")
+    .neq("ticket_rate", "regular");
+
+  const rows = (data ?? []) as { ticket_rate: TicketRate }[];
+  return {
+    officer: rows.filter((row) => row.ticket_rate === "officer").length,
+    free: rows.filter((row) => row.ticket_rate === "free").length,
+  };
 }
 
 export type PaymentMethodSummary = { count: number; totalCentavos: number };

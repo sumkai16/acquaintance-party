@@ -15,6 +15,7 @@ import {
 import { Tr } from "../table";
 import { useFlash } from "../flash";
 import { formatPeso } from "@/lib/config/event";
+import { RATE_LABEL } from "@/lib/registrations/rates";
 import { formatTicketCode } from "@/lib/tickets/code";
 import type { Registration } from "@/lib/supabase/types";
 import type { RowReceipt } from "@/lib/receipts/queries";
@@ -113,6 +114,11 @@ export function RegistrationRow({
         {registration.status === "partial"
           ? `${formatPeso(registration.amount_paid)} / ${formatPeso(registration.amount)}`
           : formatPeso(registration.amount)}
+        {registration.ticket_rate && registration.ticket_rate !== "regular" ? (
+          <span className="ml-2 rounded-full border border-accent-2/40 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-accent-2">
+            {RATE_LABEL[registration.ticket_rate]}
+          </span>
+        ) : null}
       </td>
 
       <td className="py-2 pr-3">

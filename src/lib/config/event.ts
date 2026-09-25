@@ -15,6 +15,8 @@ export const EVENT = {
   endsAt: new Date("2026-10-03T20:00:00+08:00"),
   venue: "SCC Annex Building",
   ticketPriceCentavos: 49_500,
+  /** What an officer pays — recorded by an admin at /admin/walk-in. See src/lib/registrations/rates.ts. */
+  officerPriceCentavos: 25_000,
   capacity: 700,
 
   /**

@@ -65,6 +65,7 @@ export async function GET() {
     { header: "Email", key: "email", width: 30 },
     { header: "Status", key: "status", width: 12 },
     { header: "Payment", key: "paymentMethod", width: 12 },
+    { header: "Rate", key: "rate", width: 10 },
     { header: "Amount", key: "amount", width: 12 },
     { header: "GCash reference", key: "gcashReference", width: 22 },
     { header: "Ticket code", key: "ticketCode", width: 18 },
@@ -91,6 +92,7 @@ export async function GET() {
       // Pesos as a real number, not the ₱-prefixed string the app shows, so
       // the column can just be summed in Excel to check the night's total
       // against the cash box. Centavos are the storage unit, not this one.
+      rate: registration.ticket_rate,
       amount: registration.amount / 100,
       gcashReference: registration.gcash_reference ?? "",
       ticketCode: registration.ticket_code ?? "",

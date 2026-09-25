@@ -7,6 +7,7 @@ import { walkInSchema } from "@/lib/registrations/schema";
 import { completeWalkInBalance, createWalkInRegistration } from "@/lib/registrations/queries";
 import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isValidPartialAmount } from "@/lib/registrations/partial";
+import { RATE_LABEL, parseTicketRate, priceFor } from "@/lib/registrations/rates";
 import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity/queries";
@@ -26,6 +27,8 @@ export type SubmittedValues = {
   email: string;
   /** Raw text as typed — parsed and validated separately from walkInSchema, since it isn't an identity field. */
   amount: string;
+  /** "regular" | "officer" | "free" — anything but regular is admin-only, checked in submitWalkIn. */
+  rate: string;
 };
 
 export type FormState = {
@@ -47,6 +50,7 @@ function readValues(formData: FormData): SubmittedValues {
     section: String(formData.get("section") ?? ""),
     email: String(formData.get("email") ?? ""),
     amount: String(formData.get("amount") ?? ""),
+    rate: String(formData.get("rate") ?? "regular"),
   };
 }
 
@@ -85,8 +89,26 @@ export async function submitWalkIn(
   // Checked alongside the identity fields, not after, for the same reason
   // checkout's receipt check is — one pass reports every invalid field at
   // once instead of the amount only surfacing once everything else is fixed.
-  const amountCentavos = parsePesoToCentavos(values.amount);
-  const fullPrice = EVENT.ticketPriceCentavos;
+  //
+  // The rate decides the price. An officer or free ticket is admin-only and
+  // always paid in full — checked here, not just by hiding the picker, since
+  // this action is a POST endpoint staff could call without the form.
+  const rate = parseTicketRate(values.rate);
+  const isAdmin = (await currentProfile())?.role === "admin";
+  if (rate === null || (rate !== "regular" && !isAdmin)) {
+    return {
+      status: "error",
+      message:
+        rate === null
+          ? "Pick a ticket rate."
+          : "Only an admin can record an officer or free ticket.",
+      values: { ...values, rate: "regular" },
+      attempt,
+    };
+  }
+
+  const fullPrice = priceFor(rate);
+  const amountCentavos = rate === "regular" ? parsePesoToCentavos(values.amount) : fullPrice;
   if (amountCentavos === null) {
     fieldErrors.amount = "Enter a valid amount.";
   } else if (amountCentavos > fullPrice) {
@@ -122,6 +144,7 @@ export async function submitWalkIn(
     amount: fullPrice,
     reviewedBy: adminId,
     partialAmountCentavos,
+    ticketRate: rate,
   });
 
   if (!created.ok) {
@@ -145,15 +168,20 @@ export async function submitWalkIn(
   }
 
   const profile = await currentProfile();
-  const receiptIds = await issueReceiptOrLog({
-    registrationId: created.id,
-    fullName: parsed.data.fullName,
-    amount,
-    method: "cash",
-    balanceAfter: fullPrice - amount,
-    receivedBy: adminId,
-    paidAt: new Date().toISOString(),
-  });
+  // A free ticket has no payment to acknowledge — and the receipts table
+  // rejects a ₱0 row — so it simply gets none. The QR email still goes out.
+  const receiptIds =
+    amount > 0
+      ? await issueReceiptOrLog({
+          registrationId: created.id,
+          fullName: parsed.data.fullName,
+          amount,
+          method: "cash",
+          balanceAfter: fullPrice - amount,
+          receivedBy: adminId,
+          paidAt: new Date().toISOString(),
+        })
+      : [];
 
   if (partialAmountCentavos !== undefined) {
     const owedCentavos = fullPrice - partialAmountCentavos;
@@ -206,14 +234,20 @@ export async function submitWalkIn(
   await logActivity({
     userId: adminId,
     activityType: "walk_in_payment_added",
-    description: `${profile?.fullName ?? "Someone"} recorded a walk-in payment for ${parsed.data.fullName} (${parsed.data.studentId})`,
+    description:
+      rate === "regular"
+        ? `${profile?.fullName ?? "Someone"} recorded a walk-in payment for ${parsed.data.fullName} (${parsed.data.studentId})`
+        : `${profile?.fullName ?? "Someone"} recorded a ${RATE_LABEL[rate].toLowerCase()} ticket for ${parsed.data.fullName} (${parsed.data.studentId})`,
     registrationId: created.id,
-    amount: EVENT.ticketPriceCentavos,
+    amount,
   });
 
   return {
     status: "success",
-    message: `Recorded ${parsed.data.fullName}'s walk-in sale — ticket emailed to ${parsed.data.email}.`,
+    message:
+      rate === "regular"
+        ? `Recorded ${parsed.data.fullName}'s walk-in sale — ticket emailed to ${parsed.data.email}.`
+        : `Recorded ${parsed.data.fullName}'s ${RATE_LABEL[rate].toLowerCase()} ticket (${formatPeso(amount)}) — ticket emailed to ${parsed.data.email}.`,
     attempt,
   };
 }

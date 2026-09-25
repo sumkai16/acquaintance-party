@@ -9,6 +9,7 @@ import {
 } from "@/lib/registrations/schema";
 import { sectionsFor } from "@/lib/registrations/sections";
 import { parsePesoToCentavos } from "@/lib/expenses/parse";
+import { RATE_LABEL, TICKET_RATES, parseTicketRate, priceFor, type TicketRate } from "@/lib/registrations/rates";
 import { useFlash } from "../flash";
 import { useEmailCheck } from "../../use-email-check";
 import { Option } from "../option";
@@ -27,7 +28,7 @@ const inputClass =
 const FULL_PRICE_PESOS = String(EVENT.ticketPriceCentavos / 100);
 const MIN_PARTIAL = EVENT.partialPaymentMinCentavos;
 
-export function WalkInForm() {
+export function WalkInForm({ isAdmin }: { isAdmin: boolean }) {
   const [state, action, pending] = useActionState(submitWalkIn, initial);
   const errors = state.fieldErrors ?? {};
   const values = state.values;
@@ -144,13 +145,88 @@ export function WalkInForm() {
         ) : null}
       </Field>
 
-      <AmountSection
-        key={keyed("amount")}
-        defaultValue={values?.amount ?? FULL_PRICE_PESOS}
+      <RateAndAmount
+        key={keyed("rateAndAmount")}
+        isAdmin={isAdmin}
+        defaultRate={parseTicketRate(values?.rate ?? "") ?? "regular"}
+        defaultAmount={values?.amount ?? FULL_PRICE_PESOS}
         error={errors.amount}
         pending={pending}
       />
     </form>
+  );
+}
+
+/**
+ * The rate picker (admins only) and everything that depends on it. Remounted
+ * on every attempt like YearAndSection, so a Free or Officer pick never
+ * carries over to the next sale by accident. Staff never see the picker and
+ * always record a regular ticket — submitWalkIn enforces that too.
+ */
+function RateAndAmount({
+  isAdmin,
+  defaultRate,
+  defaultAmount,
+  error,
+  pending,
+}: {
+  isAdmin: boolean;
+  defaultRate: TicketRate;
+  defaultAmount: string;
+  error?: string;
+  pending: boolean;
+}) {
+  const [rate, setRate] = useState<TicketRate>(isAdmin ? defaultRate : "regular");
+
+  return (
+    <>
+      {isAdmin ? (
+        <Field
+          label="Ticket rate"
+          name="rate"
+          hint="Officer and free tickets are approved in full, on the spot."
+        >
+          <select
+            id="rate"
+            name="rate"
+            value={rate}
+            onChange={(event) => setRate(event.target.value as TicketRate)}
+            className={inputClass}
+          >
+            {TICKET_RATES.map((option) => (
+              <Option key={option} value={option}>
+                {RATE_LABEL[option]} —{" "}
+                {option === "free" ? "no charge" : formatPeso(priceFor(option))}
+              </Option>
+            ))}
+          </select>
+        </Field>
+      ) : null}
+
+      {rate === "regular" ? (
+        <AmountSection
+          defaultValue={defaultAmount}
+          error={error}
+          pending={pending}
+        />
+      ) : (
+        <>
+          <p className="rounded border border-accent-2/30 bg-accent-2/10 px-3 py-2.5 text-sm text-ground">
+            {rate === "officer"
+              ? `Officer ticket — collect ${formatPeso(priceFor(rate))}.`
+              : "Free ticket — nothing to collect, and no receipt is issued."}{" "}
+            Approved immediately.
+          </p>
+          <button
+            type="submit"
+            disabled={pending}
+            className="rounded-full bg-accent px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            {pending ? "Saving…" : `Record ${rate} ticket`}
+          </button>
+        </>
+      )}
+    </>
   );
 }
 

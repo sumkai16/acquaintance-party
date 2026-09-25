@@ -62,7 +62,7 @@ export default async function WalkInPage() {
 
         <WalkInLayout>
           <WalkInModeSwitch savedDraft={savedDraft}>
-            <WalkInForm />
+            <WalkInForm isAdmin={profile?.role === "admin"} />
           </WalkInModeSwitch>
         </WalkInLayout>
 

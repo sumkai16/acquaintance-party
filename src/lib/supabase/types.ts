@@ -1,4 +1,5 @@
 import type { ActivityType } from "@/lib/activity/types";
+import type { TicketRate } from "@/lib/registrations/rates";
 
 export type RegistrationStatus = "pending" | "approved" | "rejected" | "partial";
 /** The Payments page only ever reviews online submissions — a walk-in never lands in this queue. */
@@ -20,6 +21,7 @@ export type Registration = {
   receipt_path: string | null;
   amount: number;
   amount_paid: number;
+  ticket_rate: TicketRate;
   status: RegistrationStatus;
   reject_reason: string | null;
   ticket_code: string | null;

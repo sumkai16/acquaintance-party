@@ -17,6 +17,7 @@ import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { allSections, sectionsFor } from "@/lib/registrations/sections";
 import { formatPeso } from "@/lib/config/event";
 import { paymentsOpen } from "@/lib/settings/queries";
+import { discountedTicketCounts } from "@/lib/registrations/queries";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
 import { PaymentLineToggle } from "./payment-line-toggle";
@@ -110,6 +111,7 @@ export default async function RegistrationsPage({
     approvedForReport,
     backlog,
     checkoutOpen,
+    discounted,
   ] = await Promise.all([
     searchRegistrations(q, status, paymentMethod, {
       page,
@@ -126,6 +128,7 @@ export default async function RegistrationsPage({
     listApprovedForSectionReport(),
     receiptBacklog(),
     paymentsOpen(),
+    discountedTicketCounts(),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / REGISTRATIONS_PAGE_SIZE));
@@ -193,7 +196,15 @@ export default async function RegistrationsPage({
       </header>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Stat label="Total payees" value={totalPayees} />
+        <Stat
+          label="Total payees"
+          value={totalPayees}
+          detail={
+            discounted.officer + discounted.free > 0
+              ? `incl. ${discounted.officer} officer, ${discounted.free} free`
+              : undefined
+          }
+        />
         <Stat label="Total amount" value={formatPeso(totalCentavos)} />
         <Stat label="Total cash" value={formatPeso(cash.totalCentavos)} />
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
