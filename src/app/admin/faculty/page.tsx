@@ -56,12 +56,8 @@ export default async function FacultyPage() {
         </p>
       </header>
 
-      <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3">
+      <dl className="mt-6 grid grid-cols-2 gap-3">
         <Stat label="Acknowledged" value={entries.length} />
-        <Stat
-          label="With a department"
-          value={entries.filter((entry) => entry.department).length}
-        />
         <Stat label="On an older letter" value={oldVersions} />
       </dl>
 

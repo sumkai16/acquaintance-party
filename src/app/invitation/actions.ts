@@ -10,9 +10,9 @@ export type FormState = {
   status: "idle" | "error" | "entered";
   /** The confirmation line on success, or the whole-form error on failure. */
   message?: string;
-  fieldErrors?: Partial<Record<"fullName" | "department" | "acknowledged", string>>;
+  fieldErrors?: Partial<Record<"fullName" | "acknowledged", string>>;
   /** What they typed, so an error round trip doesn't blank the form. */
-  values?: { fullName: string; department: string };
+  values?: { fullName: string };
   /** Bumped every submit, to re-key the inputs — see invitation-form.tsx. */
   attempt: number;
 };
@@ -31,7 +31,6 @@ export async function submitAcknowledgement(
 ): Promise<FormState> {
   const values = {
     fullName: String(formData.get("fullName") ?? ""),
-    department: String(formData.get("department") ?? ""),
   };
   const attempt = previous.attempt + 1;
 
@@ -46,7 +45,7 @@ export async function submitAcknowledgement(
     const fieldErrors: FormState["fieldErrors"] = {};
     for (const issue of parsed.error.issues) {
       const field = issue.path[0];
-      if (field === "fullName" || field === "department" || field === "acknowledged") {
+      if (field === "fullName" || field === "acknowledged") {
         fieldErrors[field] ??= issue.message;
       }
     }
@@ -55,7 +54,6 @@ export async function submitAcknowledgement(
 
   const result = await recordAcknowledgement({
     fullName: parsed.data.fullName,
-    department: parsed.data.department,
     letterVersion: LETTER_VERSION,
   });
 

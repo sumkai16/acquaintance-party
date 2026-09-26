@@ -63,6 +63,10 @@ export const dynamic = "force-dynamic";
  */
 export default async function InvitationPage() {
   const enteredAs = (await cookies()).get(ENTERED_COOKIE)?.value ?? null;
+  // "Saturday · Oct 3, 2026 · 2:30 PM – 8:00 PM" → the date, and the time.
+  const timeAt = LETTER.when.lastIndexOf(" · ");
+  const whenDate = LETTER.when.slice(0, timeAt);
+  const whenTime = LETTER.when.slice(timeAt + 3);
 
   return (
     <main
@@ -100,7 +104,12 @@ export default async function InvitationPage() {
             </p>
           ))}
 
-          <p className={styles.when}>{LETTER.when}</p>
+          {/* Two lines on purpose: as one line, a phone wraps it after the
+              year and strands a "·" at the start of the second. */}
+          <p className={styles.when}>
+            <span className={styles.whenLine}>{whenDate}</span>
+            <span className={styles.whenLine}>{whenTime}</span>
+          </p>
           <p className={styles.where}>{LETTER.where}</p>
 
           <hr className={styles.rule} />

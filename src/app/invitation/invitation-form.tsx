@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useCallback, useState } from "react";
-import { MAX_DEPARTMENT_LENGTH } from "@/lib/faculty/schema";
 import { submitAcknowledgement, type FormState } from "./actions";
 import { useModal } from "./use-modal";
 import styles from "./letter.module.css";
@@ -77,7 +76,8 @@ export function InvitationForm() {
               Confirm
             </h2>
             <p className={styles.modalIntro}>
-              Tick the box, then give your name so we know you have read it.
+              Please write your name, then tick the box to show you have read
+              the letter.
             </p>
 
             <form action={action} noValidate>
@@ -85,19 +85,6 @@ export function InvitationForm() {
                 <p role="alert" className={styles.formError}>
                   {state.message}
                 </p>
-              ) : null}
-
-              <label className={styles.tick}>
-                <input
-                  type="checkbox"
-                  name="acknowledged"
-                  checked={acknowledged}
-                  onChange={(event) => setAcknowledged(event.target.checked)}
-                />
-                <span>I have read this letter of invitation.</span>
-              </label>
-              {errors.acknowledged ? (
-                <p className={styles.error}>{errors.acknowledged}</p>
               ) : null}
 
               <label htmlFor="fullName" className={styles.label}>
@@ -117,20 +104,17 @@ export function InvitationForm() {
                 <p className={styles.error}>{errors.fullName}</p>
               ) : null}
 
-              <label htmlFor="department" className={styles.label}>
-                Department <span className={styles.optional}>(optional)</span>
+              <label className={styles.tick}>
+                <input
+                  type="checkbox"
+                  name="acknowledged"
+                  checked={acknowledged}
+                  onChange={(event) => setAcknowledged(event.target.checked)}
+                />
+                <span>I have read this letter of invitation.</span>
               </label>
-              <input
-                key={keyed("department")}
-                id="department"
-                name="department"
-                maxLength={MAX_DEPARTMENT_LENGTH}
-                placeholder="e.g. BSIT"
-                defaultValue={state.values?.department ?? ""}
-                className={styles.input}
-              />
-              {errors.department ? (
-                <p className={styles.error}>{errors.department}</p>
+              {errors.acknowledged ? (
+                <p className={styles.error}>{errors.acknowledged}</p>
               ) : null}
 
               <button

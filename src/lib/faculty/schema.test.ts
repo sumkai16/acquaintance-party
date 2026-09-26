@@ -1,29 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { facultyEntrySchema } from "./schema";
 
-function parse(input: { fullName: string; department?: string; acknowledged?: boolean }) {
+function parse(input: { fullName: string; acknowledged?: boolean }) {
   return facultyEntrySchema.safeParse({
-    department: "",
     acknowledged: true,
     ...input,
   });
 }
 
 describe("facultyEntrySchema", () => {
-  it("accepts a name and a department", () => {
-    const result = parse({ fullName: "  Juana D. Santos ", department: " BSIT " });
+  it("accepts a name and trims it", () => {
+    const result = parse({ fullName: "  Juana D. Santos " });
 
     expect(result.success).toBe(true);
     expect(result.data).toEqual({
       fullName: "Juana D. Santos",
-      department: "BSIT",
       acknowledged: true,
     });
   });
 
-  it("turns a blank department into null rather than an empty string", () => {
-    // Otherwise the adviser's list renders an empty line instead of an em dash.
-    expect(parse({ fullName: "Juana D. Santos" }).data?.department).toBeNull();
+  it("no longer asks for a department, and drops one if it is sent", () => {
+    const result = facultyEntrySchema.safeParse({
+      fullName: "Juana D. Santos",
+      department: "BSIT",
+      acknowledged: true,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).not.toHaveProperty("department");
   });
 
   it("refuses an unticked acknowledgement", () => {

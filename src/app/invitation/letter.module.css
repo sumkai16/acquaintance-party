@@ -1,8 +1,11 @@
 /*
  * The faculty letter of invitation — design 11a ("Great Vibes script") from
- * the Landing page redesign mockups, plus the banner motion asked for on
- * 2026-09-20: it unrolls like paper when the link is opened, then drifts
- * in the wind like a flag for as long as it is on screen.
+ * the Landing page redesign mockups, plus the unroll asked for on 2026-09-20:
+ * it unrolls like paper when the link is opened. The idle drift in the wind
+ * that came with it was stopped on 2026-09-26 for readability — see .letter.
+ *
+ * Sized for older readers (the faculty): 19px base, solid ink on opaque paper,
+ * nothing under ~14px. Every size below is relative to .letter's font-size.
  *
  * A CSS module rather than Tailwind utilities or globals.css, for the same
  * reason the certificate is its own artwork: this is one designed surface
@@ -20,7 +23,7 @@
   --letter-brown: #5b3a34;
   --letter-ink: #2a160d;
   --letter-rule: #e3a695;
-  --letter-role: #d98878;
+  --letter-role: #8f4536;
   --letter-field: #f0cfc3;
 
   position: relative;
@@ -33,8 +36,8 @@
   justify-content: center;
   padding: clamp(12px, 3dvh, 40px) 12px clamp(16px, 3.5dvh, 48px);
   /*
-   * No `perspective` here, and none anywhere in the wind: 3D tilts blur the
-   * text (see bannerSway). A perspective ancestor would also become the
+   * No `perspective` here, and none anywhere on the letter: 3D tilts blur the
+   * text. A perspective ancestor would also become the
    * containing block for `position: fixed`, pinning the form's modal to this
    * box instead of the viewport.
    */
@@ -67,7 +70,7 @@
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
 }
 
 /* ---- The banner motion ---- */
@@ -125,79 +128,30 @@
   }
 }
 
-/*
- * The idle wind — two slow drifts on two different clocks (11s and 13s), so
- * they beat against each other and the pattern takes minutes to repeat.
- *
- * FLAT 2D ONLY, on purpose. An earlier version tilted the card in 3D
- * (perspective + rotateX/rotateY + skewX) for depth, and every glyph on it
- * went soft while it moved: a 3D-tilted layer is resampled each frame, and
- * text does not survive that. A plain rotate/translate resamples far less.
- * Any motion at all softens text slightly while it is in flight — that is a
- * property of moving a raster — so the amplitudes are kept small to hold it
- * to the least the effect can get away with.
- *
- * Pinned at the top edge (transform-origin), so the bottom travels while the
- * title barely moves. Each loop starts and ends at rest.
- */
-@keyframes bannerSway {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  30% {
-    transform: rotate(0.45deg);
-  }
-  65% {
-    transform: rotate(-0.4deg);
-  }
-}
-
-/* The lift and drift as a gust catches it — the separate `translate`
-   property, so it composes with the transform above instead of replacing it. */
-@keyframes bannerBillow {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  35% {
-    translate: 2px 1px;
-  }
-  70% {
-    translate: -2px 0;
-  }
-}
-
 .letter {
-  /* Pinned along the top edge, like a banner on a rail — this is what makes
-     the bottom travel further than the title. */
   /*
-   * The whole letter is sized in em off this one value, which tracks the
-   * screen HEIGHT. The letter is a fixed amount of text, so on a shorter
-   * phone the only way to keep it (and the button under it) on one screen
-   * is to shrink all of it together — a fixed-px letter scrolled, and the
-   * call to action landed below the fold. 13.5px is the mockup's body size,
-   * reached at ~900px of height.
+   * The whole letter is sized in em off this one value. It used to track the
+   * screen HEIGHT (down to 9.5px, so the letter and its button fit one screen),
+   * which made the text tiny on a short phone. This letter is read by older
+   * faculty, so it is a fixed, comfortable size now and the page scrolls.
    */
-  font-size: 13.5px;
-  font-size: clamp(9.5px, 1.5dvh, 14.5px);
+  font-size: 19px;
   transform-origin: 50% 0%;
-  background: rgba(255, 255, 255, 0.92);
+  /* Opaque: at 92% the dark red backdrop showed through behind the text. */
+  background: #fffdf9;
   border-radius: 6px;
   box-shadow: 0 16px 32px rgba(120, 60, 50, 0.22);
-  padding: 3em 1.9em;
+  padding: 2.6em 1.5em;
   text-align: center;
   position: relative;
   /*
-   * The unroll runs once; the wind starts underneath it near the end
-   * (0.9s), each loop beginning at rest so there is no seam. `backwards`,
-   * not `both`, on the unroll: holding its final clip-path forever would
-   * keep the card clipped to that inset.
+   * The unroll runs once and the letter then holds still. It used to sway in
+   * the wind for as long as it was on screen, but any motion softens text
+   * while it is in flight, and a steady page is easier to read. `backwards`,
+   * not `both`: holding the final clip-path forever would keep the card
+   * clipped to that inset.
    */
-  animation:
-    bannerUnroll 1.4s cubic-bezier(0.4, 0, 0.2, 1) backwards,
-    bannerSway 11s ease-in-out 0.9s infinite,
-    bannerBillow 13s ease-in-out 0.9s infinite;
+  animation: bannerUnroll 1.4s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 .letter::after {
@@ -229,19 +183,19 @@
 /* ---- The letter itself ---- */
 
 .eyebrow {
-  font: 600 0.74em/1 var(--font-body);
-  letter-spacing: 0.24em;
-  color: var(--letter-orange);
+  font: 600 0.8em/1.2 var(--font-body);
+  letter-spacing: 0.2em;
+  /* Darker than --letter-orange: 5.9:1 on the paper, where that one is 4.6. */
+  color: #9c521f;
   text-transform: uppercase;
   margin-bottom: 1em;
 }
 
 .title {
-  font: 400 4.4em/0.85 var(--font-great-vibes), cursive;
+  font: 400 3.4em/0.9 var(--font-great-vibes), cursive;
   color: var(--letter-brown);
-  margin-bottom: 0.9em;
+  margin-bottom: 0.8em;
 }
-
 
 .titleLine {
   display: block;
@@ -256,24 +210,26 @@
 }
 
 .overline {
-  font: 600 0.89em/1.6 var(--font-body);
-  letter-spacing: 0.12em;
+  font: 600 0.82em/1.6 var(--font-body);
+  letter-spacing: 0.1em;
   color: var(--letter-brown);
   text-transform: uppercase;
   margin-bottom: 0.3em;
 }
 
 .org {
-  font: 600 1.48em/1.3 var(--font-body);
-  letter-spacing: 0.04em;
+  font: 600 1.4em/1.25 var(--font-body);
+  letter-spacing: 0.02em;
   color: var(--letter-ink);
   margin-bottom: 1.2em;
 }
 
+/* EB Garamond has a small x-height and a light stroke, so it is set larger and
+   a step heavier than the sans around it, in full-strength ink. */
 .body {
-  font: 400 1em/1.62 var(--font-eb-garamond), serif;
-  color: rgba(42, 22, 13, 0.78);
-  margin: 0 0 0.85em;
+  font: 500 1.08em/1.6 var(--font-eb-garamond), serif;
+  color: var(--letter-ink);
+  margin: 0 0 0.9em;
   text-align: left;
 }
 
@@ -282,56 +238,53 @@
 }
 
 .when {
-  font: 600 0.96em/1.5 var(--font-body);
-  letter-spacing: 0.1em;
+  font: 600 0.9em/1.5 var(--font-body);
+  letter-spacing: 0.06em;
   color: var(--letter-ink);
   text-transform: uppercase;
+  text-wrap: balance;
   margin-bottom: 0.4em;
 }
 
-.where {
-  font: 400 0.93em/1.5 var(--font-eb-garamond), serif;
-  color: rgba(42, 22, 13, 0.65);
-  margin-bottom: 1.3em;
+.whenLine {
+  display: block;
 }
 
+.where {
+  font: 500 1.05em/1.5 var(--font-eb-garamond), serif;
+  color: rgba(42, 22, 13, 0.85);
+  margin-bottom: 1.4em;
+}
+
+/* One under another, not three in a row: at this size the names ran into each
+   other side by side ("Axcee F. CabusasBrendon Benitez"). */
 .signatories {
   display: flex;
-  justify-content: space-between;
-  gap: 0.6em;
+  flex-direction: column;
+  gap: 1em;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
 .signatory {
-  flex: 1;
   min-width: 0;
 }
 
 /*
  * display: block is load-bearing, not tidiness. These are <span>s, and an
- * inline name followed by an inline role runs the two together on one line —
- * "Axcee F. CabusasTechnology Officer" — which then shoves the next
- * signatory sideways. The mockup used block-level divs.
+ * inline name followed by an inline role runs the two together on one line.
  */
 .signatoryName {
   display: block;
-  font: 600 1em/1.25 var(--font-body);
+  font: 600 1.05em/1.3 var(--font-body);
   letter-spacing: 0.01em;
   color: var(--letter-ink);
-  /* A broken name reads worse than a tight column, so names never wrap. */
-  white-space: nowrap;
 }
 
-/*
- * Roles are the longest strings here ("BSIT Dept. Governor"), so unlike the
- * names they are allowed to wrap rather than push the card sideways — the
- * backstop if a future role is longer than any of today's.
- */
 .signatoryRole {
   display: block;
-  font: italic 400 0.82em/1.3 var(--font-eb-garamond), serif;
+  font: italic 500 0.98em/1.3 var(--font-eb-garamond), serif;
   color: var(--letter-role);
 }
 
@@ -351,24 +304,25 @@
 }
 
 .cta {
-  display: inline-block;
-  border: 1px solid var(--letter-gold);
-  background: transparent;
-  padding: 13px 28px;
-  font:
-    600 12px/1 var(--font-cinzel), serif;
+  display: block;
+  width: 100%;
+  min-height: 56px;
+  border: 1.5px solid var(--letter-gold);
+  background: rgba(200, 154, 74, 0.12);
+  padding: 18px 20px;
+  font: 600 15px/1.2 var(--font-cinzel), serif;
   letter-spacing: 0.08em;
-  color: var(--letter-gold);
+  color: #e6c274;
   text-transform: uppercase;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 4px;
   transition:
     background-color 0.2s ease,
     color 0.2s ease;
 }
 
 .cta:hover {
-  background: rgba(200, 154, 74, 0.14);
+  background: rgba(200, 154, 74, 0.24);
 }
 
 .cta:focus-visible {
@@ -387,15 +341,15 @@
 
 .enteredTitle {
   font:
-    400 30px/1 var(--font-great-vibes), cursive;
+    400 38px/1 var(--font-great-vibes), cursive;
   color: var(--letter-gold);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .enteredBody {
   font:
-    400 13px/1.6 var(--font-eb-garamond), serif;
-  color: rgba(255, 241, 232, 0.8);
+    500 18px/1.55 var(--font-eb-garamond), serif;
+  color: rgba(255, 241, 232, 0.94);
   margin: 0;
 }
 
@@ -438,26 +392,26 @@
 
 .modal {
   position: relative;
-  max-width: 320px;
+  max-width: 420px;
   width: 100%;
-  background: rgba(255, 255, 255, 0.97);
+  background: rgba(255, 255, 255, 0.98);
   border: 1px solid var(--letter-gold);
   border-radius: 16px;
-  padding: 28px 26px;
+  padding: 34px 28px;
   text-align: left;
   animation: modalIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .close {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  width: 32px;
-  height: 32px;
+  top: 6px;
+  right: 8px;
+  width: 44px;
+  height: 44px;
   border: 0;
   background: transparent;
   font:
-    400 18px/1 var(--font-body);
+    400 28px/1 var(--font-body);
   color: var(--letter-brown);
   cursor: pointer;
   border-radius: 8px;
@@ -471,65 +425,42 @@
 .modalTitle {
   text-align: center;
   font:
-    400 30px/1 var(--font-great-vibes), cursive;
+    400 42px/1 var(--font-great-vibes), cursive;
   color: var(--letter-orange);
   margin: 0 0 14px;
 }
 
 .modalIntro {
   font:
-    400 12.5px/1.5 var(--font-eb-garamond), serif;
-  color: rgba(91, 58, 52, 0.75);
-  margin: 0 0 16px;
-}
-
-.tick {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin-bottom: 18px;
-  font:
-    400 12.5px/1.35 var(--font-eb-garamond), serif;
+    500 18px/1.5 var(--font-eb-garamond), serif;
   color: var(--letter-brown);
-  cursor: pointer;
-}
-
-.tick input {
-  width: 16px;
-  height: 16px;
-  flex: none;
-  margin: 0;
-  accent-color: var(--letter-orange);
+  margin: 0 0 22px;
 }
 
 .label {
   display: block;
   font:
-    600 11px/1 var(--font-body);
-  letter-spacing: 0.04em;
+    600 16px/1.2 var(--font-body);
+  letter-spacing: 0.02em;
   color: var(--letter-brown);
   margin-bottom: 8px;
 }
 
-.optional {
-  font-weight: 400;
-  color: rgba(91, 58, 52, 0.55);
-}
-
 .input {
   width: 100%;
+  min-height: 52px;
   background: #fff;
-  border: 1px solid var(--letter-field);
+  border: 1.5px solid var(--letter-field);
   border-radius: 10px;
-  padding: 11px 12px;
+  padding: 12px 14px;
   font:
-    400 13px/1.2 var(--font-eb-garamond), serif;
+    500 19px/1.2 var(--font-eb-garamond), serif;
   color: var(--letter-ink);
-  margin-bottom: 14px;
+  margin-bottom: 20px;
 }
 
 .input::placeholder {
-  color: rgba(91, 58, 52, 0.4);
+  color: rgba(91, 58, 52, 0.62);
 }
 
 .input:focus-visible {
@@ -538,16 +469,38 @@
   border-color: var(--letter-gold);
 }
 
+/* The tick sits under the name and above the button, where a reader's eye
+   ends up after typing — and it is the whole label that is the tap target. */
+.tick {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 22px;
+  font:
+    500 18px/1.4 var(--font-eb-garamond), serif;
+  color: var(--letter-brown);
+  cursor: pointer;
+}
+
+.tick input {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  margin: 0;
+  accent-color: var(--letter-orange);
+}
+
 .submit {
   width: 100%;
+  min-height: 54px;
   border: 1.5px solid var(--letter-gold);
   background: transparent;
   border-radius: 10px;
-  padding: 13px 12px;
+  padding: 16px 12px;
   margin-top: 4px;
   text-align: center;
   font:
-    600 12px/1 var(--font-cinzel), serif;
+    600 15px/1 var(--font-cinzel), serif;
   letter-spacing: 0.06em;
   color: var(--letter-orange);
   text-transform: uppercase;
@@ -555,7 +508,7 @@
 }
 
 .submit:disabled {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -570,20 +523,20 @@
 
 .error {
   font:
-    400 12px/1.45 var(--font-eb-garamond), serif;
+    500 16px/1.4 var(--font-eb-garamond), serif;
   color: #a8341b;
-  margin: -8px 0 12px;
+  margin: -12px 0 16px;
 }
 
 .formError {
   font:
-    400 12.5px/1.45 var(--font-eb-garamond), serif;
+    500 16px/1.4 var(--font-eb-garamond), serif;
   color: #a8341b;
   border: 1px solid rgba(168, 52, 27, 0.3);
   background: rgba(168, 52, 27, 0.07);
   border-radius: 8px;
-  padding: 9px 11px;
-  margin: 0 0 14px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
 }
 
 /* ---- The program sheet ---- */
@@ -597,10 +550,10 @@
 .programLink {
   border: 0;
   background: transparent;
-  padding: 8px 10px;
-  font: italic 500 13px/1 var(--font-eb-garamond), serif;
+  padding: 12px 14px;
+  font: italic 500 17px/1 var(--font-eb-garamond), serif;
   letter-spacing: 0.02em;
-  color: rgba(255, 241, 232, 0.78);
+  color: rgba(255, 241, 232, 0.92);
   text-decoration: underline;
   text-decoration-color: rgba(200, 154, 74, 0.6);
   text-underline-offset: 4px;
@@ -645,8 +598,8 @@
   margin: 0 0 10px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--letter-rule);
-  font: 600 13px/1 var(--font-cinzel), serif;
-  letter-spacing: 0.14em;
+  font: 600 15px/1 var(--font-cinzel), serif;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--letter-orange);
 }
@@ -664,15 +617,15 @@
 }
 
 .slotTime {
-  font: 600 11.5px/1.3 var(--font-body);
+  font: 600 14px/1.3 var(--font-body);
   letter-spacing: 0.06em;
   color: var(--letter-orange);
   white-space: nowrap;
 }
 
 .slotTitle {
-  font: 600 13px/1.3 var(--font-body);
-  letter-spacing: 0.06em;
+  font: 600 15px/1.3 var(--font-body);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--letter-ink);
 }
@@ -680,13 +633,13 @@
 .slotItems {
   margin: 0;
   padding: 0 0 0 16px;
-  font: 400 15px/1.5 var(--font-eb-garamond), serif;
-  color: rgba(42, 22, 13, 0.82);
+  font: 500 17px/1.5 var(--font-eb-garamond), serif;
+  color: var(--letter-ink);
 }
 
 .slotWho {
   font-style: italic;
-  color: rgba(91, 58, 52, 0.7);
+  color: rgba(91, 58, 52, 0.85);
 }
 
 /*

@@ -21,14 +21,12 @@ export type RecordResult =
  */
 export async function recordAcknowledgement(input: {
   fullName: string;
-  department: string | null;
   letterVersion: string;
 }): Promise<RecordResult> {
   const { data, error } = await adminClient()
     .from("faculty_invitations")
     .insert({
       full_name: input.fullName,
-      department: input.department,
       letter_version: input.letterVersion,
     })
     .select("*")
