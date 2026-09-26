@@ -24,6 +24,7 @@ export const ACTIVITY_TYPES = [
   "receipt_failed",
   "email_correction_requested",
   "online_payments_toggled",
+  "partial_qr_issued",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -49,6 +50,7 @@ const LABELS: Record<ActivityType, string> = {
   receipt_failed: "Receipt Not Issued",
   email_correction_requested: "Email Correction Requested",
   online_payments_toggled: "Online Payments Toggled",
+  partial_qr_issued: "QR Sent Before Balance Paid",
 };
 
 export function describeActivity(type: ActivityType): string {

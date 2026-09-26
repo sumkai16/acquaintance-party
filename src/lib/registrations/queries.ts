@@ -241,15 +241,19 @@ export async function completeWalkInBalance(
 ): Promise<CompleteWalkInBalanceResult> {
   const before = await adminClient()
     .from("registrations")
-    .select("amount_paid")
+    .select("amount_paid, ticket_code")
     .eq("id", id)
     .eq("status", "partial")
     .maybeSingle();
   if (!before.data) return { ok: false, error: "not_partial" };
   const collectedNowCentavos = fullAmountCentavos - (before.data.amount_paid as number);
+  // An admin may have sent this student their QR before the balance was paid
+  // (issuePartialQr below). That code is already in their inbox and on the
+  // scanner manifest — settling the balance must keep it, never mint a second.
+  const existingCode = before.data.ticket_code as string | null;
 
   for (let attempt = 0; attempt < 5; attempt++) {
-    const ticketCode = generateTicketCode();
+    const ticketCode = existingCode ?? generateTicketCode();
 
     const { data, error } = await adminClient()
       .from("registrations")
@@ -277,6 +281,58 @@ export async function completeWalkInBalance(
     }
     if (error.code === UNIQUE_VIOLATION) continue; // ticket-code collision — try again
     console.error("completeWalkInBalance failed", error);
+    return { ok: false, error: "failed" };
+  }
+
+  return { ok: false, error: "failed" };
+}
+
+export type IssuePartialQrResult =
+  | {
+      ok: true;
+      ticketCode: string;
+      email: string;
+      fullName: string;
+      studentId: string;
+      owedCentavos: number;
+    }
+  | { ok: false; error: "not_eligible" | "failed" };
+
+/**
+ * Gives a partial walk-in payer their QR before the balance is paid — the row
+ * stays `partial` (so every cash total and the Outstanding balances list still
+ * count the money as owed) but now carries a ticket_code, which is what the
+ * door scanner admits on. `.eq("status", "partial")` plus `.is("ticket_code",
+ * null)` are the race guard: a second click matches zero rows and reports
+ * `not_eligible` rather than replacing a code that has already been emailed.
+ * Same retry-on-collision loop as completeWalkInBalance.
+ */
+export async function issuePartialQr(id: string): Promise<IssuePartialQrResult> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ticketCode = generateTicketCode();
+
+    const { data, error } = await adminClient()
+      .from("registrations")
+      .update({ ticket_code: ticketCode })
+      .eq("id", id)
+      .eq("status", "partial")
+      .is("ticket_code", null)
+      .select("email, full_name, student_id, amount, amount_paid")
+      .maybeSingle();
+
+    if (!error) {
+      if (!data) return { ok: false, error: "not_eligible" };
+      return {
+        ok: true,
+        ticketCode,
+        email: data.email,
+        fullName: data.full_name,
+        studentId: data.student_id,
+        owedCentavos: (data.amount as number) - (data.amount_paid as number),
+      };
+    }
+    if (error.code === UNIQUE_VIOLATION) continue; // ticket-code collision — try again
+    console.error("issuePartialQr failed", error);
     return { ok: false, error: "failed" };
   }
 

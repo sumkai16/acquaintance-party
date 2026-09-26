@@ -29,7 +29,7 @@ purchasing means there's no separate orders table.
 | amount_paid | integer | NOT NULL, default 0 | Added in `0013`. Cash/GCash actually collected on this row — an admin-entered amount while `partial`, equal to `amount` once `approved`. Every cash/collected total sums this, not `amount`, so a partial payment sitting with a staffer isn't invisible before the balance is settled |
 | status | `registration_status` enum | NOT NULL, default `pending` | `pending` \| `approved` \| `rejected` \| `partial` |
 | reject_reason | text | nullable | Shown to the student on their ticket page. Also holds the reason when an admin voids an *approved* row to free its student ID for resubmission — see below |
-| ticket_code | text | nullable, UNIQUE | 12-char opaque code, generated only on approval |
+| ticket_code | text | nullable, UNIQUE | 12-char opaque code, generated on approval — or, since `0023`, on a **partial** walk-in row when an admin sends the QR before the balance is paid (`issuePartialQr()`). Having a code is what the door scanner admits on |
 | created_at | timestamptz | NOT NULL, default `now()` | |
 | reviewed_at | timestamptz | nullable | |
 | reviewed_by | uuid | FK → `auth.users(id)`, nullable | The admin who approved/rejected |
@@ -41,7 +41,9 @@ purchasing means there's no separate orders table.
 
 **Check constraints — do not work around these from application code:**
 - `ticket_code_matches_status` — `status = 'approved'` requires
-  `ticket_code IS NOT NULL`, and vice versa. Verified live against the
+  `ticket_code IS NOT NULL`. `partial` **may** have one (`0023`; it used to be
+  forbidden — the original rule was "approved if and only if coded"). Every
+  other status (`pending`, `rejected`) must have none. Verified live against the
   database: an insert attempting `status='approved', ticket_code=null`
   raises `23514` on this exact constraint.
 - `rejection_has_reason` — `status = 'rejected'` requires a non-empty
@@ -71,13 +73,30 @@ needs to scale if the price changes (`isValidPartialAmount()` in
 `admin/walk-in/actions.ts` before the insert), and strictly less than the
 full price — equal or more is a full sale on the regular path instead. A
 partial row gets `status = 'partial'`, `amount_paid` set to that entered
-amount, and no `ticket_code` — no QR goes out. `completeWalkInBalance()`
+amount, and no `ticket_code` — no QR goes out, until an admin chooses to send
+one early (see **A partial row can hold a QR** below). `completeWalkInBalance()`
 settles the rest: same retry-on-collision ticket-code loop as
 `approveRegistration`, filtered on `.eq("status", "partial")` as the race
 guard, same as every other "second click is a no-op" action in this
 codebase. The UI for this lives on `/admin/walk-in` (an "Outstanding
 balances" list with a "Mark balance paid" button), not the Dashboard, since
 staff — who take this cash — can't reach Find a registration.
+
+**A partial row can hold a QR** (`0023`, admin-only). Some students settle
+their balance after the event, so an admin can send the QR from Outstanding
+balances (`sendPartialQrAction`, `admin/walk-in/actions.ts`). The row stays
+`partial` — `amount_paid` and every cash total, and the Outstanding balances
+list, still treat the rest as owed — but it now carries a `ticket_code`.
+`issuePartialQr()` is race-guarded on `status = 'partial'` and
+`ticket_code IS NULL`, so a second click can't replace a code already
+emailed; `completeWalkInBalance()` keeps an existing code rather than minting
+another. The door admits on the code, so `approvedManifest()` and
+`ticketHolderCount()` (`src/lib/scans/queries.ts`) both take `approved` **or**
+`partial` rows that have one. The certificate is held: `certificateFor()`
+requires `status = 'approved'`, and the evaluate page and action stop a
+partial payer with "settle your balance first". A scanner caches its ticket
+list, so a QR sent after a device last synced scans as invalid until it
+refreshes — send them before the event.
 
 **Cash attribution stays on the single `reviewed_by` set at creation** —
 completing a balance does not reassign it. If a different staffer takes the
@@ -216,7 +235,7 @@ RSVP and the entry in the faculty giveaway.
 |---|---|---|---|
 | id | uuid | PK, default `gen_random_uuid()` | Doubles as the `RaffleEntrant.registrationId` for a faculty entrant — same as `raffle_extra_entrants`, which is why `raffle_draws.winner_registration_id` has no FK |
 | full_name | text | NOT NULL, 2–120 chars trimmed | |
-| department | text | nullable | Optional on the form. Shown as the winner's sub-line via `entrantDetail()` |
+| department | text | nullable | No longer collected — the form asks only for a name and the tick (2026-09-26). Still on entries made before that, and still shown as the winner's sub-line via `entrantDetail()` (falls back to "Faculty") |
 | letter_version | text | NOT NULL | Which wording they acknowledged — `LETTER_VERSION` in `src/lib/faculty/letter.ts`, the same reasoning as `evaluations.form_version`. `/admin/faculty` counts anyone sitting on an older one |
 | acknowledged_at | timestamptz | NOT NULL, default `now()` | |
 | created_at | timestamptz | NOT NULL, default `now()` | |

@@ -23,7 +23,7 @@ export type EmailInput = {
   ticketCode?: string;
   /** Centavos already collected — only set for the partial walk-in email. */
   paidCentavos?: number;
-  /** Centavos still owed — only set for the partial walk-in email. */
+  /** Centavos still owed — set for the partial walk-in email, and for a QR sent before the balance is paid. */
   owedCentavos?: number;
   /** Absolute URLs of the acknowledgement receipts this email carries, oldest first. */
   receiptUrls?: string[];
@@ -176,6 +176,39 @@ function receiptLinksText(urls: string[] | undefined): string {
 export function buildTicketApprovedEmail(input: EmailInput): BuiltEmail {
   const name = escapeHtml(input.fullName);
   const hasQr = Boolean(input.qrUrl);
+  // Set only when an admin sent the QR before the balance was paid: the
+  // ticket works at the door, but it isn't "approved" (paid in full) yet, and
+  // the certificate waits for the rest.
+  const owed = (input.owedCentavos ?? 0) > 0 ? formatPeso(input.owedCentavos!) : null;
+
+  if (owed) {
+    return {
+      subject: `Your ${EVENT.name} QR — ${owed} still to pay`,
+      html: wrap(
+        `<p style="margin:0 0 16px">Hi ${name},</p>` +
+          `<p style="margin:0">Here is your ${escapeHtml(EVENT.name)} QR code — ` +
+          `screenshot it, or open the link below at the door.</p>` +
+          (hasQr ? qrBlock(input.qrUrl!, input.ticketCode, input.qrCid) : "") +
+          `<p style="margin:16px 0 0">You still have ${owed} to pay — settle it ` +
+          `with an organiser. Your certificate of attendance is released once ` +
+          `the balance is paid.</p>` +
+          receiptLinksHtml(input.receiptUrls),
+        "View your QR ticket",
+        input.url,
+      ),
+      text:
+        `Hi ${input.fullName},\n\n` +
+        `Here is your ${EVENT.name} QR code at the link below — screenshot it ` +
+        `or keep the page bookmarked for the door.\n\n` +
+        (input.ticketCode
+          ? `Ticket code: ${formatTicketCode(input.ticketCode)}\n\n`
+          : "") +
+        `You still have ${owed} to pay — settle it with an organiser. Your ` +
+        `certificate of attendance is released once the balance is paid.\n\n` +
+        `${input.url}` +
+        receiptLinksText(input.receiptUrls),
+    };
+  }
 
   return {
     subject: `Your ${EVENT.name} ticket is approved`,

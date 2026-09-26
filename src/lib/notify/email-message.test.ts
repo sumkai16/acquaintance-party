@@ -99,6 +99,42 @@ describe("buildTicketApprovedEmail", () => {
   });
 });
 
+describe("buildTicketApprovedEmail with a balance still owed", () => {
+  const owing = {
+    ...base,
+    qrUrl: "https://it2026.vercel.app/ticket/abc-123/qr",
+    ticketCode: "ABCDEFGHJKLM",
+    owedCentavos: 24500,
+  };
+
+  it("still carries the QR, and says what is left to pay", () => {
+    const email = buildTicketApprovedEmail(owing);
+    expect(email.html).toContain("<img");
+    expect(email.html).toContain("₱245");
+    expect(email.text).toContain("₱245");
+  });
+
+  it("does not call the ticket approved when it is not paid in full", () => {
+    const email = buildTicketApprovedEmail(owing);
+    expect(email.subject.toLowerCase()).not.toContain("approved");
+    expect(email.subject).toContain("₱245");
+    expect(email.html.toLowerCase()).not.toContain("is approved");
+    expect(email.text.toLowerCase()).not.toContain("is approved");
+  });
+
+  it("says the certificate waits for the balance", () => {
+    const email = buildTicketApprovedEmail(owing);
+    expect(email.html.toLowerCase()).toContain("certificate");
+    expect(email.text.toLowerCase()).toContain("certificate");
+  });
+
+  it("is the plain approval email when nothing is owed", () => {
+    const email = buildTicketApprovedEmail({ ...owing, owedCentavos: 0 });
+    expect(email.subject.toLowerCase()).toContain("approved");
+    expect(email.html.toLowerCase()).not.toContain("certificate");
+  });
+});
+
 describe("buildEvaluationInviteEmail", () => {
   it("links the evaluation and names the certificate as the payoff", () => {
     const email = buildEvaluationInviteEmail(base);

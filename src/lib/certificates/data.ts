@@ -8,6 +8,8 @@ import type { CertificateData } from "./render";
  * Both gates live here so the page, the PNG route, the PDF route and the email
  * can never disagree about who is entitled to a certificate: they must have
  * been scanned in at the door, and they must have submitted the evaluation.
+ * A partial payer sent their QR before the balance was paid can be scanned in
+ * but gets no certificate until they are paid in full (status `approved`).
  */
 export async function certificateFor(
   registrationId: string,
@@ -17,6 +19,7 @@ export async function certificateFor(
 
   const { registration, checkedInAt, evaluation } = context;
   if (!checkedInAt || !evaluation || !registration.ticket_code) return null;
+  if (registration.status !== "approved") return null;
 
   return {
     fullName: registration.full_name,

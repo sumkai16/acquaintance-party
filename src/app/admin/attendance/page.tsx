@@ -2,7 +2,7 @@ import { Badge } from "../badge";
 import { Stat } from "../stat";
 import { Table, Th, SortHeaderLink, Tr } from "../table";
 import { formatPeso } from "@/lib/config/event";
-import { allScans, approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
+import { allScans, ticketHolderCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import {
   filterScans,
   findDoubleScans,
@@ -42,7 +42,7 @@ export default async function DashboardPage({
   const { sort, dir, name, year, section, door } = await searchParams;
   const [rawScans, sold, collectedCentavos] = await Promise.all([
     allScans(),
-    approvedCount(),
+    ticketHolderCount(),
     totalCollectedCentavos(),
   ]);
   // Counts and the double-scan alert describe the whole night, not the

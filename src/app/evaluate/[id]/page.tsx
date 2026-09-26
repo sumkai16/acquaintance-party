@@ -20,6 +20,11 @@ export default async function EvaluatePage({
 
   if (!context.checkedInAt) return <NotCheckedIn />;
 
+  // Scanned in on a QR sent before the balance was paid: the evaluation ends in
+  // the certificate, which is held until they're paid in full — so stop here
+  // rather than collect answers that lead to a 404.
+  if (context.registration.status === "partial") return <BalanceFirst />;
+
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-8 px-5 py-12">
       <header>
@@ -58,6 +63,22 @@ export default async function EvaluatePage({
       </section>
 
       <EvaluationForm registrationId={id} />
+    </main>
+  );
+}
+
+function BalanceFirst() {
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-5 py-12 text-center">
+      <h1 className="font-display text-3xl uppercase text-ink/70">
+        Settle your balance first
+      </h1>
+      <p className="text-ink/70">
+        Your certificate of attendance is released once your ticket is paid in
+        full. Pay the remaining balance to an organiser, then come back to this
+        link.
+      </p>
+      <p className="text-ink/70">{EVENT.contact}</p>
     </main>
   );
 }

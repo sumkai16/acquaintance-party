@@ -14,16 +14,19 @@ export type ScanRow = {
 };
 
 /**
- * Every approved ticket, in the minimal shape the scanner caches, with the
- * earliest known "ok" scan time per ticket so a second device can recognize a
- * ticket another device already admitted — as long as both are online.
+ * Every ticket the door should admit, in the minimal shape the scanner
+ * caches, with the earliest known "ok" scan time per ticket so a second
+ * device can recognize a ticket another device already admitted — as long as
+ * both are online. That is every approved ticket, plus a partial payer an
+ * admin sent their QR before the balance was paid: the `not null` on
+ * ticket_code is what keeps a partial payer with no QR out.
  */
 export async function approvedManifest(): Promise<Manifest> {
   const [registrations, checkIns] = await Promise.all([
     adminClient()
       .from("registrations")
       .select("id, ticket_code, full_name, year_level, section")
-      .eq("status", "approved")
+      .in("status", ["approved", "partial"])
       .not("ticket_code", "is", null),
     adminClient()
       .from("scans")
@@ -166,11 +169,18 @@ export async function allScans(): Promise<ScanRecord[]> {
   });
 }
 
-export async function approvedCount(): Promise<number> {
+/**
+ * How many people hold a ticket the door will admit — approved, plus partial
+ * payers who were sent their QR. Same definition as approvedManifest above, so
+ * the "expected" numbers on Attendance, the Dashboard and the raffle never
+ * disagree with what the scanner will accept.
+ */
+export async function ticketHolderCount(): Promise<number> {
   const { count } = await adminClient()
     .from("registrations")
     .select("id", { count: "exact", head: true })
-    .eq("status", "approved");
+    .in("status", ["approved", "partial"])
+    .not("ticket_code", "is", null);
   return count ?? 0;
 }
 

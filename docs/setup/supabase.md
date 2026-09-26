@@ -181,6 +181,11 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
+`0023_partial_can_hold_qr.sql` (sending a QR before the balance is paid) must
+be pasted **before** deploying the code that uses it: until then, "Send QR" on
+Outstanding balances fails, because the database still refuses a ticket code
+on a partial row. It is safe to paste twice.
+
 `0022_ticket_rates.sql` (officer and free tickets) must be pasted **before**
 deploying the code that reads `ticket_rate`: the Dashboard and its backup
 export select that column, and a free ticket can't be inserted until the

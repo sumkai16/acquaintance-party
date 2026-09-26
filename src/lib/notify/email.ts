@@ -148,6 +148,8 @@ export async function sendTicketApprovedEmail(
   input: TicketInput & {
     ticketCode?: string;
     receiptIds?: string[];
+    /** Centavos still unpaid — set when the QR goes out before the balance is settled. */
+    owedCentavos?: number;
     failure?: { reason?: string };
   },
 ): Promise<SendStatus> {
@@ -157,6 +159,7 @@ export async function sendTicketApprovedEmail(
       fullName: input.fullName,
       path: `/ticket/${input.ticketId}`,
       failure: input.failure,
+      ...(input.owedCentavos ? { owedCentavos: input.owedCentavos } : {}),
       ...(input.ticketCode
         ? { qrPath: `/ticket/${input.ticketId}/qr`, ticketCode: input.ticketCode }
         : {}),

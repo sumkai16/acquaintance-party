@@ -1,5 +1,5 @@
 import { allDraws, poolFor } from "@/lib/raffle/queries";
-import { approvedCount } from "@/lib/scans/queries";
+import { ticketHolderCount } from "@/lib/scans/queries";
 import type { RaffleAudience } from "@/lib/raffle/types";
 import { RaffleProjector } from "./raffle-projector";
 
@@ -22,7 +22,7 @@ export default async function RafflePage({
   const [pool, draws, sold] = await Promise.all([
     poolFor(audience),
     allDraws(audience),
-    approvedCount(),
+    ticketHolderCount(),
   ]);
 
   return (

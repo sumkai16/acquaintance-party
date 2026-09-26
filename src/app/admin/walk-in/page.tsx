@@ -66,7 +66,11 @@ export default async function WalkInPage() {
           </WalkInModeSwitch>
         </WalkInLayout>
 
-        <OutstandingBalances registrations={partialWalkIns} recordedBy={recordedBy} />
+        <OutstandingBalances
+          registrations={partialWalkIns}
+          recordedBy={recordedBy}
+          isAdmin={profile?.role === "admin"}
+        />
       </BulkImportProvider>
     </main>
   );

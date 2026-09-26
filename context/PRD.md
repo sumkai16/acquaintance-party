@@ -79,6 +79,11 @@ manual review at 600 tickets turns out to be a genuine bottleneck.
       import or quick-entry. Free tickets issue no receipt. The Dashboard tags
       those rows, counts them under Total payees, and the backup export gains a
       Rate column. Cash totals needed no change (they sum `amount_paid`)
+- [x] QR before the balance is paid (`0023`) — an admin can send a partial walk-in
+      payer their QR from Outstanding balances (with a confirmation), for students who
+      settle the rest after the event. The row stays partial, so the money still reads
+      as owed; the door admits on the code. Their certificate is held until the balance
+      is paid, and staff can't send it. Resend QR reuses the same code
 - [x] Acknowledgement receipts (`0014`) — one per payment, at `/receipt/<id>`, printed
       through the browser. Linked from the ticket/partial email; the Dashboard's
       **Receipts** card emails the backlog with an apology, QR included for anyone

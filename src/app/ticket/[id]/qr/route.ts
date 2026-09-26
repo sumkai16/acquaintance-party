@@ -5,9 +5,10 @@ import { qrPngBuffer } from "@/lib/tickets/qr";
  * The ticket QR as a hosted PNG, so the approval email can show the code
  * itself instead of only linking to the page that draws it.
  *
- * Approved-and-coded only: a pending or rejected registration has no QR to
- * hand out, and an email whose image resolves for a voided ticket would be
- * worse than one that shows nothing. No new exposure either way —
+ * Coded only: a pending or rejected registration has no QR to hand out, and
+ * an email whose image resolves for a voided ticket would be worse than one
+ * that shows nothing. A partial payer has a code only once an admin sent it
+ * before the balance was paid. No new exposure either way —
  * /ticket/<id> already renders this same code to anyone holding the id.
  */
 export async function GET(
@@ -16,7 +17,8 @@ export async function GET(
 ) {
   const { id } = await params;
   const registration = await getRegistration(id);
-  if (!registration || registration.status !== "approved" || !registration.ticket_code) {
+  const hasTicket = registration?.status === "approved" || registration?.status === "partial";
+  if (!registration || !hasTicket || !registration.ticket_code) {
     return new Response("Not found", { status: 404 });
   }
 

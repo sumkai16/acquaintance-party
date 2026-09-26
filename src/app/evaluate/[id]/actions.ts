@@ -66,6 +66,12 @@ export async function submitEvaluation(
         "nothing to evaluate yet.",
     );
   }
+  if (context.registration.status === "partial") {
+    return fail(
+      "Your certificate is released once your balance is paid. Pay an " +
+        "organiser, then come back to this link.",
+    );
+  }
   // Already answered — send them to what they came for rather than showing an
   // error about a form they filled in correctly.
   if (context.evaluation) redirect(`/certificate/${registrationId}`);

@@ -44,6 +44,13 @@ export default async function TicketPage({
           <ApprovedTicket code={registration.ticket_code} id={registration.id} />
         ) : registration.status === "rejected" ? (
           <Rejected reason={registration.reject_reason} canResubmit={open} />
+        ) : registration.status === "partial" && registration.ticket_code ? (
+          // An admin sent this QR before the balance was paid: it admits them,
+          // and the note under it says what is still owed.
+          <>
+            <ApprovedTicket code={registration.ticket_code} id={registration.id} />
+            <BalanceOwed owed={registration.amount - registration.amount_paid} />
+          </>
         ) : registration.status === "partial" ? (
           <Partial paid={registration.amount_paid} owed={registration.amount - registration.amount_paid} />
         ) : (
@@ -172,6 +179,20 @@ function Partial({ paid, owed }: { paid: number; owed: number }) {
         Your QR code is held until the balance is paid in full. Pay the rest
         at the walk-in table, and we&apos;ll email your QR the moment
         it&apos;s settled.
+      </p>
+    </div>
+  );
+}
+
+function BalanceOwed({ owed }: { owed: number }) {
+  return (
+    <div className="mx-5 mb-5 rounded bg-amber-50 p-4 text-center">
+      <p className="font-display text-xl uppercase text-amber-900">
+        {formatPeso(owed)} still owed
+      </p>
+      <p className="mt-1 text-sm text-amber-900/80">
+        This QR gets you in. Pay the balance to an organiser — your certificate
+        of attendance is released once it&apos;s paid.
       </p>
     </div>
   );

@@ -206,7 +206,7 @@ export function RegistrationRow({
             disabled={pending || editing}
             onClick={() => setEditing(true)}
           />
-          {registration.status === "approved" ? (
+          {registration.ticket_code ? (
             <IconActionButton
               // Works on someone already emailed on purpose — this is the
               // answer to "it went to spam" / "I mistyped my address."
@@ -247,8 +247,8 @@ export function RegistrationRow({
  * Whether this student has actually been emailed their QR and receipt — the
  * row-level view of what the Receipts card counts. A voided ticket shows
  * nothing (nobody is emailing it), and a pending one has neither yet.
- * A partial payer has no QR to send until paid in full, so only their
- * receipt is shown.
+ * A partial payer has a QR only if an admin sent it before the balance was
+ * paid, so the QR marker follows the ticket code, not the status.
  */
 function DeliveryMarkers({
   registration,
@@ -277,7 +277,7 @@ function DeliveryMarkers({
 
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
-      {registration.status === "approved" ? <QrMarker registration={registration} /> : null}
+      {registration.ticket_code ? <QrMarker registration={registration} /> : null}
       <Marker sent={receiptSent}>{receiptSent ? "Receipt sent" : "Receipt not sent"}</Marker>
     </div>
   );

@@ -9,7 +9,7 @@ import {
   searchRegistrations,
   signedReceiptUrls,
 } from "@/lib/registrations/queries";
-import { approvedCount, totalCollectedCentavos } from "@/lib/scans/queries";
+import { ticketHolderCount, totalCollectedCentavos } from "@/lib/scans/queries";
 import { listAllProfileNames } from "@/lib/profiles/queries";
 import { SORT_COLUMNS, type RegistrationSortColumn } from "@/lib/registrations/sort";
 import { buildSectionReport } from "@/lib/registrations/section-report";
@@ -121,7 +121,7 @@ export default async function RegistrationsPage({
       section,
       delivery,
     }),
-    approvedCount(),
+    ticketHolderCount(),
     totalCollectedCentavos(),
     cashPaymentsSummary(),
     onlinePaymentsSummary(),

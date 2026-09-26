@@ -4,17 +4,29 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { EVENT, formatPeso } from "@/lib/config/event";
 import { walkInSchema } from "@/lib/registrations/schema";
-import { completeWalkInBalance, createWalkInRegistration } from "@/lib/registrations/queries";
+import {
+  completeWalkInBalance,
+  createWalkInRegistration,
+  getRegistration,
+  issuePartialQr,
+  markTicketEmailSent,
+} from "@/lib/registrations/queries";
 import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isValidPartialAmount } from "@/lib/registrations/partial";
 import { RATE_LABEL, parseTicketRate, priceFor } from "@/lib/registrations/rates";
 import { parsePesoToCentavos } from "@/lib/expenses/parse";
 import { currentAdminId, currentProfile } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity/queries";
-import { sendPartialPaymentEmail } from "@/lib/notify/email";
+import {
+  sendPartialPaymentEmail,
+  sendTicketApprovedEmail,
+  sendingDomainReady,
+} from "@/lib/notify/email";
+import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 import {
   issueReceiptOrLog,
   markReceiptsEmailed,
+  receiptIdsFor,
   unemailedReceiptIds,
 } from "@/lib/receipts/queries";
 import { scheduleWalkInTicketEmail } from "./notify";
@@ -253,6 +265,99 @@ export async function submitWalkIn(
 }
 
 export type BalanceActionResult = { ok: boolean; error?: string };
+
+/**
+ * Sends a partial walk-in payer their QR before the balance is paid, because
+ * they'll settle it later (after the event). Admin-only — it lets someone
+ * through the door on less than the full price, so unlike "Mark balance paid"
+ * staff can't do it, and the page hiding the button isn't the gate: this
+ * action checks the role itself.
+ *
+ * The row stays `partial`, so the money still reads as owed everywhere; it
+ * just carries a ticket code now. Also serves as "Resend QR": a row that
+ * already has a code reuses it and only sends the email again.
+ */
+export async function sendPartialQrAction(id: string): Promise<BalanceActionResult> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+  if (!sendingDomainReady()) {
+    return {
+      ok: false,
+      error: "No verified sending domain yet — see docs/setup/resend.md.",
+    };
+  }
+
+  const registration = await getRegistration(id);
+  if (
+    !registration ||
+    registration.status !== "partial" ||
+    registration.payment_method !== "walk_in"
+  ) {
+    return { ok: false, error: "This balance was already settled." };
+  }
+
+  let ticketCode = registration.ticket_code;
+  const newlyIssued = ticketCode === null;
+  if (!ticketCode) {
+    const issued = await issuePartialQr(id);
+    if (!issued.ok) {
+      return {
+        ok: false,
+        error:
+          issued.error === "not_eligible"
+            ? "This ticket was just changed. Refresh the page and check it."
+            : "Something went wrong. Try again — if it keeps failing, paste " +
+              "supabase/migrations/0023_partial_can_hold_qr.sql into Supabase first.",
+      };
+    }
+    ticketCode = issued.ticketCode;
+  }
+
+  const owedCentavos = registration.amount - registration.amount_paid;
+  const receiptIds = await receiptIdsFor(id);
+  const failure: { reason?: string } = {};
+  const status = await sendTicketApprovedEmail({
+    to: registration.email,
+    fullName: registration.full_name,
+    ticketId: id,
+    ticketCode,
+    owedCentavos,
+    receiptIds,
+    failure,
+  });
+
+  if (status !== "sent") {
+    await logActivity({
+      userId: admin.id,
+      activityType: "email_failed",
+      description: `QR email to ${registration.email} failed to send for ${registration.full_name}`,
+      registrationId: id,
+    });
+    return {
+      ok: false,
+      error:
+        "The QR is ready but the email didn't go out" +
+        (failure.reason ? ` (${failure.reason})` : "") +
+        ". Press it again to retry.",
+    };
+  }
+
+  await markTicketEmailSent([id]);
+  await markReceiptsEmailed(receiptIds);
+  await logActivity({
+    userId: admin.id,
+    activityType: newlyIssued ? "partial_qr_issued" : "ticket_email_sent",
+    description: newlyIssued
+      ? `${admin.fullName} sent ${registration.full_name} (${registration.student_id}) a QR with ${formatPeso(owedCentavos)} still owed`
+      : `Re-sent the QR to ${registration.email} for ${registration.full_name}`,
+    registrationId: id,
+    ...(newlyIssued ? { amount: owedCentavos } : {}),
+  });
+
+  revalidatePath("/admin/walk-in");
+  revalidatePath("/admin/dashboard");
+  return { ok: true };
+}
 
 /**
  * Settles the remaining balance of a partial walk-in — staff-reachable, like

@@ -215,8 +215,13 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
 
   const registration = await getRegistration(id);
   if (!registration) return { ok: false, error: "Registration not found." };
-  if (registration.status !== "approved" || !registration.ticket_code) {
-    return { ok: false, error: "Only an approved ticket has a QR to send." };
+  // Approved, or a partial payer an admin already sent a QR before their
+  // balance was paid — the row's ticket_code is what says a QR exists.
+  const hasQr =
+    (registration.status === "approved" || registration.status === "partial") &&
+    registration.ticket_code;
+  if (!hasQr || !registration.ticket_code) {
+    return { ok: false, error: "Only a ticket that has a QR can be re-sent." };
   }
 
   const receiptIds = await receiptIdsFor(registration.id);
@@ -226,6 +231,9 @@ export async function sendTicketEmail(id: string): Promise<ActionResult> {
     fullName: registration.full_name,
     ticketId: registration.id,
     ticketCode: registration.ticket_code,
+    ...(registration.status === "partial"
+      ? { owedCentavos: registration.amount - registration.amount_paid }
+      : {}),
     receiptIds,
     failure,
   });
