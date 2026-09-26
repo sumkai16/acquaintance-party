@@ -1,24 +1,27 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useFlash } from "../flash";
+import { Modal } from "../modal";
 import { togglePaymentsOpen } from "./actions";
 
 /**
- * The Dashboard's payment-line switch. One click flips the public
- * checkout for everyone — the copy spells out what each state means (and
- * that walk-in sales are untouched) so nobody has to guess what
- * "Closed" does. Built on the same useTransition + flash pattern as
- * send-receipt-emails.tsx.
+ * The Dashboard's payment-line switch, sitting in the page header. Flipping
+ * it changes the public checkout for every student at once, so the switch
+ * only ever asks: it stays on the current state until the confirmation
+ * dialog is accepted, and the dialog says exactly what will change.
+ * Same useTransition + flash pattern as send-receipt-emails.tsx.
  */
 export function PaymentLineToggle({ open }: { open: boolean }) {
+  const [confirming, setConfirming] = useState(false);
   const [isSaving, startTransition] = useTransition();
   const flash = useFlash();
+  const next = !open;
 
-  function flip() {
-    const next = !open;
+  function confirm() {
     startTransition(async () => {
       const result = await togglePaymentsOpen(next);
+      setConfirming(false);
       if (!result.ok) {
         flash(result.error ?? "Couldn't save that change.", "error");
         return;
@@ -28,35 +31,64 @@ export function PaymentLineToggle({ open }: { open: boolean }) {
   }
 
   return (
-    <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ground/10 bg-ground/5 px-4 py-3">
-      <div>
-        <h2 className="text-sm font-semibold">Online payments</h2>
-        <p className="text-sm text-ground/70">
-          {open
-            ? "The GCash checkout is open — students can submit new payments."
-            : "The GCash checkout is closed. No new online payments are accepted; walk-in sales are unaffected."}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-3">
+    <>
+      <div className="flex items-center gap-2.5 rounded-full border border-ground/15 bg-ground/5 py-1.5 pr-2 pl-3.5">
+        <span className="text-sm font-semibold">Online payments</span>
         <span
-          className={`rounded-full border px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
-            open
-              ? "border-green-500/40 text-green-400"
-              : "border-red-500/40 text-red-400"
-          }`}
+          className={`text-xs font-semibold uppercase tracking-wide ${open ? "text-green-300" : "text-red-300"}`}
         >
           {open ? "Open" : "Closed"}
         </span>
         <button
           type="button"
-          onClick={flip}
+          role="switch"
+          aria-checked={open}
+          aria-label="Online payments"
+          onClick={() => setConfirming(true)}
           disabled={isSaving}
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          className={`relative h-[22px] w-[38px] shrink-0 rounded-full transition-colors disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 ${open ? "bg-green-500/70" : "bg-ground/25"}`}
         >
-          {isSaving ? "Saving…" : open ? "Close payments" : "Reopen payments"}
+          <span
+            aria-hidden
+            className={`absolute top-[3px] left-[3px] h-4 w-4 rounded-full bg-ground transition-transform ${open ? "translate-x-4" : ""}`}
+          />
         </button>
       </div>
-    </section>
+
+      {confirming ? (
+        <Modal
+          title={open ? "Close online payments?" : "Reopen online payments?"}
+          onClose={() => {
+            if (!isSaving) setConfirming(false);
+          }}
+        >
+          <p className="text-sm text-ground/70">
+            {open
+              ? "Students will no longer be able to submit GCash payments. The landing page and checkout show “Payments are closed” right away. Walk-in sales are not affected."
+              : "Students will be able to submit GCash payments again. The landing page and checkout go live right away."}{" "}
+            You can change this back at any time.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={isSaving}
+              className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            >
+              {isSaving ? "Saving…" : open ? "Close payments" : "Reopen payments"}
+            </button>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => setConfirming(false)}
+              disabled={isSaving}
+              className="text-sm font-semibold text-ground/60 hover:text-ground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      ) : null}
+    </>
   );
 }

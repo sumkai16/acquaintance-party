@@ -18,7 +18,7 @@ export function Badge({
 }) {
   return (
     <span
-      className={`rounded px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${TONES[tone]}`}
+      className={`inline-block whitespace-nowrap rounded px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${TONES[tone]}`}
     >
       {children}
     </span>

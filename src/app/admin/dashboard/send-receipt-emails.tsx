@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import type { BacklogGroup } from "@/lib/receipts/priority";
 import { useFlash } from "../flash";
+import { MailIcon } from "../icon-action";
 import { sendReceiptEmails } from "./actions";
 
 /** "12 waiting for their QR · 3 partial payers · 85 only need a receipt" — empty groups left out. */
@@ -61,24 +62,28 @@ export function SendReceiptEmails({
   }
 
   return (
-    <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ground/10 bg-ground/5 px-4 py-3">
-      <div>
-        <h2 className="text-sm font-semibold">Receipts</h2>
-        <p className="text-sm text-ground/70">
-          {unreadable
-            ? "Can't tell who still needs a receipt — paste migration 0014 into Supabase."
-            : pending === 0
-              ? "Every paid student has been emailed their receipt."
-              : `${describeSplit(split!)}. Sends in that order — anyone still ` +
-                "without their QR goes first."}
-        </p>
-      </div>
+    <div className="mt-4 flex flex-wrap items-center gap-x-2.5 gap-y-1 border-b border-ground/10 px-1 pt-1.5 pb-2.5 text-sm">
+      <span aria-hidden className="text-accent-2">
+        {MailIcon}
+      </span>
+      <h2 className="font-semibold">Receipts</h2>
+      <p
+        title="Sends in that order — anyone still without their QR goes first."
+        className="min-w-0 text-ground/70"
+      >
+        {unreadable
+          ? "Can't tell who still needs a receipt — paste migration 0014 into Supabase."
+          : pending === 0
+            ? "Every paid student has been emailed their receipt."
+            : `${describeSplit(split!)}.`}
+      </p>
+      <span className="grow" />
 
       <button
         type="button"
         onClick={send}
         disabled={isSending || pending === 0}
-        className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+        className="shrink-0 rounded px-1.5 py-1 font-semibold text-accent-2 underline underline-offset-4 hover:opacity-80 disabled:no-underline disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
       >
         {isSending
           ? "Sending…"
@@ -88,6 +93,6 @@ export function SendReceiptEmails({
               ? "Nothing to send"
               : `Send to ${pending}`}
       </button>
-    </section>
+    </div>
   );
 }

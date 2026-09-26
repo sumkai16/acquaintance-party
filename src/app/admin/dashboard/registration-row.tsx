@@ -180,7 +180,7 @@ export function RegistrationRow({
         <DeliveryMarkers registration={registration} receipts={receipts} />
       </td>
 
-      <td className="py-2 pl-3">
+      <td className="py-2 pl-3 pr-4">
         {/* Every action is always visible, tinted by what it does — neutral to
             go look, blue to edit, gold to send, clay to destroy — rather than
             hidden behind a menu that took two clicks to reach. */}

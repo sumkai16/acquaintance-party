@@ -187,12 +187,15 @@ export default async function RegistrationsPage({
           screen. A backup that quietly inherited an active search filter
           would be the most dangerous kind of file: it looks complete.
         */}
-        <a
-          href="/admin/dashboard/export"
-          className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-        >
-          Download backup
-        </a>
+        <div className="flex flex-wrap items-center gap-3">
+          <PaymentLineToggle open={checkoutOpen} />
+          <a
+            href="/admin/dashboard/export"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+          >
+            Download backup
+          </a>
+        </div>
       </header>
 
       <dl className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -210,8 +213,6 @@ export default async function RegistrationsPage({
         <Stat label="Total GCash" value={formatPeso(online.totalCentavos)} />
       </dl>
 
-      <PaymentLineToggle open={checkoutOpen} />
-
       <SendReceiptEmails
         split={
           backlog === null
@@ -224,7 +225,7 @@ export default async function RegistrationsPage({
         }
       />
 
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">Results</h2>
         <RegistrationFilters />
       </div>
@@ -274,15 +275,15 @@ export default async function RegistrationsPage({
                     <SortHeaderLink label="Name" {...sortHref("name")} direction={direction} />
                     <SortHeaderLink label="Amount" {...sortHref("amount")} direction={direction} />
                     <Th>Payment</Th>
-                    <Th>Added by</Th>
+                    <Th className="whitespace-nowrap">Added by</Th>
                     <SortHeaderLink
                       label="Submitted"
                       {...sortHref("submitted")}
                       direction={direction}
                     />
                     <Th>Status</Th>
-                    <Th>Ticket code</Th>
-                    <Th>Actions</Th>
+                    <Th className="whitespace-nowrap">Ticket code</Th>
+                    <Th className="whitespace-nowrap text-right last:pr-4">Actions</Th>
                   </>
                 );
               })()}
