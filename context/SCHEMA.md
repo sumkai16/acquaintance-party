@@ -512,6 +512,7 @@ labelled "Help requests".
 | category | text | NOT NULL, default `'wrong_email'`, `'wrong_email'` \| `'no_qr'` \| `'paid_pending'` \| `'qr_problem'` \| `'other'` | Added in `0024`. Student-facing labels are `HELP_CATEGORIES` in `src/lib/registrations/schema.ts` |
 | requested_email | text | nullable; required when `category = 'wrong_email'` (constraint `email_correction_requests_wrong_email_has_address`) | Validated at submit (format + MX/mail-server check), never applied automatically. Nullable since `0024` — only a wrong-email report has one |
 | message | text | nullable, `<= 500` chars | Added in `0024`. What the student typed; required by the form for `other` |
+| reply / replied_at / replied_by | text (`<= 1000`) / timestamptz / uuid FK → `auth.users` | nullable | Added in `0025`. The one written answer an admin sends from the queue (`replyToHelp`). Set once — the update is guarded on `reply is null` — and resolves the request in the same step. Shown on `/ticket/<registration_id>` (`latestHelpReply`, backed by a partial index) and emailed to `registrations.email`, never to `requested_email`. The email carries no `registration_id` Resend tag, so a bounced reply can't re-queue the QR email |
 | registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Matched on `student_id` alone at submit time. Stays nullable at the schema level for old rows from before this gate existed, and so voiding/deleting the matched registration later doesn't block touching this row — but a fresh submission with no match never reaches an insert at all (see below) |
 | created_at | timestamptz | NOT NULL, default `now()` | |
 | resolved_at / resolved_by | | nullable | Set together by "Mark resolved" on `/admin/email-fixes`, once staff has actually changed the address via the Dashboard's edit flow. This table never changes a registration's email itself — see the comment on `requestHelp` in `src/app/find/actions.ts` for why that has to stay a human decision |
@@ -535,7 +536,8 @@ confusing to expose to them.
 
 Every submission also writes to `activity_logs`: `email_correction_requested`
 for a wrong-email report (unchanged, so old filters still match),
-`help_requested` for every other category. So this table and the
+`help_requested` for every other category, and every reply writes
+`help_replied`. So this table and the
 Activity log both show it — this one is the working queue, that one is the
 permanent audit trail.
 

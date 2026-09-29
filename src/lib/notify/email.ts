@@ -4,6 +4,7 @@ import { qrPngBuffer } from "@/lib/tickets/qr";
 import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
+  buildHelpReplyEmail,
   buildPartialPaymentEmail,
   buildReceiptBacklogEmail,
   buildTicketApprovedEmail,
@@ -184,6 +185,20 @@ export async function sendPartialPaymentEmail(
       registrationId: input.ticketId,
     },
     buildPartialPaymentEmail,
+  );
+}
+
+/**
+ * An admin's reply to a help request. Deliberately carries no
+ * registration_id tag: the bounce webhook reads that tag as "the ticket
+ * email bounced" and would put the QR back in the send queue.
+ */
+export async function sendHelpReplyEmail(
+  input: TicketInput & { reply: string },
+): Promise<SendStatus> {
+  return send(
+    { to: input.to, fullName: input.fullName, path: `/ticket/${input.ticketId}` },
+    (args) => buildHelpReplyEmail({ ...args, reply: input.reply }),
   );
 }
 

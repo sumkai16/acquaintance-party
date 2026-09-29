@@ -111,3 +111,63 @@ export async function resolveEmailFixRequest(
 
   return { ok: true };
 }
+
+export type ReplyToHelpResult =
+  | { ok: true; request: EmailCorrectionRequest }
+  | { ok: false; error: string };
+
+/**
+ * Saves the one reply a request gets, and resolves it in the same write if
+ * it's still open. `.is("reply", null)` is the same race guard
+ * resolveEmailFixRequest uses: a second send (two admins, a retry) matches
+ * zero rows instead of overwriting the answer the student already got.
+ */
+export async function replyToHelpRequest(
+  id: string,
+  reply: string,
+  adminId: string,
+): Promise<ReplyToHelpResult> {
+  const client = adminClient();
+  const now = new Date().toISOString();
+
+  const { data, error } = await client
+    .from("email_correction_requests")
+    .update({ reply, replied_at: now, replied_by: adminId })
+    .eq("id", id)
+    .is("reply", null)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.error("replyToHelpRequest failed", error);
+    return { ok: false, error: "Could not save the reply. Try again." };
+  }
+  if (!data) return { ok: false, error: "This request already has a reply." };
+
+  const request = data as EmailCorrectionRequest;
+  if (!request.resolved_at) {
+    await client
+      .from("email_correction_requests")
+      .update({ resolved_at: now, resolved_by: adminId })
+      .eq("id", id)
+      .is("resolved_at", null);
+  }
+
+  return { ok: true, request };
+}
+
+/** The newest reply for one registration — the note on its ticket page. */
+export async function latestHelpReply(
+  registrationId: string,
+): Promise<{ reply: string; replied_at: string } | null> {
+  const { data } = await adminClient()
+    .from("email_correction_requests")
+    .select("reply, replied_at")
+    .eq("registration_id", registrationId)
+    .not("reply", "is", null)
+    .order("replied_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data as { reply: string; replied_at: string } | null) ?? null;
+}

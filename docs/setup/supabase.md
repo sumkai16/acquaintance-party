@@ -181,6 +181,10 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
+`0025_help_replies.sql` (admin replies to help requests) must be pasted
+**before** deploying the code that uses it: until then "Send reply" on Help
+requests fails to save. It is safe to paste twice.
+
 `0024_help_requests.sql` (the "Report a QR problem" form on `/find`) must be
 pasted **before** deploying the code that uses it: until then every report
 from `/find` fails to save, because the new `category` and `message` columns

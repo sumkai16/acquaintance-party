@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCertificateEmail,
   buildEvaluationInviteEmail,
+  buildHelpReplyEmail,
   buildPartialPaymentEmail,
   buildReceiptBacklogEmail,
   buildTicketApprovedEmail,
@@ -260,5 +261,30 @@ describe("buildCertificateEmail", () => {
     });
     expect(email.html).not.toContain("<script>");
     expect(email.html).toContain("A &amp; B &lt;script&gt;");
+  });
+});
+
+describe("buildHelpReplyEmail", () => {
+  const input = {
+    fullName: "Juan <Dela> Cruz",
+    url: "https://itech2026.site/ticket/abc",
+    reply: "Your payment is approved.\nCheck <b>Spam</b> for the QR.",
+  };
+
+  it("escapes the reply and keeps its line breaks", () => {
+    const { html } = buildHelpReplyEmail(input);
+    expect(html).toContain("Your payment is approved.<br>Check &lt;b&gt;Spam&lt;/b&gt; for the QR.");
+    expect(html).not.toContain("<b>Spam</b>");
+    expect(html).toContain("Juan &lt;Dela&gt; Cruz");
+  });
+
+  it("links to the ticket page", () => {
+    expect(buildHelpReplyEmail(input).html).toContain('href="https://itech2026.site/ticket/abc"');
+  });
+
+  it("carries the reply and the link in the text version", () => {
+    const { text } = buildHelpReplyEmail(input);
+    expect(text).toContain(input.reply);
+    expect(text).toContain(input.url);
   });
 });

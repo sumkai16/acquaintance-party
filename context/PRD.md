@@ -514,6 +514,13 @@ too**, since it needs an exact match on both fields. Two additions, both
   other), plus a "Common problems" list. Reports land in the same queue,
   now labelled "Help requests", and ping Discord with a link to it. The
   landing hero links "Already paid? Find your QR" right under the CTA.
+- **Admins can reply** (`0025_help_replies.sql`, 2026-09-29). The Facebook
+  page is run by instructors, so admins had no channel back to a student.
+  Each open request has a Reply button: one written answer, which resolves
+  the request, shows as "Message from the organisers" on the student's
+  ticket page, and is emailed to the address on their registration. The
+  ticket page is the copy that matters, since "never got the email" is the
+  commonest complaint.
 
 ### 4.11 The online payment line is closed (2026-09-24)
 

@@ -363,3 +363,29 @@ export function buildCertificateEmail(input: EmailInput): BuiltEmail {
       `${input.url}`,
   };
 }
+
+/**
+ * An admin's written answer to a "Report a QR problem" request from /find.
+ * The same text is on the student's ticket page, which the button opens —
+ * that page is the copy that still works if this email never arrives.
+ */
+export function buildHelpReplyEmail(input: EmailInput & { reply: string }): BuiltEmail {
+  const name = escapeHtml(input.fullName);
+  const reply = escapeHtml(input.reply).replace(/\r?\n/g, "<br>");
+
+  return {
+    subject: `Reply to your ${EVENT.name} request`,
+    html: wrap(
+      `<p style="margin:0 0 16px">Hi ${name},</p>` +
+        `<p style="margin:0 0 16px">An organiser answered the problem you reported:</p>` +
+        `<p style="margin:0;padding:12px 16px;border-left:3px solid ${accent};background:#f7f2ea">${reply}</p>`,
+      "View your ticket",
+      input.url,
+    ),
+    text:
+      `Hi ${input.fullName},\n\n` +
+      `An organiser answered the problem you reported:\n\n` +
+      `${input.reply}\n\n` +
+      `Your ticket: ${input.url}`,
+  };
+}

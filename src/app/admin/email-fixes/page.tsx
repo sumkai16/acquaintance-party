@@ -4,6 +4,7 @@ import { formatDateTimePH } from "@/lib/format/datetime";
 import type { EmailCorrectionRequest } from "@/lib/supabase/types";
 import { Badge } from "../badge";
 import { Table, Th, Tr } from "../table";
+import { ReplyButton } from "./reply-button";
 import { ResolveButton } from "./resolve-button";
 
 export const metadata = { title: "Help requests" };
@@ -48,7 +49,8 @@ export default async function EmailFixesPage({
       <h1 className="font-display text-3xl uppercase">Help requests</h1>
       <p className="mt-1 text-ground/70">
         QR problems students reported from /find. Check them on the Dashboard, fix what
-        needs fixing (a wrong email, a pending payment, a resend), then mark it resolved here.
+        needs fixing (a wrong email, a pending payment, a resend), then reply — the student
+        sees it on their ticket page and by email. Mark resolved if there&apos;s nothing to say.
       </p>
 
       <div className="mt-6 flex gap-2">
@@ -125,6 +127,16 @@ export default async function EmailFixesPage({
                       {request.message}
                     </p>
                   ) : null}
+                  {status === "resolved" ? (
+                    request.reply ? (
+                      <p className="mt-1.5 max-w-xs border-l-2 border-green-500/40 pl-2 text-sm break-words whitespace-pre-line text-ground/80">
+                        <span className="font-semibold text-green-300">Replied: </span>
+                        {request.reply}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-sm text-ground/50">Resolved without a reply</p>
+                    )
+                  ) : null}
                 </td>
                 <td className="py-2 pr-3 font-mono break-all">
                   {request.requested_email ?? <span className="text-ground/40">—</span>}
@@ -134,7 +146,16 @@ export default async function EmailFixesPage({
                 </td>
                 <td className="py-2 pr-3 last:pl-3">
                   {status === "open" ? (
-                    <ResolveButton id={request.id} fullName={request.full_name} />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <ReplyButton
+                        id={request.id}
+                        fullName={request.full_name}
+                        problem={CATEGORY_SHORT[request.category]}
+                        message={request.message}
+                        hasRegistration={request.registration_id !== null}
+                      />
+                      <ResolveButton id={request.id} fullName={request.full_name} />
+                    </div>
                   ) : (
                     <span className="text-sm text-ground/50">Resolved</span>
                   )}

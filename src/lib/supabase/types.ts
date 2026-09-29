@@ -54,6 +54,10 @@ export type EmailCorrectionRequest = {
   created_at: string;
   resolved_at: string | null;
   resolved_by: string | null;
+  /** 0025: the admin's written answer, shown on the ticket page and emailed. */
+  reply: string | null;
+  replied_at: string | null;
+  replied_by: string | null;
 };
 
 export type ImportBatch = {

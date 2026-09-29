@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EVENT, formatPeso } from "@/lib/config/event";
+import { latestHelpReply } from "@/lib/email-fixes/queries";
+import { formatDateTimePH } from "@/lib/format/datetime";
 import { getRegistration } from "@/lib/registrations/queries";
 import { paymentsOpen } from "@/lib/settings/queries";
 import { formatTicketCode } from "@/lib/tickets/code";
@@ -15,14 +17,34 @@ export default async function TicketPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [registration, open] = await Promise.all([
+  const [registration, open, reply] = await Promise.all([
     getRegistration(id),
     paymentsOpen(),
+    latestHelpReply(id),
   ]);
   if (!registration) notFound();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-5 py-12">
+      {/* An admin's answer to a problem reported from /find. Plain text,
+          whitespace kept, and outside the ticket card so it never sits
+          anywhere near the QR's white block. */}
+      {reply ? (
+        <section
+          aria-labelledby="organiser-reply"
+          className="rounded-lg border-l-4 border-accent bg-white px-5 py-4 shadow-sm"
+        >
+          <h2
+            id="organiser-reply"
+            className="text-sm font-semibold uppercase tracking-wide text-ink/70"
+          >
+            Message from the organisers
+          </h2>
+          <p className="mt-2 whitespace-pre-line break-words">{reply.reply}</p>
+          <p className="mt-2 text-xs text-ink/60">{formatDateTimePH(reply.replied_at)}</p>
+        </section>
+      ) : null}
+
       <div className="overflow-hidden rounded-lg bg-white shadow-sm">
         <header className="flex items-center justify-between gap-3 bg-accent px-5 py-4 text-ground">
           <span className="font-display text-2xl uppercase leading-none">
