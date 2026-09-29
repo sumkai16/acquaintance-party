@@ -506,6 +506,14 @@ too**, since it needs an exact match on both fields. Two additions, both
   null — not a bug, just the student typo'ing their own ID on the way to
   reporting a typo'd email. The row still links to a name search on the
   Dashboard for that case.
+- **Widened to "Report a QR problem"** (`0024_help_requests.sql`,
+  2026-09-29). Students kept bringing QR complaints to staff in person, and a
+  live chat was ruled out four days before the event (it needs someone
+  answering in real time). Instead `/find` always shows the report form
+  (categories: no QR email, paid but pending, wrong email, QR won't work,
+  other), plus a "Common problems" list. Reports land in the same queue,
+  now labelled "Help requests", and ping Discord with a link to it. The
+  landing hero links "Already paid? Find your QR" right under the CTA.
 
 ### 4.11 The online payment line is closed (2026-09-24)
 

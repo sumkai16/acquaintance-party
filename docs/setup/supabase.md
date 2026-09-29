@@ -181,6 +181,11 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
+`0024_help_requests.sql` (the "Report a QR problem" form on `/find`) must be
+pasted **before** deploying the code that uses it: until then every report
+from `/find` fails to save, because the new `category` and `message` columns
+don't exist yet. It is safe to paste twice.
+
 `0023_partial_can_hold_qr.sql` (sending a QR before the balance is paid) must
 be pasted **before** deploying the code that uses it: until then, "Send QR" on
 Outstanding balances fails, because the database still refuses a ticket code

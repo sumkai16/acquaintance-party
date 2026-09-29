@@ -1,11 +1,33 @@
 import Link from "next/link";
 import { listEmailFixRequests } from "@/lib/email-fixes/queries";
 import { formatDateTimePH } from "@/lib/format/datetime";
+import type { EmailCorrectionRequest } from "@/lib/supabase/types";
+import { Badge } from "../badge";
 import { Table, Th, Tr } from "../table";
 import { ResolveButton } from "./resolve-button";
 
-export const metadata = { title: "Email fixes" };
+export const metadata = { title: "Help requests" };
 export const dynamic = "force-dynamic";
+
+type Category = EmailCorrectionRequest["category"];
+
+// Short admin-side labels; the student-facing sentences live in
+// HELP_CATEGORIES. Amber is for problems that usually need a data change.
+const CATEGORY_SHORT: Record<Category, string> = {
+  wrong_email: "Wrong email",
+  no_qr: "No QR email",
+  paid_pending: "Paid, pending",
+  qr_problem: "QR won't work",
+  other: "Other",
+};
+
+const CATEGORY_TONE: Record<Category, "amber" | "slate"> = {
+  wrong_email: "amber",
+  no_qr: "slate",
+  paid_pending: "amber",
+  qr_problem: "slate",
+  other: "slate",
+};
 
 const VALID_STATUSES = ["open", "resolved"] as const;
 
@@ -23,10 +45,10 @@ export default async function EmailFixesPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-      <h1 className="font-display text-3xl uppercase">Email fixes</h1>
+      <h1 className="font-display text-3xl uppercase">Help requests</h1>
       <p className="mt-1 text-ground/70">
-        Students who couldn&apos;t find their ticket on /find because the email on file is
-        wrong. Verify, fix the address on the Dashboard, then mark it resolved here.
+        QR problems students reported from /find. Check them on the Dashboard, fix what
+        needs fixing (a wrong email, a pending payment, a resend), then mark it resolved here.
       </p>
 
       <div className="mt-6 flex gap-2">
@@ -57,7 +79,7 @@ export default async function EmailFixesPage({
           empty={
             requests.length === 0
               ? status === "open"
-                ? "No open requests. Everyone who's asked for a fix has one."
+                ? "No open requests. Everyone who's asked for help has had it."
                 : "Nothing resolved yet."
               : undefined
           }
@@ -65,6 +87,7 @@ export default async function EmailFixesPage({
           <thead>
             <tr className="text-left">
               <Th>Student</Th>
+              <Th>Problem</Th>
               <Th>Requested email</Th>
               <Th>When</Th>
               <Th> </Th>
@@ -93,7 +116,19 @@ export default async function EmailFixesPage({
                     </Link>
                   )}
                 </td>
-                <td className="py-2 pr-3 font-mono break-all">{request.requested_email}</td>
+                <td className="py-2 pr-3">
+                  <Badge tone={CATEGORY_TONE[request.category]}>
+                    {CATEGORY_SHORT[request.category]}
+                  </Badge>
+                  {request.message ? (
+                    <p className="mt-1.5 max-w-xs text-sm break-words text-ground/80">
+                      {request.message}
+                    </p>
+                  ) : null}
+                </td>
+                <td className="py-2 pr-3 font-mono break-all">
+                  {request.requested_email ?? <span className="text-ground/40">—</span>}
+                </td>
                 <td className="py-2 pr-3 whitespace-nowrap text-ground/70">
                   {formatDateTimePH(request.created_at)}
                 </td>

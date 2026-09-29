@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { STUDENT_ID_INPUT_PATTERN, STUDENT_ID_PLACEHOLDER } from "@/lib/registrations/schema";
 import { findTicket, type FindState } from "./actions";
-import { RequestEmailFix } from "./request-email-fix";
+import { RequestHelp } from "./request-help";
 
 const initial: FindState = { status: "idle" };
 
@@ -15,9 +15,10 @@ const inputClass =
 export function FindForm() {
   const [state, action, pending] = useActionState(findTicket, initial);
   // Tracked (not just a defaultValue) so a no-match result can hand the
-  // student ID they just typed straight to the "request a fix" form below —
+  // student ID they just typed straight to the "report a problem" form below —
   // typing it twice is exactly the friction this is meant to remove.
   const [studentIdValue, setStudentIdValue] = useState("");
+  const noMatch = state.reason === "no_match";
 
   return (
     <div className="flex flex-col gap-6">
@@ -83,7 +84,14 @@ export function FindForm() {
         </button>
       </form>
 
-      {state.reason === "no_match" ? <RequestEmailFix studentId={studentIdValue} /> : null}
+      {/* Remounted on a no-match so it opens with the student ID just typed
+          and "wrong email" picked — the likeliest reason the lookup failed. */}
+      <RequestHelp
+        key={noMatch ? "no-match" : "idle"}
+        studentId={studentIdValue}
+        open={noMatch}
+        defaultCategory={noMatch ? "wrong_email" : undefined}
+      />
     </div>
   );
 }

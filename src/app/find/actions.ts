@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { emailFixRequestSchema, normalizeStudentId } from "@/lib/registrations/schema";
+import { HELP_CATEGORIES, helpRequestSchema, normalizeStudentId } from "@/lib/registrations/schema";
 import { emailDomainProblem } from "@/lib/registrations/mx";
 import { isThrottled, throttleWindowStart } from "@/lib/registrations/abuse";
 import { findOwnRegistration, findRegistrationByStudentId } from "@/lib/registrations/queries";
-import { notifyEmailCorrectionRequest } from "@/lib/notify/discord";
+import { notifyHelpRequest } from "@/lib/notify/discord";
 import { logActivity } from "@/lib/activity/queries";
 import {
   countRecentEmailFixRequests,
@@ -18,8 +18,8 @@ export type FindState = {
   status: "idle" | "error";
   message?: string;
   /**
-   * "no_match" specifically (not just any error) is what unlocks the
-   * "request an email fix" form on the page — see find-form.tsx.
+   * "no_match" specifically (not just any error) is what opens the
+   * "report a QR problem" form on "wrong email" — see find-form.tsx.
    */
   reason?: "missing_fields" | "no_match";
 };
@@ -57,14 +57,14 @@ export async function findTicket(
   redirect(`/ticket/${registration.id}`);
 }
 
-export type EmailFixState = {
+export type HelpState = {
   status: "idle" | "error" | "sent";
   message?: string;
   fieldErrors?: Record<string, string>;
 };
 
 /**
- * Never changes the address itself — anyone could type any student ID here,
+ * Never changes anything itself — anyone could type any student ID here,
  * so the only safe outcome is putting the request in front of a human. It
  * writes to email_correction_requests, the queue /admin/email-fixes works
  * through, and to activity_logs alongside it (the generic system record
@@ -77,17 +77,19 @@ const noRegistrationMessage =
   "or message an organiser if you haven't registered yet.";
 
 const throttledMessage =
-  "You've requested a fix several times already. Wait a moment, or message " +
+  "You've sent several requests already. Wait a moment, or message " +
   "an organiser directly.";
 
-export async function requestEmailCorrection(
-  _prev: EmailFixState,
+export async function requestHelp(
+  _prev: HelpState,
   formData: FormData,
-): Promise<EmailFixState> {
-  const parsed = emailFixRequestSchema.safeParse({
+): Promise<HelpState> {
+  const parsed = helpRequestSchema.safeParse({
     studentId: String(formData.get("studentId") ?? ""),
     fullName: String(formData.get("fullName") ?? ""),
+    category: String(formData.get("category") ?? ""),
     requestedEmail: String(formData.get("requestedEmail") ?? ""),
+    message: String(formData.get("message") ?? ""),
   });
 
   if (!parsed.success) {
@@ -99,7 +101,7 @@ export async function requestEmailCorrection(
     return { status: "error", message: "Check the highlighted fields.", fieldErrors };
   }
 
-  const { studentId, fullName, requestedEmail } = parsed.data;
+  const { studentId, fullName, category, requestedEmail, message } = parsed.data;
 
   // Checked before anything else, and cheap (one indexed read) — a request
   // for a student ID with no registration at all can't be acted on by
@@ -118,7 +120,7 @@ export async function requestEmailCorrection(
   // Same check checkout/walk-in/edit already run: a well-formed address
   // whose domain has no mail server would just bounce again once staff
   // applies the "fix" — exactly the failure mode this form exists to close.
-  const domainProblem = await emailDomainProblem(requestedEmail);
+  const domainProblem = requestedEmail ? await emailDomainProblem(requestedEmail) : null;
   if (domainProblem) {
     return {
       status: "error",
@@ -134,7 +136,7 @@ export async function requestEmailCorrection(
   const since = throttleWindowStart(new Date());
   const [recentById, recentByEmail] = await Promise.all([
     countRecentEmailFixRequests(studentId, since),
-    countRecentEmailFixRequestsByEmail(requestedEmail, since),
+    requestedEmail ? countRecentEmailFixRequestsByEmail(requestedEmail, since) : 0,
   ]);
   if (isThrottled(recentById) || isThrottled(recentByEmail)) {
     return { status: "error", message: throttledMessage };
@@ -144,25 +146,41 @@ export async function requestEmailCorrection(
     createEmailFixRequest({
       studentId,
       fullName,
-      requestedEmail,
+      category,
+      requestedEmail: requestedEmail ?? null,
+      message: message ?? null,
       registrationId: registration.id,
     }),
     logActivity({
       userId: null,
-      activityType: "email_correction_requested",
+      // Wrong-email reports keep their original type so existing
+      // /admin/activity filters still find them.
+      activityType: category === "wrong_email" ? "email_correction_requested" : "help_requested",
       description:
-        `${fullName} (${studentId}) says the email on file is wrong and asks for it to be ` +
-        `changed to ${requestedEmail}.`,
+        category === "wrong_email"
+          ? `${fullName} (${studentId}) says the email on file is wrong and asks for it to be ` +
+            `changed to ${requestedEmail}.`
+          : `${fullName} (${studentId}) reported: ${HELP_CATEGORIES[category]}.` +
+            (message ? ` "${message}"` : ""),
       registrationId: registration.id,
     }),
   ]);
 
   after(async () => {
-    await notifyEmailCorrectionRequest({ studentId, fullName, requestedEmail });
+    await notifyHelpRequest({
+      studentId,
+      fullName,
+      category,
+      requestedEmail: requestedEmail ?? null,
+      message: message ?? null,
+    });
   });
 
   return {
     status: "sent",
-    message: "Sent. An organiser will verify it's you and update your email — check back in a bit.",
+    message:
+      category === "wrong_email"
+        ? "Sent. An organiser will verify it's you and update your email — check back in a bit."
+        : "Sent. An organiser will look into it — check your ticket page again in a bit.",
   };
 }

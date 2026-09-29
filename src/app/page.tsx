@@ -170,6 +170,19 @@ export default async function HomePage() {
                 Payments are closed
               </Link>
             )}
+
+            {/* Right under the CTA, not just in the footer: most people
+                asking staff about their QR are already registered and
+                never scroll that far. */}
+            <p className="-mt-3 text-center text-ground/80">
+              Already paid?{" "}
+              <Link
+                href="/find"
+                className="font-semibold text-ground underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+              >
+                Find your QR
+              </Link>
+            </p>
           </div>
         </div>
       </section>

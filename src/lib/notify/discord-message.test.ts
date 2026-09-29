@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildEmailCorrectionPayload,
+  buildHelpRequestPayload,
   buildRegistrationPayload,
   hexToDiscordColor,
 } from "./discord-message";
@@ -79,16 +79,18 @@ describe("buildRegistrationPayload", () => {
   });
 });
 
-describe("buildEmailCorrectionPayload", () => {
-  const correction = {
+describe("buildHelpRequestPayload", () => {
+  const request = {
     studentId: "SCC-24-0012345",
     fullName: "Juan Miguel Dela Cruz",
-    requestedEmail: "juan@gmail.com",
-    activityUrl: null as string | null,
+    category: "wrong_email" as const,
+    requestedEmail: "juan@gmail.com" as string | null,
+    message: null as string | null,
+    queueUrl: null as string | null,
   };
 
   it("puts the student, id, and requested email in the embed fields", () => {
-    const payload = buildEmailCorrectionPayload(correction);
+    const payload = buildHelpRequestPayload(request);
     const fieldText = payload.embeds[0].fields.map((f) => `${f.name} ${f.value}`).join(" ");
 
     expect(fieldText).toContain("Juan Miguel Dela Cruz");
@@ -96,16 +98,33 @@ describe("buildEmailCorrectionPayload", () => {
     expect(fieldText).toContain("juan@gmail.com");
   });
 
-  it("makes the title a clickable link when an activity URL is configured", () => {
-    const payload = buildEmailCorrectionPayload({
-      ...correction,
-      activityUrl: "https://it2026.vercel.app/admin/activity",
-    });
-    expect(payload.embeds[0].url).toBe("https://it2026.vercel.app/admin/activity");
+  it("titles the embed with the category label", () => {
+    const payload = buildHelpRequestPayload({ ...request, category: "no_qr", requestedEmail: null });
+    expect(payload.embeds[0].title).toBe("I didn't get my QR email");
   });
 
-  it("omits the url key entirely when no activity URL is configured", () => {
-    const payload = buildEmailCorrectionPayload(correction);
+  it("leaves out the email field when there is none, and adds the message when there is one", () => {
+    const payload = buildHelpRequestPayload({
+      ...request,
+      category: "other",
+      requestedEmail: null,
+      message: "My name is misspelled.",
+    });
+    const names = payload.embeds[0].fields.map((f) => f.name);
+    expect(names).not.toContain("Requested email");
+    expect(names).toContain("Message");
+  });
+
+  it("makes the title a clickable link when a queue URL is configured", () => {
+    const payload = buildHelpRequestPayload({
+      ...request,
+      queueUrl: "https://itech2026.site/admin/email-fixes",
+    });
+    expect(payload.embeds[0].url).toBe("https://itech2026.site/admin/email-fixes");
+  });
+
+  it("omits the url key entirely when no queue URL is configured", () => {
+    const payload = buildHelpRequestPayload(request);
     expect("url" in payload.embeds[0]).toBe(false);
   });
 
@@ -118,7 +137,7 @@ describe("buildEmailCorrectionPayload", () => {
       gcashReference: "1234567890123",
       reviewUrl: null,
     }).embeds[0].color;
-    const correctionColor = buildEmailCorrectionPayload(correction).embeds[0].color;
-    expect(correctionColor).not.toBe(registrationColor);
+    const helpColor = buildHelpRequestPayload(request).embeds[0].color;
+    expect(helpColor).not.toBe(registrationColor);
   });
 });

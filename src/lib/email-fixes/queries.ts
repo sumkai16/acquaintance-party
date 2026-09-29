@@ -1,22 +1,27 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
 import type { EmailCorrectionRequest } from "@/lib/supabase/types";
+import type { HelpCategory } from "@/lib/registrations/schema";
 
 /**
- * Records a "my email is wrong" request from /find. Never changes the
- * registration itself — see requestEmailCorrection's comment in
+ * Records a "report a QR problem" request from /find. Never changes the
+ * registration itself — see requestHelp's comment in
  * src/app/find/actions.ts for why that has to stay a human decision.
  */
 export async function createEmailFixRequest(input: {
   studentId: string;
   fullName: string;
-  requestedEmail: string;
+  category: HelpCategory;
+  requestedEmail: string | null;
+  message: string | null;
   registrationId: string | null;
 }): Promise<void> {
   const { error } = await adminClient().from("email_correction_requests").insert({
     student_id: input.studentId,
     full_name: input.fullName,
+    category: input.category,
     requested_email: input.requestedEmail,
+    message: input.message,
     registration_id: input.registrationId,
   });
 

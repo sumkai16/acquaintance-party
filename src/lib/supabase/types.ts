@@ -45,7 +45,11 @@ export type EmailCorrectionRequest = {
   id: string;
   student_id: string;
   full_name: string;
-  requested_email: string;
+  /** 0024: one of HELP_CATEGORIES' keys in src/lib/registrations/schema.ts. */
+  category: "wrong_email" | "no_qr" | "paid_pending" | "qr_problem" | "other";
+  /** Only a wrong_email request has one. */
+  requested_email: string | null;
+  message: string | null;
   registration_id: string | null;
   created_at: string;
   resolved_at: string | null;

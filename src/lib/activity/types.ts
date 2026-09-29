@@ -23,6 +23,7 @@ export const ACTIVITY_TYPES = [
   "ticket_email_sent",
   "receipt_failed",
   "email_correction_requested",
+  "help_requested",
   "online_payments_toggled",
   "partial_qr_issued",
 ] as const;
@@ -49,6 +50,7 @@ const LABELS: Record<ActivityType, string> = {
   ticket_email_sent: "Ticket Email Sent",
   receipt_failed: "Receipt Not Issued",
   email_correction_requested: "Email Correction Requested",
+  help_requested: "Help Requested",
   online_payments_toggled: "Online Payments Toggled",
   partial_qr_issued: "QR Sent Before Balance Paid",
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkoutSchema, suggestEmail, walkInSchema } from "./schema";
+import { checkoutSchema, helpRequestSchema, suggestEmail, walkInSchema } from "./schema";
 
 const valid = {
   fullName: "Juan Miguel Dela Cruz",
@@ -310,5 +310,51 @@ describe("walkInSchema", () => {
   it("accepts a lowercase section from a spreadsheet cell", () => {
     const parsed = walkInSchema.parse({ ...walkInValid, section: "c" });
     expect(parsed.section).toBe("C");
+  });
+});
+
+describe("helpRequestSchema", () => {
+  const base = {
+    studentId: "SCC-23-00000451",
+    fullName: "Juan Miguel Dela Cruz",
+  };
+
+  it("needs a valid email for a wrong_email report, and lowercases it", () => {
+    expect(helpRequestSchema.safeParse({ ...base, category: "wrong_email" }).success).toBe(false);
+    const parsed = helpRequestSchema.parse({
+      ...base,
+      category: "wrong_email",
+      requestedEmail: " Juan@Example.com ",
+    });
+    expect(parsed.requestedEmail).toBe("juan@example.com");
+  });
+
+  it("drops the email for any other category", () => {
+    const parsed = helpRequestSchema.parse({
+      ...base,
+      category: "no_qr",
+      requestedEmail: "not an email",
+    });
+    expect(parsed.requestedEmail).toBeUndefined();
+  });
+
+  it("needs a message for 'other' only", () => {
+    expect(helpRequestSchema.safeParse({ ...base, category: "other", message: " " }).success).toBe(
+      false,
+    );
+    expect(helpRequestSchema.safeParse({ ...base, category: "paid_pending" }).success).toBe(true);
+  });
+
+  it("caps the message at 500 characters", () => {
+    const result = helpRequestSchema.safeParse({
+      ...base,
+      category: "qr_problem",
+      message: "x".repeat(501),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an unknown category", () => {
+    expect(helpRequestSchema.safeParse({ ...base, category: "refund" }).success).toBe(false);
   });
 });

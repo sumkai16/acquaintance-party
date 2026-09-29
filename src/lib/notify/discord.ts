@@ -1,8 +1,8 @@
 import "server-only";
 import {
-  buildEmailCorrectionPayload,
+  buildHelpRequestPayload,
   buildRegistrationPayload,
-  type EmailCorrectionRequest,
+  type HelpRequestSummary,
   type RegistrationSummary,
 } from "./discord-message";
 
@@ -38,25 +38,25 @@ export async function notifyNewRegistration(
 }
 
 /**
- * Best-effort Discord ping for an email-correction request from /find —
+ * Best-effort Discord ping for a "Report a QR problem" request from /find —
  * same never-throw contract as notifyNewRegistration. The request is logged
  * to activity_logs regardless of whether this succeeds; this is only the
  * immediate "someone should look at this" nudge.
  */
-export async function notifyEmailCorrectionRequest(
-  input: Omit<EmailCorrectionRequest, "activityUrl">,
+export async function notifyHelpRequest(
+  input: Omit<HelpRequestSummary, "queueUrl">,
 ): Promise<void> {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
   if (!webhookUrl) return; // Not configured — skip silently, not an error.
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
-  const activityUrl = siteUrl ? `${siteUrl}/admin/activity` : null;
+  const queueUrl = siteUrl ? `${siteUrl}/admin/email-fixes` : null;
 
   try {
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildEmailCorrectionPayload({ ...input, activityUrl })),
+      body: JSON.stringify(buildHelpRequestPayload({ ...input, queueUrl })),
     });
     if (!response.ok) {
       console.error("Discord webhook responded with", response.status);

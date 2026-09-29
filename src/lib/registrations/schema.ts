@@ -263,15 +263,70 @@ export const walkInSchema = z.object({
 
 export type WalkInInput = z.infer<typeof walkInSchema>;
 
-// Submitted from /find when a student can't be located — the email on file
-// is exactly what's suspected wrong, so this asks for the corrected address
-// instead. No section/year: staff looks the student up by studentId and
-// verifies by hand before touching anything, same as every other review
-// step in this app.
-export const emailFixRequestSchema = z.object({
-  studentId,
-  fullName,
-  requestedEmail: email,
-});
+/**
+ * What a student can report from /find. The keys are the
+ * `email_correction_requests.category` values (0024's check constraint);
+ * the labels are shared by the form, the admin queue, and Discord.
+ */
+export const HELP_CATEGORIES = {
+  no_qr: "I didn't get my QR email",
+  paid_pending: "I paid but my ticket is still pending",
+  wrong_email: "My email on file is wrong",
+  qr_problem: "My QR won't show or won't scan",
+  other: "Something else",
+} as const;
 
-export type EmailFixRequestInput = z.infer<typeof emailFixRequestSchema>;
+export type HelpCategory = keyof typeof HELP_CATEGORIES;
+
+const helpCategory = z.enum(
+  Object.keys(HELP_CATEGORIES) as [HelpCategory, ...HelpCategory[]],
+  { error: "Pick what's wrong." },
+);
+
+// Submitted from /find. No section/year: staff looks the student up by
+// studentId and verifies by hand before touching anything, same as every
+// other review step in this app. Only a wrong_email report carries an
+// address, and a blank one from any other category is dropped rather than
+// validated — the form hides that field for them anyway.
+export const helpRequestSchema = z
+  .object({
+    studentId,
+    fullName,
+    category: helpCategory,
+    requestedEmail: z.string().trim().optional(),
+    message: z
+      .string()
+      .trim()
+      .max(500, "Keep it under 500 characters.")
+      .optional()
+      .transform((value) => value || undefined),
+  })
+  .superRefine((value, ctx) => {
+    if (value.category === "wrong_email") {
+      const result = email.safeParse(value.requestedEmail ?? "");
+      if (!result.success) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["requestedEmail"],
+          message: result.error.issues[0]?.message ?? "Enter a valid email address.",
+        });
+      }
+    }
+    if (value.category === "other" && !value.message) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["message"],
+        message: "Tell us what's wrong.",
+      });
+    }
+  })
+  .transform((value) => ({
+    ...value,
+    // Normalized (trimmed, lowercased) the same way checkout stores it.
+    requestedEmail:
+      value.category === "wrong_email"
+        ? email.safeParse(value.requestedEmail ?? "").data
+        : undefined,
+  }));
+
+export type HelpRequestInput = z.infer<typeof helpRequestSchema>;

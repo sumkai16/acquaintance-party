@@ -498,34 +498,44 @@ email is exactly what's wrong. Exists as its own table rather than another
 `activity_logs` row (which the feature briefly used) because staff needed a
 queue with an open/resolved state, not free text to search by eye.
 
+**Since `0024_help_requests.sql` it holds every "Report a QR problem"
+request, not just wrong emails** (2026-09-29, students were still bringing
+QR complaints to staff in person days before the event). The table name
+stayed to avoid churn; the admin page at `/admin/email-fixes` is now
+labelled "Help requests".
+
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | uuid | PK | |
-| student_id | text | NOT NULL | As typed, after `normalizeStudentId`. Always matches a real registration — `requestEmailCorrection` rejects the submission outright otherwise, before anything is written (see below) |
+| student_id | text | NOT NULL | As typed, after `normalizeStudentId`. Always matches a real registration — `requestHelp` rejects the submission outright otherwise, before anything is written (see below) |
 | full_name | text | NOT NULL | Self-reported, unverified — staff cross-checks it against `registration_id`'s row |
-| requested_email | text | NOT NULL | Validated at submit (format + MX/mail-server check), never applied automatically |
+| category | text | NOT NULL, default `'wrong_email'`, `'wrong_email'` \| `'no_qr'` \| `'paid_pending'` \| `'qr_problem'` \| `'other'` | Added in `0024`. Student-facing labels are `HELP_CATEGORIES` in `src/lib/registrations/schema.ts` |
+| requested_email | text | nullable; required when `category = 'wrong_email'` (constraint `email_correction_requests_wrong_email_has_address`) | Validated at submit (format + MX/mail-server check), never applied automatically. Nullable since `0024` — only a wrong-email report has one |
+| message | text | nullable, `<= 500` chars | Added in `0024`. What the student typed; required by the form for `other` |
 | registration_id | uuid | FK → `registrations(id)` ON DELETE SET NULL, nullable | Matched on `student_id` alone at submit time. Stays nullable at the schema level for old rows from before this gate existed, and so voiding/deleting the matched registration later doesn't block touching this row — but a fresh submission with no match never reaches an insert at all (see below) |
 | created_at | timestamptz | NOT NULL, default `now()` | |
-| resolved_at / resolved_by | | nullable | Set together by "Mark resolved" on `/admin/email-fixes`, once staff has actually changed the address via the Dashboard's edit flow. This table never changes a registration's email itself — see the comment on `requestEmailCorrection` in `src/app/find/actions.ts` for why that has to stay a human decision |
+| resolved_at / resolved_by | | nullable | Set together by "Mark resolved" on `/admin/email-fixes`, once staff has actually changed the address via the Dashboard's edit flow. This table never changes a registration's email itself — see the comment on `requestHelp` in `src/app/find/actions.ts` for why that has to stay a human decision |
 
 **A student ID with no matching registration at all is rejected before it
 reaches this table** (2026-09-22, after a real submission for a student who
 had never registered showed up as pure noise with nothing staff could act
-on). `requestEmailCorrection` checks `findRegistrationByStudentId` first,
+on). `requestHelp` checks `findRegistrationByStudentId` first,
 before the MX check, the throttle, or any write — a bogus ID costs one
 indexed read and nothing else. The throttle itself is keyed on **both**
 `student_id` and `requested_email` (`countRecentEmailFixRequests` /
 `countRecentEmailFixRequestsByEmail`), since a student-ID-only throttle
 can't see someone cycling through several IDs while aiming at the same
-destination inbox each time.
+destination inbox each time. The email throttle only applies to wrong-email
+reports, the only ones with an address.
 
 `/admin/email-fixes` is `requireAdmin()`-gated and outside staff's route
 allowlist, matching `editRegistration` (the Dashboard action that actually
 performs the fix) — a queue whose fix step staff can't reach would be
 confusing to expose to them.
 
-Every submission also writes an `email_correction_requested` row to
-`activity_logs` (unchanged, generic system record), so this table and the
+Every submission also writes to `activity_logs`: `email_correction_requested`
+for a wrong-email report (unchanged, so old filters still match),
+`help_requested` for every other category. So this table and the
 Activity log both show it — this one is the working queue, that one is the
 permanent audit trail.
 
