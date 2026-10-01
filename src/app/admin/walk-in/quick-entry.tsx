@@ -771,7 +771,7 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
-function ChoiceButton({
+export function ChoiceButton({
   selected,
   label,
   onClick,

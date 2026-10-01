@@ -14,6 +14,7 @@ import { useFlash } from "../flash";
 import { useEmailCheck } from "../../use-email-check";
 import { Option } from "../option";
 import { submitWalkIn, type FormState } from "./actions";
+import { ChoiceButton } from "./quick-entry";
 
 const initial: FormState = { status: "idle", attempt: 0 };
 
@@ -305,11 +306,11 @@ function AmountSection({
 }
 
 /**
- * Year level and Section together — Section's options come from the chosen
- * year. Same shape and same reasoning as checkout-form.tsx's copy of this,
- * minus the theming: `<Option>` keeps the popup readable on dark. The
- * attempt key both restores a failed submission and clears the pair after a
- * successful sale, so the next one starts blank.
+ * Year level and Section as tap buttons, the same as the "Type a list" rows —
+ * Section's choices come from the chosen year. Both picks are tracked here and
+ * posted through hidden inputs, since a button group has no value of its own.
+ * The attempt key both restores a failed submission and clears the pair after
+ * a successful sale, so the next one starts blank.
  */
 function YearAndSection({
   defaultYearLevel,
@@ -322,59 +323,61 @@ function YearAndSection({
   yearLevelError?: string;
   sectionError?: string;
 }) {
-  // Only the year level is tracked, and only to pick the Section options.
-  // Both selects stay uncontrolled on `defaultValue`, like every other field
-  // here: a controlled <select> that remounts gets its value applied before
-  // its <option> children exist, and silently falls back to the first one.
   const [yearLevel, setYearLevel] = useState(defaultYearLevel);
+  const [section, setSection] = useState(defaultSection);
   const sections = sectionsFor(yearLevel);
 
   return (
     <>
-      <Field label="Year level" name="yearLevel" error={yearLevelError}>
-        <select
-          id="yearLevel"
-          name="yearLevel"
-          required
-          defaultValue={defaultYearLevel}
-          onChange={(event) => setYearLevel(event.target.value)}
-          className={inputClass}
-        >
-          <Option value="" disabled>
-            Select a year level
-          </Option>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 font-semibold text-ground">Year level</legend>
+        <input type="hidden" name="yearLevel" value={yearLevel} />
+        <div className="grid grid-cols-4 gap-1.5">
           {YEAR_LEVELS.map((level) => (
-            <Option key={level} value={level}>
-              {level}
-            </Option>
+            <ChoiceButton
+              key={level}
+              selected={yearLevel === level}
+              label={level}
+              // Changing the year clears the section: 4th year has no G, so a
+              // carried-over pick could be one that year lacks.
+              onClick={() => {
+                if (yearLevel === level) return;
+                setYearLevel(level);
+                setSection("");
+              }}
+            >
+              {level.slice(0, 3)}
+            </ChoiceButton>
           ))}
-        </select>
-      </Field>
+        </div>
+        {yearLevelError ? (
+          <p className="text-sm font-medium text-accent">{yearLevelError}</p>
+        ) : null}
+      </fieldset>
 
-      <Field label="Section" name="section" error={sectionError}>
-        <select
-          id="section"
-          name="section"
-          required
-          // Remounts on every year change, which is what clears a stale pick:
-          // 4th year has no G, so carrying one over would submit a section
-          // that year doesn't have. The restored value only applies on the
-          // first render, before the student has touched the year level.
-          key={yearLevel}
-          defaultValue={yearLevel === defaultYearLevel ? defaultSection : ""}
-          disabled={sections.length === 0}
-          className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-60`}
-        >
-          <Option value="" disabled>
-            {sections.length === 0 ? "Pick a year level first" : "Select a section"}
-          </Option>
-          {sections.map((name) => (
-            <Option key={name} value={name}>
-              {name}
-            </Option>
-          ))}
-        </select>
-      </Field>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-1.5 font-semibold text-ground">Section</legend>
+        <input type="hidden" name="section" value={section} />
+        {sections.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {sections.map((name) => (
+              <ChoiceButton
+                key={name}
+                selected={section === name}
+                label={`Section ${name}`}
+                onClick={() => setSection(name)}
+              >
+                {name}
+              </ChoiceButton>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ground/60">Pick a year level first.</p>
+        )}
+        {sectionError ? (
+          <p className="text-sm font-medium text-accent">{sectionError}</p>
+        ) : null}
+      </fieldset>
     </>
   );
 }
