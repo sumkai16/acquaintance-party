@@ -166,10 +166,12 @@ export default async function RegistrationsPage({
   // needs neither. That is a sharper test than "are there any rows at all",
   // and it matters most for listAdminEmails: it calls the Supabase Auth
   // admin API, the slowest single call on this page.
+  // The "Paid on" strip names who took each payment too, so it needs the names
+  // whenever a day is picked.
   const needsReviewers = results.some((registration) => registration.reviewed_by);
   const [adminEmails, profileNames, receiptUrls, receipts] = await Promise.all([
     needsReviewers ? listAdminEmails() : new Map<string, string>(),
-    needsReviewers ? listAllProfileNames() : new Map<string, string>(),
+    needsReviewers || paidOnBounds ? listAllProfileNames() : new Map<string, string>(),
     // Payments only shows a receipt while the row is in its current list; this
     // is the place to pull one up for any online payment, whatever its status.
     signedReceiptUrls(
@@ -253,6 +255,17 @@ export default async function RegistrationsPage({
               {formatPeso(daySummary.gcashCentavos)} GCash
             </span>
           )}
+          {daySummary && daySummary.byPerson.length > 0 ? (
+            <span className="mt-1 block text-ground/70">
+              Taken by{" "}
+              {daySummary.byPerson
+                .map(
+                  (person) =>
+                    `${(person.userId && profileNames.get(person.userId)) || "Unknown"} ${person.payments} (${formatPeso(person.centavos)})`,
+                )
+                .join(" · ")}
+            </span>
+          ) : null}
         </p>
       ) : null}
 

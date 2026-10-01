@@ -182,11 +182,20 @@ export async function receiptsForMany(
   return byRegistration;
 }
 
-export type DaySummary = { payments: number; cashCentavos: number; gcashCentavos: number };
+export type DaySummary = {
+  payments: number;
+  cashCentavos: number;
+  gcashCentavos: number;
+  /**
+   * Who took each payment (`receipts.received_by`), busiest first. The user id
+   * is null for a receipt with no recorded collector.
+   */
+  byPerson: { userId: string | null; payments: number; centavos: number }[];
+};
 
 /**
- * What came in on one Manila day (see manilaDayBounds), by method — the
- * Dashboard's "Paid on" strip. Sums `receipts.amount`, what each payment
+ * What came in on one Manila day (see manilaDayBounds), by method and by
+ * whoever took the payment — the Dashboard's "Paid on" strip. Sums `receipts.amount`, what each payment
  * actually collected, so a balance settled that day counts as the balance,
  * not the ticket price. Voided tickets are left out, the same as the totals
  * cards above it. Null means the table couldn't be read.
@@ -197,7 +206,7 @@ export async function paymentsOnDay(bounds: {
 }): Promise<DaySummary | null> {
   const { data, error } = await adminClient()
     .from("receipts")
-    .select("amount, method, registrations!inner(status)")
+    .select("amount, method, received_by, registrations!inner(status)")
     .gte("paid_at", bounds.fromIso)
     .lt("paid_at", bounds.toIso)
     .neq("registrations.status", "rejected")
@@ -208,12 +217,23 @@ export async function paymentsOnDay(bounds: {
     return null;
   }
 
-  const summary: DaySummary = { payments: 0, cashCentavos: 0, gcashCentavos: 0 };
+  const summary: DaySummary = { payments: 0, cashCentavos: 0, gcashCentavos: 0, byPerson: [] };
+  const people = new Map<string | null, { payments: number; centavos: number }>();
   for (const row of data ?? []) {
+    const amount = row.amount as number;
     summary.payments += 1;
-    if (row.method === "cash") summary.cashCentavos += row.amount as number;
-    else summary.gcashCentavos += row.amount as number;
+    if (row.method === "cash") summary.cashCentavos += amount;
+    else summary.gcashCentavos += amount;
+
+    const key = (row.received_by as string | null) ?? null;
+    const person = people.get(key) ?? { payments: 0, centavos: 0 };
+    person.payments += 1;
+    person.centavos += amount;
+    people.set(key, person);
   }
+  summary.byPerson = [...people]
+    .map(([userId, totals]) => ({ userId, ...totals }))
+    .sort((a, b) => b.payments - a.payments);
   return summary;
 }
 
