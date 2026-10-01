@@ -45,7 +45,7 @@ export async function recordAcknowledgement(input: {
 
 /**
  * Everyone who has acknowledged the letter, newest first — the adviser's RSVP
- * list, and the source of the faculty raffle pool.
+ * list, and the faculty half of the raffle pool.
  *
  * There is no "hasn't opened it yet" counterpart, and there cannot be: one
  * shared QR means the app never learns who it was sent to. See the header of

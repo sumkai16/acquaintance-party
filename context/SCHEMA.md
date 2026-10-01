@@ -214,16 +214,16 @@ anything) is ever redrawable — see `latestDraw()` in `src/lib/raffle/draw.ts`.
 | drawn_by | uuid | NOT NULL, FK → `auth.users(id)` | The admin who ran the draw |
 | is_redraw | boolean | NOT NULL, default false | |
 | supersedes | uuid | FK → `raffle_draws(id)`, nullable, UNIQUE where set | The draw this replaced |
-| audience | text | NOT NULL, default `'student'`, `'student'` \| `'faculty'` | Added in `0017`. Which pool this draw ran against — see below |
+| audience | text | NOT NULL, default `'student'`, `'student'` \| `'faculty'` | Added in `0017` while students and faculty were drawn separately. **Unused since 2026-10-01**: they share one raffle and one history, so nothing filters on it and every new draw takes the default. Left in place rather than dropped, since removing it needs a migration for no gain |
 
-**Students and faculty are drawn separately, and `audience` is the whole
-mechanism.** `allDraws(audience)` filters on it, which is what scopes
-`latestDraw()` and `currentWinnerIds()` (`src/lib/raffle/pool.ts`) without
-either of them knowing audiences exist — they already take a draws array. Get
-this wrong and the bug is silent: drawing a faculty name makes the student
-draw before it stop being redrawable, discovered at the podium. Defaulted
-rather than backfilled, so the pre-`0017` insert in `recordDraw()` stayed
-valid while the column landed ahead of the code.
+**Students and faculty are drawn together** (2026-10-01, the instructor's
+call). `fullPool()` in `src/lib/raffle/queries.ts` is the scanned students,
+any added names, and the faculty from `faculty_invitations`; each entrant
+keeps its `source`. `drawablePool()` (`src/lib/raffle/pool.ts`) is the one
+filter both the server action and the projector apply: scanned students are
+always in, added names and faculty are each opted in per draw. `allDraws()`
+reads every row, so `latestDraw()` and `currentWinnerIds()` see one history for
+the whole night.
 
 ## faculty_invitations
 

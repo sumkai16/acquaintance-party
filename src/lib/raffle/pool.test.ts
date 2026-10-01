@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentWinnerIds, entrantDetail, latestDraw } from "./pool";
+import { currentWinnerIds, drawablePool, entrantDetail, latestDraw } from "./pool";
 import type { RaffleDrawRow, RaffleEntrant } from "./types";
 
 function entrant(overrides: Partial<RaffleEntrant> = {}): RaffleEntrant {
@@ -57,12 +57,10 @@ describe("entrantDetail", () => {
 });
 
 /**
- * These two are what make the per-audience split work: allDraws() filters by
- * audience, so passing a faculty-only list here is what scopes the redraw and
- * the winner exclusions to faculty. Nothing in either function knows about
- * audiences, and that is the point.
+ * Students and faculty share one history, so a faculty draw is the latest
+ * draw, redrawable, and its winner is excluded from the next one.
  */
-describe("scoping by the draws passed in", () => {
+describe("one history for students and faculty", () => {
   const studentDraw = draw({ id: "s1", drawnAt: "2026-10-03T16:00:00Z" });
   const facultyDraw = draw({
     id: "f1",
@@ -70,15 +68,31 @@ describe("scoping by the draws passed in", () => {
     winner: entrant({ registrationId: "f-entrant", source: "faculty" }),
   });
 
-  it("makes the latest student draw redrawable even after a faculty draw", () => {
+  it("makes the most recent draw the redrawable one, whoever won it", () => {
     expect(latestDraw([studentDraw])?.id).toBe("s1");
-    // The bug this guards: one combined list hands back the faculty draw,
-    // so the student draw before it silently stops being redrawable.
     expect(latestDraw([studentDraw, facultyDraw])?.id).toBe("f1");
   });
 
-  it("keeps each audience's winners out of only its own pool", () => {
-    expect(currentWinnerIds([studentDraw])).toEqual(new Set(["r1"]));
-    expect(currentWinnerIds([facultyDraw])).toEqual(new Set(["f-entrant"]));
+  it("excludes both students and faculty who already won", () => {
+    expect(currentWinnerIds([studentDraw, facultyDraw])).toEqual(
+      new Set(["r1", "f-entrant"]),
+    );
+  });
+});
+
+describe("drawablePool", () => {
+  const ticket = entrant({ registrationId: "t", source: "ticket" });
+  const extra = entrant({ registrationId: "x", source: "extra" });
+  const faculty = entrant({ registrationId: "f", source: "faculty" });
+  const everyone = [ticket, extra, faculty];
+
+  it("always keeps scanned students", () => {
+    expect(drawablePool(everyone, { extraEntrants: false, faculty: false })).toEqual([ticket]);
+  });
+
+  it("opts faculty and added names in separately", () => {
+    expect(drawablePool(everyone, { extraEntrants: false, faculty: true })).toEqual([ticket, faculty]);
+    expect(drawablePool(everyone, { extraEntrants: true, faculty: false })).toEqual([ticket, extra]);
+    expect(drawablePool(everyone, { extraEntrants: true, faculty: true })).toEqual(everyone);
   });
 });

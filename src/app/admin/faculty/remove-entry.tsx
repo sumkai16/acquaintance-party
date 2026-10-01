@@ -50,7 +50,7 @@ export function RemoveEntry({ id, fullName }: { id: string; fullName: string }) 
           onCancel={() => setOpen(false)}
         >
           <p>
-            They come off the faculty list and out of the faculty raffle pool.
+            They come off the faculty list and out of the raffle pool.
             This can&apos;t be undone.
           </p>
         </ConfirmDialog>

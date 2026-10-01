@@ -3,7 +3,7 @@ import { adminClient } from "@/lib/supabase/admin";
 import { approvedManifest } from "@/lib/scans/queries";
 import { listAcknowledgements } from "@/lib/faculty/queries";
 import type { ParsedEntrantRow } from "./entrants";
-import type { RaffleAudience, RaffleDrawRow, RaffleEntrant } from "./types";
+import type { RaffleDrawRow, RaffleEntrant } from "./types";
 
 /**
  * Everyone eligible: the auto pool of approved, scanned-in students, plus
@@ -59,9 +59,15 @@ export async function facultyPool(): Promise<RaffleEntrant[]> {
   }));
 }
 
-/** The pool for one audience — what a draw actually runs against. */
-export async function poolFor(audience: RaffleAudience): Promise<RaffleEntrant[]> {
-  return audience === "faculty" ? facultyPool() : eligiblePool();
+/**
+ * Everyone who can be drawn: students and faculty in one pool, as the
+ * instructor asked on 2026-10-01. Each entrant keeps its `source`, which is
+ * how a draw leaves faculty (or added names) out when the operator switches
+ * them off — see `drawablePool()` in ./pool.ts.
+ */
+export async function fullPool(): Promise<RaffleEntrant[]> {
+  const [students, faculty] = await Promise.all([eligiblePool(), facultyPool()]);
+  return [...students, ...faculty];
 }
 
 /** Extra entrants as `RaffleEntrant`s, ready to fold into the pool. */
@@ -202,21 +208,18 @@ function toDrawRow(row: DrawRecord): RaffleDrawRow | null {
 }
 
 /**
- * Every draw recorded for one audience, oldest first.
+ * Every draw recorded, oldest first — one history for the whole night.
  *
- * Filtering here rather than in the caller is what keeps latestDraw() and
- * currentWinnerIds() (./pool.ts) correct without either of them learning
- * about audiences: they already take a draws array, so a scoped read scopes
- * them too. Without it, drawing a faculty name would silently make the
- * student draw before it un-redrawable.
+ * Draws made while students and faculty had separate raffles carry an
+ * `audience` on the row (`0017`); nothing reads it any more, and every new
+ * draw takes the column's default.
  */
-export async function allDraws(audience: RaffleAudience): Promise<RaffleDrawRow[]> {
+export async function allDraws(): Promise<RaffleDrawRow[]> {
   const { data, error } = await adminClient()
     .from("raffle_draws")
     .select(
       "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",
     )
-    .eq("audience", audience)
     .order("drawn_at", { ascending: true });
 
   if (error) {
@@ -235,7 +238,6 @@ export type RecordDrawInput = {
   poolSize: number;
   drawnBy: string;
   supersedes: string | null;
-  audience: RaffleAudience;
 };
 
 export async function recordDraw(
@@ -250,7 +252,6 @@ export async function recordDraw(
       drawn_by: input.drawnBy,
       is_redraw: input.supersedes !== null,
       supersedes: input.supersedes,
-      audience: input.audience,
     })
     .select(
       "id, winner_registration_id, finalists, pool_size, drawn_at, is_redraw, supersedes",

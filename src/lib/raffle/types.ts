@@ -1,11 +1,4 @@
 /**
- * Which pool a draw runs against. Students and faculty are drawn separately
- * all night — separate pools, separate winner histories, separate "exclude
- * previous winners" sets. Stored on every draw as `raffle_draws.audience`.
- */
-export type RaffleAudience = "student" | "faculty";
-
-/**
  * Someone eligible for the raffle: approved and scanned in at the door
  * ("ticket"), added by an admin because the scanner missed them or they came
  * from an imported list ("extra" — see `raffle_extra_entrants`), or a faculty

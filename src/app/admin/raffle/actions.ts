@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { drawFromPool } from "@/lib/raffle/draw";
-import { currentWinnerIds, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
-import { allDraws, poolFor, recordDraw } from "@/lib/raffle/queries";
-import type { RaffleAudience, RaffleDrawRow } from "@/lib/raffle/types";
+import { currentWinnerIds, drawablePool, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
+import { allDraws, fullPool, recordDraw } from "@/lib/raffle/queries";
+import type { RaffleDrawRow } from "@/lib/raffle/types";
 import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
 export type DrawActionResult =
@@ -12,18 +12,18 @@ export type DrawActionResult =
   | { ok: false; error: string };
 
 export async function drawNext(input: {
-  audience: RaffleAudience;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
+  includeFaculty: boolean;
 }): Promise<DrawActionResult> {
   return runDraw({ ...input, supersedesDrawId: null });
 }
 
 export async function redrawLast(input: {
-  audience: RaffleAudience;
   supersedesDrawId: string;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
+  includeFaculty: boolean;
 }): Promise<DrawActionResult> {
   return runDraw(input);
 }
@@ -35,31 +35,26 @@ export async function redrawLast(input: {
  * about to run can only ever show a result that is already in the database.
  */
 async function runDraw(input: {
-  audience: RaffleAudience;
   excludePreviousWinners: boolean;
   includeExtraEntrants: boolean;
+  includeFaculty: boolean;
   supersedesDrawId: string | null;
 }): Promise<DrawActionResult> {
   const admin = await requireAdmin();
   if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
   const adminId = admin.id;
 
-  const { audience } = input;
   const isRedraw = input.supersedesDrawId !== null;
-  // Both scoped to this audience, so students and faculty keep separate
-  // pools, separate winner histories and separate redraw state.
-  const [fullPool, draws] = await Promise.all([
-    poolFor(audience),
-    allDraws(audience),
-  ]);
-  // Scanned tickets are the pool by default. Extra entrants only join a
-  // specific draw when the operator opts them in for it — a per-draw
-  // choice, not a global setting. The faculty pool has no such split: every
-  // entrant there came in the one way, so the filter would empty it.
-  const pool =
-    audience === "faculty" || input.includeExtraEntrants
-      ? fullPool
-      : fullPool.filter((entrant) => entrant.source === "ticket");
+  // One pool and one history for students and faculty together, so a redraw,
+  // the winner exclusions and the sidebar list all see the whole night.
+  const [everyone, draws] = await Promise.all([fullPool(), allDraws()]);
+  // Scanned tickets are the pool by default. Added names and faculty only
+  // join a specific draw when the operator opts them in for it — a per-draw
+  // choice, not a global setting.
+  const pool = drawablePool(everyone, {
+    extraEntrants: input.includeExtraEntrants,
+    faculty: input.includeFaculty,
+  });
   const standing = latestDraw(draws);
 
   let supersedes: string | null = null;
@@ -92,7 +87,7 @@ async function runDraw(input: {
   const outcome = drawFromPool(candidates);
 
   if (!outcome.ok) {
-    return { ok: false, error: emptyPoolError(input, pool.length, fullPool.length) };
+    return { ok: false, error: emptyPoolError(input, pool.length, everyone.length) };
   }
 
   const recorded = await recordDraw({
@@ -101,7 +96,6 @@ async function runDraw(input: {
     poolSize: candidates.length,
     drawnBy: adminId,
     supersedes,
-    audience,
   });
 
   if (!recorded.ok) return recorded;
@@ -116,19 +110,18 @@ async function runDraw(input: {
  * room waiting, so each one names the next action.
  */
 function emptyPoolError(
-  input: { audience: RaffleAudience; includeExtraEntrants: boolean },
+  input: { includeExtraEntrants: boolean; includeFaculty: boolean },
   poolSize: number,
-  fullPoolSize: number,
+  everyoneSize: number,
 ): string {
   if (poolSize > 0) {
     return "Everyone eligible has already won. Turn off “exclude previous winners” to draw again.";
   }
 
-  if (input.audience === "faculty") {
-    return "No faculty member has acknowledged the invitation yet, so there is nobody to draw from.";
+  // Someone exists but is switched off for this draw — name the switch.
+  if (everyoneSize > 0 && !(input.includeExtraEntrants && input.includeFaculty)) {
+    return "Nobody with a scanned ticket is eligible yet. Turn on “Include faculty” or “Include added names” to draw from them too, or wait for check-ins.";
   }
 
-  return !input.includeExtraEntrants && fullPoolSize > 0
-    ? "Nobody with a scanned ticket is eligible yet. Turn on “Include added names” to draw from Setup instead, or wait for check-ins."
-    : "Nobody has been scanned in yet, so there is nobody to draw from.";
+  return "Nobody has been scanned in yet, so there is nobody to draw from.";
 }

@@ -44,15 +44,12 @@ export default async function FacultyPage() {
       <header>
         <h1 className="font-display text-3xl uppercase">Faculty</h1>
         <p className="text-ground/60">
-          Everyone who has read the letter of invitation and entered the faculty
-          giveaway. Draw from this list on{" "}
-          <Link
-            href="/admin/raffle?audience=faculty"
-            className="underline hover:text-ground"
-          >
-            Raffle → Faculty
+          Everyone who has read the letter of invitation and entered the
+          giveaway. They are drawn together with the students on{" "}
+          <Link href="/admin/raffle" className="underline hover:text-ground">
+            Raffle
           </Link>
-          .
+          , and can be switched out of a draw there.
         </p>
       </header>
 

@@ -26,6 +26,25 @@ export function entrantDetail(entrant: RaffleEntrant): string {
   return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
+/**
+ * Who a draw may pick from. Scanned students are always in; added names and
+ * faculty are each opted in per draw, so the operator can run a
+ * students-only prize without touching the lists themselves.
+ *
+ * Shared by the server action and the projector so the count the operator
+ * sees is the pool the draw actually runs on.
+ */
+export function drawablePool(
+  pool: readonly RaffleEntrant[],
+  include: { extraEntrants: boolean; faculty: boolean },
+): RaffleEntrant[] {
+  return pool.filter((entrant) => {
+    if (entrant.source === "extra") return include.extraEntrants;
+    if (entrant.source === "faculty") return include.faculty;
+    return true;
+  });
+}
+
 export function excludeEntrants(
   pool: readonly RaffleEntrant[],
   excludedIds: ReadonlySet<string>,

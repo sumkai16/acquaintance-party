@@ -413,8 +413,8 @@ into the raffle pool at all.
 
 The flow: one shared QR goes out with the invitation; scanning it opens the
 letter at `/invitation`; ticking "I have read this" and giving a name is the
-entry. `/admin/faculty` is the adviser's list. On the night,
-`/admin/raffle?audience=faculty` draws from it, with its own winner history.
+entry. `/admin/faculty` is the adviser's list. On the night, faculty are drawn
+in the same raffle as the students (see the 2026-10-01 change below).
 
 The decisions worth not relitigating, all confirmed explicitly:
 - **One shared QR, not one per person.** No roster to prepare and one image to
@@ -431,9 +431,13 @@ The decisions worth not relitigating, all confirmed explicitly:
 - **No attendance gate.** Acknowledging is the whole entry, so a faculty
   member who never turns up can still win and the emcee redraws on the spot.
   The opposite of the student rule, on purpose.
-- **Students and faculty are separate pools, histories and exclusion sets**,
-  keyed on `raffle_draws.audience`. This also fixes a bug that would
-  otherwise have been found on stage — see `context/SCHEMA.md`.
+- **Students and faculty share one raffle (changed 2026-10-01).** The
+  instructor said a separate faculty raffle isn't needed, so there is one pool,
+  one winner history and one "exclude previous winners" set. Faculty are
+  switched in or out per draw with **Include faculty** (on by default), the
+  same way added names are, so a students-only prize is still possible.
+  `/admin/raffle?audience=faculty` and the Students/Faculty tabs are gone.
+  `raffle_draws.audience` is no longer read or written; see `context/SCHEMA.md`.
 - **The letter is content-as-code** (`src/lib/faculty/letter.ts`), the same
   swappable shape as `src/lib/evaluation/questions.ts`. Its body is a
   **PLACEHOLDER** until the organisers supply the real text; `LETTER_VERSION`
@@ -545,6 +549,20 @@ balances — the flag gates the public GCash path only — and existing
 registrations; pending online submissions stay on the Payments queue for
 admins to approve or reject by hand. The flag fails closed: a missing row
 or a failed read renders as closed, never open.
+
+### 4.12 Claim countdown on the raffle reveal
+
+Added 2026-10-02. After the wheel stops, the winner's name appears over a
+sunset and a countdown gives them time to reach the stage: the sun sinks toward
+the horizon and the sky dims as the time runs out (the "Horizon" design,
+picked from three mockups). The length is set in the raffle sidebar (Off, 10s,
+30s, 1 min, 2 min, or +/- 5s up to 10 minutes) and remembered in the operator's
+browser, not the database. Pause, Restart and Claimed sit with Draw and Redraw
+on the laptop, never on the projected picture. When time runs out the Redraw
+button pulses and the screen says so; **nothing is ever redrawn automatically**,
+because a winner who is just slow getting through a crowd must not lose the
+prize to a timer. Code: `winner-reveal.tsx`, `use-claim-clock.ts`,
+`countdown-settings.ts` under `src/app/admin/raffle/`.
 
 ## 5. Explicitly out of scope
 Refunds, ticket transfers, waitlists, seat assignment, multiple ticket tiers,
