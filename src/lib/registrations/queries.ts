@@ -554,6 +554,12 @@ export async function searchRegistrations(
      * bounce filter alone can't surface.
      */
     delivery?: "qr" | "receipt" | "bounced" | "undelivered";
+    /**
+     * One Manila day (see manilaDayBounds): keeps registrations with a
+     * receipt paid inside it. Receipts, not `created_at`, so a partial payer
+     * who settled the balance on a later day shows up on that day too.
+     */
+    paidOn?: { fromIso: string; toIso: string };
   } = {},
 ): Promise<RegistrationsPage> {
   const trimmed = query.trim();
@@ -562,17 +568,20 @@ export async function searchRegistrations(
   const safe = trimmed.replace(/[%_,()\\]/g, "");
   const hasQuery = safe.length >= 2;
 
-  const { sort = null, direction = "desc", yearLevel, section, delivery } = options;
+  const { sort = null, direction = "desc", yearLevel, section, delivery, paidOn } = options;
 
-  if (!hasQuery && !status && !paymentMethod && !yearLevel && !section && !delivery) {
+  if (!hasQuery && !status && !paymentMethod && !yearLevel && !section && !delivery && !paidOn) {
     return { rows: [], total: 0 };
   }
 
-  // Waiting for a receipt means "has an unemailed receipt": an inner join
-  // keeps only registrations with at least one receipt matching the filter.
+  // Waiting for a receipt means "has an unemailed receipt", and paid on a day
+  // means "has a receipt paid that day": an inner join keeps only
+  // registrations with at least one receipt matching the filter. Both at once
+  // narrow the same receipt — paid that day and not yet emailed.
+  const joinReceipts = delivery === "receipt" || Boolean(paidOn);
   let builder = adminClient()
     .from("registrations")
-    .select(delivery === "receipt" ? "*, receipts!inner(id)" : "*", { count: "exact" });
+    .select(joinReceipts ? "*, receipts!inner(id)" : "*", { count: "exact" });
   if (hasQuery) {
     builder = builder.or(
       `full_name.ilike.%${safe}%,email.ilike.%${safe}%,student_id.ilike.%${safe}%`,
@@ -598,6 +607,11 @@ export async function searchRegistrations(
   if (delivery === "receipt") {
     // Voided tickets are excluded, same as the backlog — nobody is emailing them.
     builder = builder.neq("status", "rejected").is("receipts.emailed_at", null);
+  }
+  if (paidOn) {
+    builder = builder
+      .gte("receipts.paid_at", paidOn.fromIso)
+      .lt("receipts.paid_at", paidOn.toIso);
   }
 
   // Ordering moved into the query once only one page comes back. Sorting the
@@ -633,7 +647,7 @@ export async function searchRegistrations(
     offset + REGISTRATIONS_PAGE_SIZE - 1,
   );
 
-  // Via unknown: the select string varies with `delivery`, so the client can't
+  // Via unknown: the select string varies with the filters, so the client can't
   // infer one row shape. The extra `receipts` key the join adds is ignored.
   return { rows: (data as unknown as Registration[]) ?? [], total: count ?? 0 };
 }

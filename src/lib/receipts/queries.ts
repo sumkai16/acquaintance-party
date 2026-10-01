@@ -182,6 +182,41 @@ export async function receiptsForMany(
   return byRegistration;
 }
 
+export type DaySummary = { payments: number; cashCentavos: number; gcashCentavos: number };
+
+/**
+ * What came in on one Manila day (see manilaDayBounds), by method — the
+ * Dashboard's "Paid on" strip. Sums `receipts.amount`, what each payment
+ * actually collected, so a balance settled that day counts as the balance,
+ * not the ticket price. Voided tickets are left out, the same as the totals
+ * cards above it. Null means the table couldn't be read.
+ */
+export async function paymentsOnDay(bounds: {
+  fromIso: string;
+  toIso: string;
+}): Promise<DaySummary | null> {
+  const { data, error } = await adminClient()
+    .from("receipts")
+    .select("amount, method, registrations!inner(status)")
+    .gte("paid_at", bounds.fromIso)
+    .lt("paid_at", bounds.toIso)
+    .neq("registrations.status", "rejected")
+    .range(0, 9999);
+
+  if (error) {
+    console.error("paymentsOnDay failed", error);
+    return null;
+  }
+
+  const summary: DaySummary = { payments: 0, cashCentavos: 0, gcashCentavos: 0 };
+  for (const row of data ?? []) {
+    summary.payments += 1;
+    if (row.method === "cash") summary.cashCentavos += row.amount as number;
+    else summary.gcashCentavos += row.amount as number;
+  }
+  return summary;
+}
+
 export type ReceiptBacklogEntry = {
   registrationId: string;
   email: string;
@@ -193,7 +228,8 @@ export type ReceiptBacklogEntry = {
 };
 
 /**
- * Paid students with at least one receipt nobody has emailed them, most
+ * Paid students with at least one receipt nobody has emailed them — plus any
+ * approved ticket whose QR was never emailed, receipt or not — most
  * urgent first (see ./priority.ts): anyone still without their QR, then
  * partial payers, then people who only lack the receipt. Within each group,
  * oldest payment first. Voided tickets are left out: an apology email for a
@@ -239,6 +275,36 @@ export async function receiptBacklog(): Promise<ReceiptBacklogEntry[] | null> {
     entry.receiptIds.push(row.id as string);
     byRegistration.set(registrationId, entry);
   }
+
+  // Tickets with a QR nobody emailed and no unemailed receipt — a free ticket
+  // has no receipt at all, so the query above can never see it. They join the
+  // "qr" group with no receipt ids, and the send gives them the plain ticket
+  // email. A bounced address is left out: it needs fixing first, and a blind
+  // resend would only bounce again.
+  const { data: qrOnly, error: qrError } = await adminClient()
+    .from("registrations")
+    .select("id, email, full_name, ticket_code")
+    .eq("status", "approved")
+    .not("ticket_code", "is", null)
+    .is("ticket_email_sent_at", null)
+    .is("email_bounced_at", null)
+    .order("created_at", { ascending: true })
+    .range(0, 9999);
+
+  if (qrError) console.error("receiptBacklog: QR-only read failed", qrError);
+  for (const row of qrOnly ?? []) {
+    const registrationId = row.id as string;
+    if (byRegistration.has(registrationId)) continue;
+    byRegistration.set(registrationId, {
+      registrationId,
+      email: row.email as string,
+      fullName: row.full_name as string,
+      ticketCode: row.ticket_code as string,
+      receiptIds: [],
+      group: "qr",
+    });
+  }
+
   return sortByPriority([...byRegistration.values()]);
 }
 

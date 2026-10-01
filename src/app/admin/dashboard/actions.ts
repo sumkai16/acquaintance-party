@@ -15,6 +15,7 @@ import {
   EMAIL_BATCH_LIMIT,
   sendReceiptBacklogBatch,
   sendTicketApprovedEmail,
+  sendTicketQrBatch,
   sendingDomainReady,
 } from "@/lib/notify/email";
 import { markReceiptsEmailed, receiptBacklog, receiptIdsFor } from "@/lib/receipts/queries";
@@ -126,7 +127,8 @@ export type SendTicketEmailsResult =
 /**
  * Emails a receipt to every paid student who hasn't been sent one — with
  * their QR too if the ticket is paid in full, and an apology, since most of
- * these payments went through before receipts existed.
+ * these payments went through before receipts existed. Also sends the QR to
+ * any ticket that never got one and has no receipt to send (a free ticket).
  *
  * Covers the old QR-only backlog as well: every approved ticket got a
  * receipt in migration 0014, unemailed. Modelled on sendEvaluationInvites():
@@ -158,10 +160,24 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
   let failed = 0;
   let reason: string | undefined;
 
-  for (let start = 0; start < recipients.length; start += EMAIL_BATCH_LIMIT) {
-    if (start > 0) await new Promise((resolve) => setTimeout(resolve, BATCH_PAUSE_MS));
+  // Two kinds of email, so two lists: students with receipts to send get the
+  // receipt email (QR included when paid in full); a ticket with a QR but no
+  // receipt — a free ticket — gets the plain ticket email instead, since the
+  // receipt one would apologise for a receipt that doesn't exist.
+  const withReceipts = recipients.filter((recipient) => recipient.receiptIds.length > 0);
+  const qrOnly = recipients.filter(
+    (recipient) => recipient.receiptIds.length === 0 && recipient.ticketCode,
+  );
 
-    const chunk = recipients.slice(start, start + EMAIL_BATCH_LIMIT);
+  let batches = 0;
+  async function pause() {
+    if (batches++ > 0) await new Promise((resolve) => setTimeout(resolve, BATCH_PAUSE_MS));
+  }
+
+  for (let start = 0; start < withReceipts.length; start += EMAIL_BATCH_LIMIT) {
+    await pause();
+
+    const chunk = withReceipts.slice(start, start + EMAIL_BATCH_LIMIT);
     const delivery = await sendReceiptBacklogBatch(
       chunk.map((recipient) => ({
         to: recipient.email,
@@ -179,6 +195,28 @@ export async function sendReceiptEmails(): Promise<SendTicketEmailsResult> {
       await markTicketEmailSent(
         chunk.filter((recipient) => recipient.ticketCode).map((recipient) => recipient.registrationId),
       );
+      sent += chunk.length;
+    } else {
+      failed += chunk.length;
+      reason ??= delivery.error;
+    }
+  }
+
+  for (let start = 0; start < qrOnly.length; start += EMAIL_BATCH_LIMIT) {
+    await pause();
+
+    const chunk = qrOnly.slice(start, start + EMAIL_BATCH_LIMIT);
+    const delivery = await sendTicketQrBatch(
+      chunk.map((recipient) => ({
+        to: recipient.email,
+        fullName: recipient.fullName,
+        registrationId: recipient.registrationId,
+        ticketCode: recipient.ticketCode!,
+      })),
+    );
+
+    if (delivery.ok) {
+      await markTicketEmailSent(chunk.map((recipient) => recipient.registrationId));
       sent += chunk.length;
     } else {
       failed += chunk.length;

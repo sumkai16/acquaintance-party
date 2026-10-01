@@ -21,7 +21,8 @@ import { discountedTicketCounts } from "@/lib/registrations/queries";
 import { RegistrationRow, STATUS_LABEL } from "./registration-row";
 import { RegistrationFilters } from "./registration-filters";
 import { PaymentLineToggle } from "./payment-line-toggle";
-import { receiptBacklog, receiptsForMany } from "@/lib/receipts/queries";
+import { paymentsOnDay, receiptBacklog, receiptsForMany } from "@/lib/receipts/queries";
+import { formatDatePH, manilaDayBounds } from "@/lib/format/datetime";
 import { SendReceiptEmails } from "./send-receipt-emails";
 import { Pagination } from "../pagination";
 
@@ -44,6 +45,7 @@ export default async function RegistrationsPage({
     year?: string;
     section?: string;
     delivery?: string;
+    paidOn?: string;
   }>;
 }) {
   const {
@@ -56,7 +58,11 @@ export default async function RegistrationsPage({
     year: rawYear,
     section: rawSection,
     delivery: rawDelivery,
+    paidOn: rawPaidOn,
   } = await searchParams;
+  // A date that doesn't exist is dropped, not rolled over — same rule as year.
+  const paidOnBounds = rawPaidOn ? manilaDayBounds(rawPaidOn) : null;
+  const paidOn = paidOnBounds ? rawPaidOn : undefined;
   const delivery =
     rawDelivery === "qr" ||
     rawDelivery === "receipt" ||
@@ -112,6 +118,7 @@ export default async function RegistrationsPage({
     backlog,
     checkoutOpen,
     discounted,
+    daySummary,
   ] = await Promise.all([
     searchRegistrations(q, status, paymentMethod, {
       page,
@@ -120,6 +127,7 @@ export default async function RegistrationsPage({
       yearLevel,
       section,
       delivery,
+      paidOn: paidOnBounds ?? undefined,
     }),
     ticketHolderCount(),
     totalCollectedCentavos(),
@@ -129,6 +137,7 @@ export default async function RegistrationsPage({
     receiptBacklog(),
     paymentsOpen(),
     discountedTicketCounts(),
+    paidOnBounds ? paymentsOnDay(paidOnBounds) : Promise.resolve(null),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(totalResults / REGISTRATIONS_PAGE_SIZE));
@@ -143,6 +152,7 @@ export default async function RegistrationsPage({
     if (yearLevel) next.set("year", yearLevel);
     if (section) next.set("section", section);
     if (delivery) next.set("delivery", delivery);
+    if (paidOn) next.set("paidOn", paidOn);
     if (sort) next.set("sort", sort);
     if (dir) next.set("dir", dir);
     if (targetPage > 1) next.set("page", String(targetPage));
@@ -230,13 +240,31 @@ export default async function RegistrationsPage({
         <RegistrationFilters />
       </div>
 
+      {paidOnBounds ? (
+        <p className="mt-3 rounded-md border border-ground/10 bg-ground/5 px-4 py-2.5 text-sm">
+          <span className="font-semibold">{formatDatePH(paidOnBounds.fromIso)}</span>
+          {daySummary === null ? (
+            <span className="text-ground/60"> · couldn&apos;t read the day&apos;s payments</span>
+          ) : (
+            <span className="text-ground/70">
+              {" "}
+              · {daySummary.payments} payment{daySummary.payments === 1 ? "" : "s"} ·{" "}
+              {formatPeso(daySummary.cashCentavos)} cash ·{" "}
+              {formatPeso(daySummary.gcashCentavos)} GCash
+            </span>
+          )}
+        </p>
+      ) : null}
+
       <div className="mt-2">
         <Table
           empty={
             results.length === 0
               ? q.trim().length >= 2
                 ? `Nothing matches “${q}”.`
-                : delivery === "qr"
+                : paidOnBounds
+                  ? `No payments on ${formatDatePH(paidOnBounds.fromIso)}.`
+                  : delivery === "qr"
                   ? "Everyone who's paid in full has been emailed their QR."
                   : delivery === "receipt"
                     ? "Everyone who's paid has been emailed their receipt."
@@ -261,9 +289,11 @@ export default async function RegistrationsPage({
                   params.set("dir", nextDir);
                   if (q) params.set("q", q);
                   if (status !== "all") params.set("status", status);
+                  if (paymentMethod !== "all") params.set("paymentMethod", paymentMethod);
                   if (yearLevel) params.set("year", yearLevel);
                   if (section) params.set("section", section);
                   if (delivery) params.set("delivery", delivery);
+                  if (paidOn) params.set("paidOn", paidOn);
                   return { href: `?${params.toString()}`, active };
                 };
                 // Header order matches RegistrationRow's <td> order exactly —

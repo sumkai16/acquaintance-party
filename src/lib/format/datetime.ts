@@ -40,3 +40,30 @@ export function startOfTodayPH(): string {
   // Manila is a fixed UTC+8 offset (no DST) — safe to hardcode.
   return `${y}-${m}-${d}T00:00:00+08:00`;
 }
+
+/** Today in Manila as a bare "2026-09-30" — the value a date input holds. */
+export function todayPH(): string {
+  return startOfTodayPH().slice(0, 10);
+}
+
+/** "2026-09-30" moved by whole days — calendar math only, no timezone involved. */
+export function shiftDay(day: string, days: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * One Manila calendar day as a half-open [fromIso, toIso) range, for a
+ * "paid on" filter. Null for anything that isn't a real date — a hand-edited
+ * `?paidOn=2026-02-30` is dropped, not rolled over into March.
+ */
+export function manilaDayBounds(day: string): { fromIso: string; toIso: string } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const [y, m, d] = day.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  return {
+    fromIso: `${day}T00:00:00+08:00`,
+    toIso: `${shiftDay(day, 1)}T00:00:00+08:00`,
+  };
+}

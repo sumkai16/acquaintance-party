@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { YEAR_LEVELS } from "@/lib/registrations/schema";
 import { allSections, sectionsFor } from "@/lib/registrations/sections";
+import { shiftDay, todayPH } from "@/lib/format/datetime";
 import { Option } from "../option";
 
 const QUERY_DEBOUNCE_MS = 300;
@@ -31,7 +32,7 @@ const PAYMENT_METHOD_OPTIONS = [
 ] as const;
 
 /**
- * Search plus status, year-level and payment dropdowns, same pattern as
+ * Search plus status, year-level and payment dropdowns and a "paid on" day, same pattern as
  * Attendance's ScanFilters — URL-param driven, the text field debounced and
  * the dropdowns instant. No submit button, so this behaves exactly like
  * Attendance's filters instead of the page's old standalone hero search
@@ -47,10 +48,12 @@ export function RegistrationFilters() {
   const year = searchParams.get("year") ?? "";
   const section = searchParams.get("section") ?? "";
   const delivery = searchParams.get("delivery") ?? "";
+  const paidOn = searchParams.get("paidOn") ?? "";
+  const today = todayPH();
   const [q, setQ] = useState(searchParams.get("q") ?? "");
 
   function setParam(
-    key: "q" | "status" | "paymentMethod" | "year" | "section" | "delivery",
+    key: "q" | "status" | "paymentMethod" | "year" | "section" | "delivery" | "paidOn",
     value: string,
   ) {
     const params = new URLSearchParams(searchParams);
@@ -152,6 +155,54 @@ export function RegistrationFilters() {
           </Option>
         ))}
       </select>
+
+      {/*
+        The browser's own date picker is the calendar. The arrows step a day
+        at a time for an end-of-day count, and only appear once a day is
+        picked — before that there is nothing to step from.
+      */}
+      <div className="flex items-center rounded-md border border-ground/20 bg-ground/5 text-sm text-ground focus-within:border-accent-2 focus-within:ring-2 focus-within:ring-accent-2/30">
+        <label htmlFor="paid-on" className="pl-3 whitespace-nowrap text-ground/60">
+          Paid on
+        </label>
+        <input
+          id="paid-on"
+          type="date"
+          value={paidOn}
+          max={today}
+          onChange={(event) => setParam("paidOn", event.target.value)}
+          className="bg-transparent px-2 py-2 outline-none [color-scheme:dark]"
+        />
+        {paidOn ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setParam("paidOn", shiftDay(paidOn, -1))}
+              aria-label="Previous day"
+              className="px-2 py-2 text-ground/70 hover:text-ground"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={() => setParam("paidOn", shiftDay(paidOn, 1))}
+              disabled={paidOn >= today}
+              aria-label="Next day"
+              className="px-2 py-2 text-ground/70 hover:text-ground disabled:opacity-30"
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              onClick={() => setParam("paidOn", "")}
+              aria-label="Clear date"
+              className="pr-3 pl-1 py-2 text-ground/70 hover:text-ground"
+            >
+              ×
+            </button>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

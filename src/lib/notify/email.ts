@@ -342,6 +342,42 @@ export async function sendReceiptBacklogBatch(
   );
 }
 
+/**
+ * The plain "your ticket" email in bulk, for tickets whose QR never went out
+ * and who have no receipt to apologise with — a free ticket, mainly. The
+ * receipt backlog email opens "Sorry this took a while. Here's the receipt",
+ * which would be wrong for them. Hosted QR URL, not an attachment: the batch
+ * endpoint refuses attachments (see deliverBatch).
+ */
+export async function sendTicketQrBatch(
+  recipients: { to: string; fullName: string; registrationId: string; ticketCode: string }[],
+): Promise<BatchResult> {
+  const context = batchContext();
+  if (!context) {
+    return { ok: false, error: "Missing API key or NEXT_PUBLIC_SITE_URL for the active account." };
+  }
+
+  return deliverBatch(
+    recipients.map((recipient) => {
+      const built = buildTicketApprovedEmail({
+        fullName: recipient.fullName,
+        url: `${context.siteUrl}/ticket/${recipient.registrationId}`,
+        qrUrl: `${context.siteUrl}/ticket/${recipient.registrationId}/qr`,
+        ticketCode: recipient.ticketCode,
+      });
+      return {
+        from: context.from,
+        to: recipient.to,
+        ...built,
+        tags: [
+          { name: "registration_id", value: recipient.registrationId },
+          { name: "kind", value: "ticket" },
+        ],
+      };
+    }),
+  );
+}
+
 export async function sendCertificateEmail(input: {
   to: string;
   fullName: string;

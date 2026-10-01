@@ -278,7 +278,15 @@ function DeliveryMarkers({
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 font-sans text-xs">
       {registration.ticket_code ? <QrMarker registration={registration} /> : null}
-      <Marker sent={receiptSent}>{receiptSent ? "Receipt sent" : "Receipt not sent"}</Marker>
+      {/* A free ticket collects nothing, so it never has a receipt to send. */}
+      {registration.ticket_rate === "free" && receipts.length === 0 ? (
+        <span className="flex items-center gap-1.5 text-ground/50">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ground/40" />
+          No receipt (free)
+        </span>
+      ) : (
+        <Marker sent={receiptSent}>{receiptSent ? "Receipt sent" : "Receipt not sent"}</Marker>
+      )}
     </div>
   );
 }
