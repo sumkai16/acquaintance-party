@@ -1,12 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { CATEGORIES, CROWD_CHOICE, type Act, type Category } from "@/lib/config/battle";
+import { actInitials } from "@/lib/votes/acts";
 import { useSetNavHidden } from "../../admin-nav";
 import { projectorStatus, type ProjectorStatus } from "../actions";
 
 const POLL_MS = 5_000;
+// Once voting is closed the next thing is a Reveal, and the roulette should
+// start close to the click. Only this one screen polls, so the cost is nothing.
+const REVEAL_POLL_MS = 2_000;
+
+// The spotlight roulette: a pause, hops that start fast and slow down, then a
+// beat on the landed act before the name comes up. About six seconds in all.
+const LEAD_MS = 700;
+const FIRST_HOP_MS = 70;
+const SLOWDOWN = 1.14;
+const FAST_HOPS = 10;
+const MIN_HOPS = 24;
+const LAND_MS = 1_300;
 
 // Stage Lights: two spotlights from the top edge, built from the theme's own
 // tokens (raspberry pink and sun gold) so nothing here is a loose hex.
@@ -29,6 +43,12 @@ export function VoteProjector({
 }) {
   useSetNavHidden(true);
   const [status, setStatus] = useState(initial);
+  // Categories whose roulette is playing. Only a reveal this screen sees happen
+  // spins; a projector opened or refreshed after it shows the result directly.
+  const [spinning, setSpinning] = useState<Category[]>([]);
+  const last = useRef(initial);
+
+  const pollMs = status && !status.open ? REVEAL_POLL_MS : POLL_MS;
 
   useEffect(() => {
     let alive = true;
@@ -36,13 +56,25 @@ export function VoteProjector({
       const result = await projectorStatus();
       // A failed poll keeps the last picture: a projector that blanks on a
       // blip of signal is worse than one a few seconds behind.
-      if (alive && result.ok) setStatus(result.status);
-    }, POLL_MS);
+      if (!alive || !result.ok) return;
+      const fresh = result.status;
+      const newly = CATEGORIES.filter(
+        (category) => !last.current?.winners[category] && fresh.winners[category]?.length,
+      );
+      last.current = fresh;
+      const animate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setSpinning((current) =>
+        current
+          .filter((category) => fresh.winners[category])
+          .concat(animate ? newly : []),
+      );
+      setStatus(fresh);
+    }, pollMs);
     return () => {
       alive = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [pollMs]);
 
   // Once either winner is out the screen changes to the two result cards; the
   // one not yet revealed stays a closed envelope until its own Reveal.
@@ -72,7 +104,13 @@ export function VoteProjector({
       {anyRevealed && status ? (
         <div className="mt-[3cqw] grid w-full max-w-[92cqw] grid-cols-2 gap-[3cqw]">
           {CATEGORIES.map((category) => (
-            <ResultCard key={category} category={category} winners={status.winners[category]} />
+            <ResultCard
+              key={category}
+              category={category}
+              winners={status.winners[category]}
+              spinning={spinning.includes(category)}
+              onSpun={() => setSpinning((current) => current.filter((c) => c !== category))}
+            />
           ))}
         </div>
       ) : (
@@ -120,9 +158,67 @@ export function VoteProjector({
   );
 }
 
-function ResultCard({ category, winners }: { category: Category; winners: Act[] | null }) {
+function ResultCard({
+  category,
+  winners,
+  spinning,
+  onSpun,
+}: {
+  category: Category;
+  winners: Act[] | null;
+  spinning: boolean;
+  onSpun: () => void;
+}) {
   const label = CROWD_CHOICE[category].label;
+  const acts = CROWD_CHOICE[category].acts;
   const revealed = winners !== null;
+  const [lit, setLit] = useState<number | null>(null);
+  const [landed, setLanded] = useState(false);
+  const finish = useEffectEvent(onSpun);
+  // A string, not the array: every poll returns a fresh array, and a new one
+  // must not restart a roulette already spinning.
+  const landingKey = winners?.[0]?.key ?? null;
+
+  // The roulette. The result is already in `winners` when this starts, so the
+  // hops are theatre: they slow down and stop on the act that really won (the
+  // first of them, in a tie).
+  useEffect(() => {
+    if (!spinning || !landingKey) return;
+    const target = acts.findIndex((act) => act.key === landingKey);
+    if (target < 0) {
+      finish();
+      return;
+    }
+    // The last hop must light the winner: hop k lights act (k - 1) % length.
+    let hops = MIN_HOPS;
+    while ((hops - 1) % acts.length !== target) hops++;
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let at = LEAD_MS;
+    let gap = FIRST_HOP_MS;
+    for (let hop = 1; hop <= hops; hop++) {
+      const index = (hop - 1) % acts.length;
+      timers.push(setTimeout(() => setLit(index), at));
+      at += gap;
+      if (hop > FAST_HOPS) gap *= SLOWDOWN;
+    }
+    timers.push(setTimeout(() => setLanded(true), at));
+    timers.push(
+      setTimeout(() => {
+        setLit(null);
+        setLanded(false);
+        finish();
+      }, at + LAND_MS),
+    );
+    return () => {
+      timers.forEach(clearTimeout);
+      setLit(null);
+      setLanded(false);
+    };
+  }, [spinning, landingKey, acts]);
+
+  const won = (act: Act) => winners?.some((w) => w.key === act.key) ?? false;
+  const roulette = spinning && revealed;
 
   return (
     <section
@@ -135,7 +231,41 @@ function ResultCard({ category, winners }: { category: Category; winners: Act[] 
         Best {label.toLowerCase()}
       </h2>
 
-      {!revealed ? (
+      {roulette ? (
+        <>
+          <ul className="mt-[2cqw] flex gap-[0.8cqw]">
+            {acts.map((act, index) => (
+              <li
+                key={act.key}
+                className={`flex w-[7.4cqw] flex-col items-center rounded-[1cqw] border p-[0.6cqw] transition-all duration-100 ${
+                  landed && won(act)
+                    ? "-translate-y-[0.8cqw] scale-110 border-accent-2 bg-accent-2/25"
+                    : landed
+                      ? "border-ground/10 opacity-20"
+                      : lit === index
+                        ? "-translate-y-[0.5cqw] border-accent-4 bg-accent-4/25"
+                        : "border-ground/15 opacity-45"
+                }`}
+                style={
+                  landed && won(act)
+                    ? { boxShadow: "0 0 3cqw var(--color-accent-2)" }
+                    : lit === index && !landed
+                      ? { boxShadow: PINK_GLOW }
+                      : undefined
+                }
+              >
+                <RouletteAvatar act={act} />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-[1.6cqw] min-h-[3.4cqw] font-display text-[3cqw] uppercase leading-none text-white">
+            {lit !== null ? acts[lit].name : ""}
+          </p>
+          <p className="mt-[0.6cqw] text-[1.9cqw] text-ground/60">
+            {landed ? "" : "Drum roll…"}
+          </p>
+        </>
+      ) : !revealed ? (
         <>
           <p className="mt-[1.4cqw] font-display text-[9cqw] leading-none text-ground/30">?</p>
           <p className="mt-[1cqw] text-[2.2cqw] text-ground/60">And the winner is…</p>
@@ -163,5 +293,28 @@ function ResultCard({ category, winners }: { category: Category; winners: Act[] 
         </>
       )}
     </section>
+  );
+}
+
+/** A small round face for the roulette: the act's photo, else its initials. */
+function RouletteAvatar({ act }: { act: Act }) {
+  if (act.photo) {
+    return (
+      <Image
+        src={act.photo}
+        alt=""
+        width={96}
+        height={96}
+        className="aspect-square w-full rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden
+      className="grid aspect-square w-full place-items-center rounded-full bg-gradient-to-br from-accent to-accent-4 font-display text-[2.4cqw] text-white"
+    >
+      {actInitials(act.name)}
+    </span>
   );
 }
