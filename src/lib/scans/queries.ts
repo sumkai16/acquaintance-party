@@ -1,5 +1,6 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
+import { allRows } from "@/lib/supabase/all-rows";
 import type { Manifest } from "./manifest";
 import type { ScanRecord } from "./report";
 import type { ScanResult } from "@/lib/supabase/types";
@@ -22,30 +23,39 @@ export type ScanRow = {
  * ticket_code is what keeps a partial payer with no QR out.
  */
 export async function approvedManifest(): Promise<Manifest> {
-  const [registrations, checkIns] = await Promise.all([
-    adminClient()
-      .from("registrations")
-      .select("id, ticket_code, full_name, year_level, section")
-      .in("status", ["approved", "partial"])
-      .not("ticket_code", "is", null),
-    adminClient()
-      .from("scans")
-      .select("registration_id, scanned_at")
-      .eq("result", "ok")
-      .not("registration_id", "is", null),
-  ]);
-
-  if (registrations.error) {
-    console.error("approvedManifest failed", registrations.error);
-    throw new Error("Could not load the ticket manifest.");
-  }
-  if (checkIns.error) {
-    console.error("approvedManifest check-in lookup failed", checkIns.error);
+  // Page by page (allRows): the API cuts a longer table off at 1000 rows
+  // without a word, and a ticket missing from this list is a student the
+  // scanner turns away at the door.
+  let registrations;
+  let checkIns;
+  try {
+    [registrations, checkIns] = await Promise.all([
+      allRows((from, to) =>
+        adminClient()
+          .from("registrations")
+          .select("id, ticket_code, full_name, year_level, section")
+          .in("status", ["approved", "partial"])
+          .not("ticket_code", "is", null)
+          .order("id")
+          .range(from, to),
+      ),
+      allRows((from, to) =>
+        adminClient()
+          .from("scans")
+          .select("registration_id, scanned_at")
+          .eq("result", "ok")
+          .not("registration_id", "is", null)
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
+  } catch (error) {
+    console.error("approvedManifest failed", error);
     throw new Error("Could not load the ticket manifest.");
   }
 
   const earliestCheckIn = new Map<string, string>();
-  for (const row of checkIns.data ?? []) {
+  for (const row of checkIns) {
     const id = row.registration_id as string;
     const at = row.scanned_at as string;
     const existing = earliestCheckIn.get(id);
@@ -54,7 +64,7 @@ export async function approvedManifest(): Promise<Manifest> {
 
   return {
     generatedAt: new Date().toISOString(),
-    entries: (registrations.data ?? []).map((row) => ({
+    entries: registrations.map((row) => ({
       code: row.ticket_code as string,
       registrationId: row.id as string,
       fullName: row.full_name as string,
@@ -134,19 +144,28 @@ export async function recordScans(
 
 /** Every scan with the student's name joined in, newest first. */
 export async function allScans(): Promise<ScanRecord[]> {
-  const { data, error } = await adminClient()
-    .from("scans")
-    .select(
-      "code_scanned, scanned_at, device_label, result, registration_id, registrations(full_name, year_level, section)",
-    )
-    .order("scanned_at", { ascending: false });
-
-  if (error) {
+  let data;
+  try {
+    // Paged: a night with ~800 tickets plus duplicate and invalid scans can
+    // pass 1000 rows, and the API would cut the *oldest* off — the first
+    // arrivals — and quietly under-report attendance. `id` breaks ties in
+    // scanned_at so pages never overlap.
+    data = await allRows((from, to) =>
+      adminClient()
+        .from("scans")
+        .select(
+          "code_scanned, scanned_at, device_label, result, registration_id, registrations(full_name, year_level, section)",
+        )
+        .order("scanned_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
     console.error("allScans failed", error);
     return [];
   }
 
-  return (data ?? []).map((row) => {
+  return data.map((row) => {
     // registrations is a to-one embed at runtime (registration_id is a single
     // FK), but without generated DB types the client infers it as an array —
     // hence the trip through `unknown` rather than a direct cast.
@@ -193,15 +212,20 @@ export async function ticketHolderCount(): Promise<number> {
  * reads identically to before for the common case.
  */
 export async function totalCollectedCentavos(): Promise<number> {
-  const { data, error } = await adminClient()
-    .from("registrations")
-    .select("amount_paid")
-    .in("status", ["approved", "partial"]);
-
-  if (error) {
+  try {
+    // Paged: a money total that silently stops at row 1000 is wrong with no
+    // sign of it, and tomorrow's walk-ins are what push the count past that.
+    const rows = await allRows((from, to) =>
+      adminClient()
+        .from("registrations")
+        .select("amount_paid")
+        .in("status", ["approved", "partial"])
+        .order("id")
+        .range(from, to),
+    );
+    return rows.reduce((sum, row) => sum + (row.amount_paid as number), 0);
+  } catch (error) {
     console.error("totalCollectedCentavos failed", error);
     return 0;
   }
-
-  return (data ?? []).reduce((sum, row) => sum + (row.amount_paid as number), 0);
 }

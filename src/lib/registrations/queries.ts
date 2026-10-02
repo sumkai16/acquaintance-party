@@ -1,5 +1,6 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
+import { allRows } from "@/lib/supabase/all-rows";
 import { generateTicketCode } from "@/lib/tickets/generate";
 import type {
   PaymentMethod,
@@ -661,19 +662,27 @@ export async function searchRegistrations(
  * like a successful download and is discovered to be empty on the one day it
  * is needed. Failing loudly is the whole point of this function.
  *
- * The explicit range is there for the same reason: PostgREST silently caps
- * an unbounded select at 1,000 rows, comfortably above the event's 700
- * capacity but not once rejected and resubmitted rows are counted too.
+ * Paged (allRows) because PostgREST silently caps any one request at 1,000
+ * rows — and that cap applies to an explicit `.range(0, 9999)` too, which is
+ * what this used to rely on. 819 rows exist the night before the event, and
+ * rejected and resubmitted rows count as well, so a backup built from one
+ * request could stop short without a word.
  */
 export async function allRegistrations(): Promise<Registration[]> {
-  const { data, error } = await adminClient()
-    .from("registrations")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .range(0, 9999);
-
-  if (error) throw new Error(`allRegistrations failed: ${error.message}`);
-  return (data as Registration[]) ?? [];
+  try {
+    return (await allRows((from, to) =>
+      adminClient()
+        .from("registrations")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    )) as Registration[];
+  } catch (error) {
+    throw new Error(
+      `allRegistrations failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 }
 
 /**
@@ -684,12 +693,20 @@ export async function allRegistrations(): Promise<Registration[]> {
 export async function listApprovedForSectionReport(): Promise<
   Pick<Registration, "year_level" | "section" | "amount">[]
 > {
-  const { data } = await adminClient()
-    .from("registrations")
-    .select("year_level, section, amount")
-    .eq("status", "approved");
-
-  return (data as Pick<Registration, "year_level" | "section" | "amount">[]) ?? [];
+  try {
+    // Paged: the per-section report would otherwise stop at 1000 rows.
+    return (await allRows((from, to) =>
+      adminClient()
+        .from("registrations")
+        .select("year_level, section, amount")
+        .eq("status", "approved")
+        .order("id")
+        .range(from, to),
+    )) as Pick<Registration, "year_level" | "section" | "amount">[];
+  } catch (error) {
+    console.error("listApprovedForSectionReport failed", error);
+    return [];
+  }
 }
 
 /**
@@ -722,13 +739,21 @@ export type PaymentMethodSummary = { count: number; totalCentavos: number };
  * which does have one.
  */
 export async function onlinePaymentsSummary(): Promise<PaymentMethodSummary> {
-  const { data } = await adminClient()
-    .from("registrations")
-    .select("amount")
-    .eq("payment_method", "online")
-    .eq("status", "approved");
+  let rows: { amount: unknown }[] = [];
+  try {
+    rows = await allRows((from, to) =>
+      adminClient()
+        .from("registrations")
+        .select("amount")
+        .eq("payment_method", "online")
+        .eq("status", "approved")
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    console.error("onlinePaymentsSummary failed", error);
+  }
 
-  const rows = data ?? [];
   return {
     count: rows.length,
     totalCentavos: rows.reduce((sum, row) => sum + (row.amount as number), 0),
@@ -743,13 +768,21 @@ export async function onlinePaymentsSummary(): Promise<PaymentMethodSummary> {
  * actually been collected on it so far.
  */
 export async function cashPaymentsSummary(): Promise<PaymentMethodSummary> {
-  const { data } = await adminClient()
-    .from("registrations")
-    .select("amount_paid")
-    .eq("payment_method", "walk_in")
-    .in("status", ["approved", "partial"]);
+  let rows: { amount_paid: unknown }[] = [];
+  try {
+    rows = await allRows((from, to) =>
+      adminClient()
+        .from("registrations")
+        .select("amount_paid")
+        .eq("payment_method", "walk_in")
+        .in("status", ["approved", "partial"])
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    console.error("cashPaymentsSummary failed", error);
+  }
 
-  const rows = data ?? [];
   return {
     count: rows.length,
     totalCentavos: rows.reduce((sum, row) => sum + (row.amount_paid as number), 0),

@@ -98,6 +98,23 @@ and it keeps the QR on plain white regardless of the surrounding theme (see
 `context/DESIGN.md`). If a future task seems to call for raw HTML injection,
 that's a sign to find another representation, not to reach for one.
 
+## Supabase returns at most 1000 rows, silently
+PostgREST caps any one request at 1000 rows and says nothing when it cuts a
+longer table off — **including an explicit `.range(0, 9999)`**. A query that
+must see every row (the scanner's ticket list, attendance, money totals, the
+backup export, the voter list) goes through `allRows()`
+(`src/lib/supabase/all-rows.ts`) with a stable `.order(...)`, or it quietly
+loses its tail the night the table passes 1000. 783 tickets were approved the
+night before the event; found and fixed 2026-10-02. A count (`head: true`) or a
+query with its own small `.limit()` is fine as it is.
+
+## Dev-only routes do not ship
+A route built "to check it in a browser before real data exists" is public the
+moment it deploys. `/certificate/preview` was exactly that — no login, took
+`?name=` from the URL, rendered a 5 MB image per request — and sat on
+production until 2026-10-02. Gate it behind `requireAdmin()` or delete it
+before the push.
+
 ## Error handling
 - Server actions return a typed result (`{ ok: true, ... } | { ok: false,
   error: ... }`), never throw a raw Supabase/Postgres error at the client.

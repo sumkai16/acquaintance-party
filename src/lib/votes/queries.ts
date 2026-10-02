@@ -1,5 +1,6 @@
 import "server-only";
 import { adminClient } from "@/lib/supabase/admin";
+import { allRows } from "@/lib/supabase/all-rows";
 import type { VoteRow } from "./ballot";
 import type { Voter } from "./voters";
 
@@ -7,30 +8,43 @@ import type { Voter } from "./voters";
  * Who can vote: approved (or partial-with-QR) ticket holders with at least
  * one "ok" scan — the same definition of "was at the door" the raffle and
  * the attendance page use. Includes the email, which is the check and so
- * never leaves the server; callers hand the public only `VoterChoice`.
+ * never leaves the server, and neither does the list: /vote only ever asks
+ * "is this name + email one of them" (findVoter).
  */
 async function loadVoters(): Promise<Voter[]> {
-  const [registrations, checkIns] = await Promise.all([
-    adminClient()
-      .from("registrations")
-      .select("id, full_name, year_level, section, email")
-      .in("status", ["approved", "partial"])
-      .not("ticket_code", "is", null),
-    adminClient()
-      .from("scans")
-      .select("registration_id")
-      .eq("result", "ok")
-      .not("registration_id", "is", null),
-  ]);
-
-  if (registrations.error || checkIns.error) {
-    console.error("loadVoters failed", registrations.error ?? checkIns.error);
+  let registrations;
+  let checkIns;
+  try {
+    // Page by page: the API silently stops at 1000 rows, and a voter cut off
+    // here is a student told "no match" on the night.
+    [registrations, checkIns] = await Promise.all([
+      allRows((from, to) =>
+        adminClient()
+          .from("registrations")
+          .select("id, full_name, year_level, section, email")
+          .in("status", ["approved", "partial"])
+          .not("ticket_code", "is", null)
+          .order("id")
+          .range(from, to),
+      ),
+      allRows((from, to) =>
+        adminClient()
+          .from("scans")
+          .select("registration_id")
+          .eq("result", "ok")
+          .not("registration_id", "is", null)
+          .order("id")
+          .range(from, to),
+      ),
+    ]);
+  } catch (error) {
+    console.error("loadVoters failed", error);
     throw new Error("Could not load the list of people who can vote.");
   }
 
-  const scannedIn = new Set(checkIns.data?.map((row) => row.registration_id as string));
+  const scannedIn = new Set(checkIns.map((row) => row.registration_id as string));
 
-  return (registrations.data ?? [])
+  return registrations
     .filter((row) => scannedIn.has(row.id as string))
     .map((row) => ({
       registrationId: row.id as string,
@@ -93,15 +107,21 @@ export async function castVote(
   return { ok: false, error: "failed" };
 }
 
-/** Every ballot, as bare choices — the tally is pure (ballot.ts). 700 rows at most. */
+/**
+ * Every ballot, as bare choices — the tally is pure (ballot.ts). Paged, so a
+ * count past 1000 is never silently cut short.
+ */
 export async function allVotes(): Promise<VoteRow[]> {
-  const { data, error } = await adminClient()
-    .from("crowd_votes")
-    .select("band_choice, solo_choice");
-
-  if (error) {
+  try {
+    return (await allRows((from, to) =>
+      adminClient()
+        .from("crowd_votes")
+        .select("band_choice, solo_choice")
+        .order("id")
+        .range(from, to),
+    )) as VoteRow[];
+  } catch (error) {
     console.error("allVotes failed", error);
     throw new Error("Could not load the votes.");
   }
-  return (data ?? []) as VoteRow[];
 }
