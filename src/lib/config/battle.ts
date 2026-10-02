@@ -14,8 +14,8 @@
 export type Act = { key: string; name: string; photo?: string };
 
 const BAND_ACTS: readonly Act[] = [
-  { key: "burnout-band", name: "Burnout Band" },
-  { key: "six-of-seven", name: "Six of Seven" },
+  { key: "burnout-band", name: "Burnout Band", photo: "/acts/burnout-band.png" },
+  { key: "six-of-seven", name: "Six of Seven", photo: "/acts/six-of-seven.png" },
 ];
 
 const SOLO_ACTS: readonly Act[] = [

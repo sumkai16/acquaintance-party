@@ -12,64 +12,72 @@ export type Voter = {
   email: string;
 };
 
-/** What the public search is allowed to show: no id, no email. */
-export type VoterChoice = { fullName: string; yearLevel: string; section: string };
-
-export const MIN_QUERY_LENGTH = 2;
-export const MAX_RESULTS = 8;
-
-/** Lowercase, accents and double spaces removed — "  MARÍA   santos " → "maria santos". */
+/**
+ * Lowercase, with accents, punctuation and double spaces removed —
+ * "  Dela Cruz,  MARÍA  S. " → "dela cruz maria s".
+ */
 export function normalizeName(value: string): string {
   return value
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase()
-    .trim()
-    .replace(/\s+/g, " ");
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function nameWords(value: string): string[] {
+  const normalized = normalizeName(value);
+  return normalized ? normalized.split(" ") : [];
+}
+
+/** Equal, or one is a lone initial of the other ("m" ~ "miguel"). */
+function sameWord(a: string, b: string): boolean {
+  return a === b || (a.length === 1 && b.startsWith(a)) || (b.length === 1 && a.startsWith(b));
 }
 
 /**
- * Every typed word must appear somewhere in the name, in any order, so
- * "cruz juan" finds "Juan Dela Cruz". Names that start with what was typed
- * come first. Capped at `limit`: this runs for hundreds of phones at once,
- * and nobody scrolls past eight.
+ * Is the typed name this registered name? Word order is ignored, so
+ * "Dela Cruz, Juan M." and "Juan M. Dela Cruz" both match "Juan Miguel Dela
+ * Cruz" — registrations were typed free-form, some as "Last, First". A lone
+ * letter is a middle initial. Every typed word must be found, and at least a
+ * first and a last name (two full words) must be typed, so "Juan" or "J M"
+ * is never enough.
+ *
+ * This is deliberately loose: the name is not the secret, the email is.
  */
-export function matchVoters(
-  voters: Voter[],
-  query: string,
-  limit: number = MAX_RESULTS,
-): Voter[] {
-  const normalized = normalizeName(query);
-  if (normalized.length < MIN_QUERY_LENGTH) return [];
+export function namesMatch(typed: string, registered: string): boolean {
+  const wanted = nameWords(typed);
+  if (wanted.filter((word) => word.length > 1).length < 2) return false;
 
-  const words = normalized.split(" ");
-  const matches: { voter: Voter; startsWith: boolean }[] = [];
+  const pool = nameWords(registered);
 
-  for (const voter of voters) {
-    const name = normalizeName(voter.fullName);
-    if (words.every((word) => name.includes(word))) {
-      matches.push({ voter, startsWith: name.startsWith(normalized) });
-    }
+  // Exact words first, so an initial can't use up the word a full name needs.
+  const rest: string[] = [];
+  for (const word of wanted) {
+    const at = pool.indexOf(word);
+    if (at >= 0) pool.splice(at, 1);
+    else rest.push(word);
   }
 
-  matches.sort((a, b) => Number(b.startsWith) - Number(a.startsWith));
-  return matches.slice(0, limit).map((match) => match.voter);
+  return rest.every((word) => {
+    const at = pool.findIndex((candidate) => sameWord(word, candidate));
+    if (at < 0) return false;
+    pool.splice(at, 1);
+    return true;
+  });
 }
 
 /**
  * The voter who owns this name *and* this email. The name is what the
- * student picked from the search; the email is what proves it is them — the
- * list is public by design, the email is not. Two people sharing a name are
- * told apart by it.
+ * student typed; the email is what proves it is them. Two people sharing a
+ * name are told apart by it.
  */
 export function findVoter(voters: Voter[], fullName: string, email: string): Voter | null {
-  const wantedName = normalizeName(fullName);
   const wantedEmail = email.trim().toLowerCase();
-  if (!wantedName || !wantedEmail) return null;
+  if (!wantedEmail) return null;
 
   return (
-    voters.find(
-      (voter) => normalizeName(voter.fullName) === wantedName && voter.email === wantedEmail,
-    ) ?? null
+    voters.find((voter) => voter.email === wantedEmail && namesMatch(fullName, voter.fullName)) ??
+    null
   );
 }

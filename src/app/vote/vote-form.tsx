@@ -1,14 +1,11 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState } from "react";
 import { CROWD_CHOICE, type Act } from "@/lib/config/battle";
-import { MIN_QUERY_LENGTH, type VoterChoice } from "@/lib/votes/voters";
 import { submitVote, type VoteState } from "./actions";
 import { ActAvatar } from "./act-avatar";
 
 const initial: VoteState = { status: "idle" };
-
-const SEARCH_DELAY_MS = 250;
 
 const labelClass = "text-xs font-bold uppercase tracking-[0.2em] text-accent-2";
 
@@ -20,40 +17,6 @@ const inputClass =
 
 export function VoteForm() {
   const [state, action, pending] = useActionState(submitVote, initial);
-
-  const [query, setQuery] = useState("");
-  const [picked, setPicked] = useState<VoterChoice | null>(null);
-  const [results, setResults] = useState<VoterChoice[]>([]);
-  const [searchState, setSearchState] = useState<"idle" | "loading" | "done" | "error">("idle");
-
-  // Wait for a pause in typing, and drop the answer to a query that has
-  // since been typed over. Hundreds of phones share one server: a request
-  // per keystroke is exactly the load this is here to avoid.
-  useEffect(() => {
-    if (picked || query.trim().length < MIN_QUERY_LENGTH) return;
-
-    const controller = new AbortController();
-    const timer = setTimeout(async () => {
-      setSearchState("loading");
-      try {
-        const response = await fetch(`/api/vote/search?q=${encodeURIComponent(query.trim())}`, {
-          signal: controller.signal,
-        });
-        if (!response.ok) throw new Error("search failed");
-        const body = (await response.json()) as { results: VoterChoice[] };
-        setResults(body.results);
-        setSearchState("done");
-      } catch (error) {
-        if ((error as Error).name === "AbortError") return;
-        setSearchState("error");
-      }
-    }, SEARCH_DELAY_MS);
-
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  }, [query, picked]);
 
   if (state.status === "voted") {
     const band = actFor(CROWD_CHOICE.band.acts, state.values?.band);
@@ -76,8 +39,6 @@ export function VoteForm() {
     );
   }
 
-  const tooShort = query.trim().length < MIN_QUERY_LENGTH;
-
   return (
     <form action={action} noValidate className="flex flex-col gap-6 text-left">
       {state.status === "error" && state.message ? (
@@ -87,74 +48,24 @@ export function VoteForm() {
       ) : null}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="name-search" className={labelClass}>
+        <label htmlFor="name" className={labelClass}>
           Your name
         </label>
-
-        {picked ? (
-          <div className={`${glass} flex items-center justify-between gap-3 px-3.5 py-3`}>
-            <span>
-              <span className="font-bold">{picked.fullName}</span>
-              <span className="block text-sm text-ground/70">
-                {picked.yearLevel} · {picked.section}
-              </span>
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setPicked(null);
-                setResults([]);
-                setSearchState("idle");
-              }}
-              className="shrink-0 py-2 text-sm font-semibold text-accent-2 underline focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
-            >
-              Not me
-            </button>
-          </div>
-        ) : (
-          <>
-            <input
-              id="name-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Start typing your name"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className={inputClass}
-            />
-            <ul className="flex flex-col gap-1.5" aria-live="polite">
-              {!tooShort && searchState === "done" && results.length === 0 ? (
-                <li className="text-sm text-ground/70">
-                  No match. Only people scanned in at the door can vote. If you just
-                  arrived, try again in a minute.
-                </li>
-              ) : null}
-              {searchState === "error" && !tooShort ? (
-                <li className="text-sm text-accent-2">
-                  Search isn&apos;t working right now. Try again in a moment.
-                </li>
-              ) : null}
-              {!tooShort
-                ? results.map((voter) => (
-                    <li key={`${voter.fullName}|${voter.yearLevel}|${voter.section}`}>
-                      <button
-                        type="button"
-                        onClick={() => setPicked(voter)}
-                        className={`${glass} w-full px-3.5 py-3 text-left hover:border-accent-2 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2`}
-                      >
-                        <span className="font-bold">{voter.fullName}</span>
-                        <span className="block text-sm text-ground/70">
-                          {voter.yearLevel} · {voter.section}
-                        </span>
-                      </button>
-                    </li>
-                  ))
-                : null}
-            </ul>
-          </>
-        )}
-        <input type="hidden" name="name" value={picked?.fullName ?? ""} />
+        <p className="text-sm text-ground/70">
+          Use your real name, the one you registered with. Type it as Last name, First name, M.I.
+          or First name, M.I., Last name.
+        </p>
+        <input
+          id="name"
+          name="name"
+          autoComplete="name"
+          autoCapitalize="words"
+          autoCorrect="off"
+          spellCheck={false}
+          defaultValue={state.values?.name}
+          placeholder="Dela Cruz, Juan M."
+          className={inputClass}
+        />
       </div>
 
       <div className="flex flex-col gap-1.5">
@@ -194,7 +105,7 @@ export function VoteForm() {
 
       <button
         type="submit"
-        disabled={pending || !picked}
+        disabled={pending}
         className="rounded-full bg-gradient-to-r from-accent to-accent-4 px-6 py-3.5 font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 disabled:opacity-60 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
       >
         {pending ? "Sending…" : "Submit my vote"}

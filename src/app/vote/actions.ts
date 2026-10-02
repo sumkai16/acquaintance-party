@@ -13,15 +13,16 @@ export type VoteState = {
 };
 
 const NOT_YOU =
-  "That email doesn't match the name you picked. Use the email you registered " +
-  "with — or message an organiser if you're not sure which one it was.";
+  "We couldn't find that name and email among the people scanned in at the door. " +
+  "Check the spelling, use the email you registered with, and if you just arrived " +
+  "try again in a minute — or message an organiser.";
 
 /**
  * Casts one ballot from /vote.
  *
  * Reached by an unauthenticated student, so nothing the form said is
  * trusted: voting being open, the ballot, and who the voter is are all
- * re-checked here. Identity is the picked name *and* the registered email
+ * re-checked here. Identity is the typed name *and* the registered email
  * together (findVoter), against people actually scanned in at the door. The
  * one-vote rule is the unique index on crowd_votes, not a check here — a
  * second ballot loses there and is reported as "already voted".
@@ -39,7 +40,7 @@ export async function submitVote(_prev: VoteState, formData: FormData): Promise<
   }
 
   if (!values.name.trim()) {
-    return { status: "error", message: "Search for your name and pick it from the list.", values };
+    return { status: "error", message: "Enter your name — first and last.", values };
   }
   if (!values.email.trim()) {
     return { status: "error", message: "Enter the email you registered with.", values };

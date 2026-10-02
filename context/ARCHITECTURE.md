@@ -100,8 +100,7 @@ src/
 │   │   │                         # reveal; projector/ is the room's screen (QR → winners)
 │   │   └── attendance/           # attendance + double-scan alerts
 │   │       └── export/route.ts   # GET, streams .xlsx
-│   ├── vote/                     # public Crowd's Choice ballot: name search → email → one band + one solo
-│   ├── api/vote/search/route.ts  # GET, public, CDN-cacheable name search (name/year/section only)
+│   ├── vote/                     # public Crowd's Choice ballot: typed name + email → one band + one solo
 │   ├── api/scan/
 │   │   ├── manifest/route.ts     # GET, authenticated — approved tickets + check-in state
 │   │   └── sync/route.ts         # POST, authenticated, idempotent on client-generated id
