@@ -596,6 +596,47 @@ submissions stay on the Payments queue for admins to decide by hand.
 `faculty_invitations` — the service-role client is the only reader and
 writer.
 
+## crowd_votes
+
+Added in `0026_crowds_choice.sql`. One row per student who voted in the
+Battle of the Beats **Crowd's Choice** — one favourite band and one favourite
+solo, cast together at `/vote`. The line-up is `CROWD_CHOICE` in
+`src/lib/config/battle.ts`.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| id | uuid | PK, default `gen_random_uuid()` | |
+| registration_id | uuid | NOT NULL, **UNIQUE**, FK → `registrations(id)` ON DELETE CASCADE | The unique index *is* the one-vote-per-person rule — a double-tap or a second phone loses with `23505`, which `castVote()` reports as "already voted", not an error |
+| band_choice | text | NOT NULL | An act `key` from `battle.ts`. Checked in the app (`validateBallot`), not by a constraint — the line-up is config. Never rename a key once votes exist |
+| solo_choice | text | NOT NULL | Same |
+| created_at | timestamptz | NOT NULL, default `now()` | |
+
+**Who may vote:** approved (or partial-with-QR) ticket holders with an `ok`
+scan — the same "was at the door" rule as the raffle. **Identity is the picked
+name plus the registered email** (`findVoter()` in `src/lib/votes/voters.ts`):
+the public name search returns name, year and section only, never the
+registration id (that id is the secret link to a QR) and never the email.
+Known limits: anyone who knows a friend's name *and* registered email can vote
+as them, and a student scanned in during the last 30 seconds may not appear in
+the search yet (the voter list is cached 30s per server instance).
+
+**Three switches in `settings`**, all seeded off and all read fail-closed:
+`voting_open` (whether `/vote` takes ballots; cached 5s), and `band_revealed`
+and `solo_revealed` (whether the projector shows that category's winner —
+separate so the emcee can announce one, then the other). All are flipped from
+`/admin/vote`, `requireAdmin()`-gated, and write `voting_toggled` /
+`votes_revealed` activity rows. The projector's poll (`projectorStatus`) sends
+no per-act counts, and a category's winner only once that category is
+revealed. An earlier draft of `0026` seeded a single `votes_revealed` row;
+nothing reads it any more.
+
+A tie is shown as a tie (`tally()` in `src/lib/votes/ballot.ts`) — the
+software never picks between acts on the same count.
+
+**RLS is on with no policies at all**, same as `faculty_invitations` and
+`settings` — the voter is an unauthenticated student, so the write goes
+through a server action on the service-role client.
+
 ## Row-level security
 
 RLS is **on** for every table. Every policy targets `authenticated` (i.e.

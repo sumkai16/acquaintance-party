@@ -96,8 +96,12 @@ src/
 │   │   ├── raffle/               # projector: page.tsx, actions.ts (draw),
 │   │   │                         # entrant-actions.ts, entrant-manager.tsx (Setup),
 │   │   │                         # raffle-sidebar.tsx, raffle-wheel.tsx
+│   │   ├── vote/                 # Crowd's Choice controls: open/close, live count,
+│   │   │                         # reveal; projector/ is the room's screen (QR → winners)
 │   │   └── attendance/           # attendance + double-scan alerts
 │   │       └── export/route.ts   # GET, streams .xlsx
+│   ├── vote/                     # public Crowd's Choice ballot: name search → email → one band + one solo
+│   ├── api/vote/search/route.ts  # GET, public, CDN-cacheable name search (name/year/section only)
 │   ├── api/scan/
 │   │   ├── manifest/route.ts     # GET, authenticated — approved tickets + check-in state
 │   │   └── sync/route.ts         # POST, authenticated, idempotent on client-generated id
@@ -127,6 +131,10 @@ src/
 │   │   ├── draw.ts                # pure: crypto shortlist + winner, exclusions
 │   │   ├── entrants.ts            # pure: import-row validation, name-collision check
 │   │   └── queries.ts             # server-only: pool, extra entrants, draws
+│   ├── votes/
+│   │   ├── ballot.ts              # pure: validateBallot, tally (ties kept as ties)
+│   │   ├── voters.ts              # pure: name search, findVoter (name + email)
+│   │   └── queries.ts             # server-only: 30s cached voter list, castVote, allVotes
 │   ├── sheets/
 │   │   ├── row.ts                 # pure: one scan as a row of cells
 │   │   └── sheets.ts              # publishScans, server-only

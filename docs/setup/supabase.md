@@ -181,6 +181,12 @@ migrations are pasted by hand rather than run via `supabase db push`:
 Any future migration file added under `supabase/migrations/` gets applied
 the same way: paste, run.
 
+`0026_crowds_choice.sql` (the Crowd's Choice vote) must be pasted **before**
+deploying the code that uses it: until then the admin page at `/admin/vote`
+can't save its switches and a ballot fails to save. `/vote` itself stays
+closed in the meantime (a missing switch reads as closed). It is safe to paste
+twice, and re-pasting never flips a switch an admin already set.
+
 `0025_help_replies.sql` (admin replies to help requests) must be pasted
 **before** deploying the code that uses it: until then "Send reply" on Help
 requests fails to save. It is safe to paste twice.
