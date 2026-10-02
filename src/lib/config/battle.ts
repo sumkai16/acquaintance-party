@@ -19,11 +19,11 @@ const BAND_ACTS: readonly Act[] = [
 ];
 
 const SOLO_ACTS: readonly Act[] = [
-  { key: "lovely-yungod", name: "Lovely Yungod" },
-  { key: "marlo-alcaya", name: "Marlo Alcaya" },
-  { key: "h4nzo", name: "H4NZO" },
-  { key: "nap-batoon", name: "Nap Batoon" },
-  { key: "ericson-bareno", name: "Ericson Bareno" },
+  { key: "lovely-yungod", name: "Lovely Yungod", photo: "/acts/lovely-yungod.jpg" },
+  { key: "marlo-alcaya", name: "Marlo Alcaya", photo: "/acts/marlo-alcaya.jpg" },
+  { key: "h4nzo", name: "H4NZO", photo: "/acts/h4nzo.jpg" },
+  { key: "nap-batoon", name: "Nap Batoon", photo: "/acts/nap-batoon.jpg" },
+  { key: "ericson-bareno", name: "Ericson Bareno", photo: "/acts/ericson-bareno.jpg" },
 ];
 
 export const CROWD_CHOICE = {
