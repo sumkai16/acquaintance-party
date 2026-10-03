@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { drawFromPool } from "@/lib/raffle/draw";
 import { currentWinnerIds, drawablePool, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
-import { allDraws, fullPool, recordDraw } from "@/lib/raffle/queries";
+import { logActivity } from "@/lib/activity/queries";
+import { allDraws, deleteAllDraws, fullPool, recordDraw } from "@/lib/raffle/queries";
 import type { RaffleDrawRow } from "@/lib/raffle/types";
 import { ADMIN_ONLY_ERROR, requireAdmin } from "@/lib/auth/require-admin";
 
@@ -124,4 +125,29 @@ function emptyPoolError(
   }
 
   return "Nobody has been scanned in yet, so there is nobody to draw from.";
+}
+
+/**
+ * Clears every winner so the raffle starts again from nothing. Admin-only
+ * through requireAdmin() itself, not just the page, since a server action is
+ * reachable without its page (context/RULES.md). The activity row records who
+ * did it and how many winners went.
+ */
+export async function resetRaffle(): Promise<
+  { ok: true; removed: number } | { ok: false; error: string }
+> {
+  const admin = await requireAdmin();
+  if (!admin) return { ok: false, error: ADMIN_ONLY_ERROR };
+
+  const result = await deleteAllDraws();
+  if (!result.ok) return result;
+
+  await logActivity({
+    userId: admin.id,
+    activityType: "raffle_reset",
+    description: `Reset the raffle: cleared ${result.removed} draw${result.removed === 1 ? "" : "s"}`,
+  });
+
+  revalidatePath("/admin/raffle");
+  return result;
 }

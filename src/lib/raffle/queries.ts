@@ -268,3 +268,26 @@ export async function recordDraw(
 
   return { ok: true, draw };
 }
+
+/**
+ * Wipes the whole draw history — every winner and every replaced no-show.
+ * Used by "Reset winners" when the night is rehearsed and the real raffle
+ * starts clean. Not undoable, so the caller confirms first.
+ *
+ * One statement, so the self-reference from `supersedes` is only checked once
+ * every row is gone. Added names and faculty are untouched.
+ */
+export async function deleteAllDraws(): Promise<
+  { ok: true; removed: number } | { ok: false; error: string }
+> {
+  const { error, count } = await adminClient()
+    .from("raffle_draws")
+    .delete({ count: "exact" })
+    .not("id", "is", null);
+
+  if (error) {
+    console.error("deleteAllDraws failed", error);
+    return { ok: false, error: "Could not reset the winners. Try again." };
+  }
+  return { ok: true, removed: count ?? 0 };
+}

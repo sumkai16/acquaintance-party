@@ -1,18 +1,18 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { drawablePool, latestDraw } from "@/lib/raffle/pool";
+import { currentWinnerIds, drawablePool, excludeEntrants, latestDraw } from "@/lib/raffle/pool";
 import type { RaffleDrawRow, RaffleEntrant } from "@/lib/raffle/types";
 import { useSetNavHidden } from "../admin-nav";
 import { useFlash } from "../flash";
-import { drawNext, redrawLast } from "./actions";
+import { drawNext, redrawLast, resetRaffle } from "./actions";
 import { useCountdownSettings } from "./countdown-settings";
 import { RaffleSidebar } from "./raffle-sidebar";
-import { RaffleWheel } from "./raffle-wheel";
+import { RaffleNameRoll } from "./raffle-name-roll";
 import { useClaimClock } from "./use-claim-clock";
 import { WinnerReveal, revealSettleMs } from "./winner-reveal";
 
-type Stage = "idle" | "wheel" | "revealed";
+type Stage = "idle" | "roll" | "revealed";
 
 /**
  * The whole show, run from one laptop plugged into the projector.
@@ -25,11 +25,11 @@ type Stage = "idle" | "wheel" | "revealed";
  * switched in or out per draw, the same as added names.
  *
  * Layout: a left sidebar for eligibility, the claim countdown and the running
- * winner history, and a right panel for "the show" (idle/wheel/revealed, with
+ * winner history, and a right panel for "the show" (idle/roll/revealed, with
  * the Draw/Redraw action directly beneath it) — state ownership stays
  * entirely here regardless of which column renders which piece. The shared
  * AdminNav (rendered above by the admin layout) hides itself only while the
- * wheel is actually spinning, via useSetNavHidden — idle and revealed keep it,
+ * names are actually rolling, via useSetNavHidden — idle and revealed keep it,
  * same as every other admin page.
  */
 export function RaffleProjector({
@@ -48,13 +48,15 @@ export function RaffleProjector({
   const [includeFaculty, setIncludeFaculty] = useState(true);
   const [active, setActive] = useState<RaffleDrawRow | null>(null);
   const [stage, setStage] = useState<Stage>("idle");
+  // Everyone eligible for the draw now rolling: the names that flash past.
+  const [rollNames, setRollNames] = useState<RaffleEntrant[]>([]);
   const [lastAction, setLastAction] = useState<"draw" | "redraw" | null>(null);
   const [pending, startTransition] = useTransition();
   const [countdown, setCountdown] = useCountdownSettings();
   const clock = useClaimClock();
   const flash = useFlash();
 
-  const animating = stage === "wheel";
+  const animating = stage === "roll";
   useSetNavHidden(animating);
   const standing = latestDraw(draws);
   // The same filter runDraw() applies on the server, so the count shown is the
@@ -64,7 +66,19 @@ export function RaffleProjector({
     faculty: includeFaculty,
   });
 
-  function run(action: () => Promise<{ ok: true; draw: RaffleDrawRow } | { ok: false; error: string }>) {
+  // The same exclusions runDraw() applies on the server, so the names that
+  // roll past are the people who could actually have won.
+  function candidatesFor(redrawOf: RaffleDrawRow | null): RaffleEntrant[] {
+    const excluded = new Set<string>();
+    if (excludePreviousWinners) for (const id of currentWinnerIds(draws)) excluded.add(id);
+    if (redrawOf) excluded.add(redrawOf.winner.registrationId);
+    return excludeEntrants(effectivePool, excluded);
+  }
+
+  function run(
+    action: () => Promise<{ ok: true; draw: RaffleDrawRow } | { ok: false; error: string }>,
+    names: RaffleEntrant[],
+  ) {
     startTransition(async () => {
       const result = await action();
 
@@ -77,13 +91,32 @@ export function RaffleProjector({
       clock.stop();
       setDraws((current) => [...current, result.draw]);
       setActive(result.draw);
-      // Straight to the wheel — no name-blur intro. It added a fixed ~4s to
-      // every draw and redraw, which adds up across a night of prizes.
-      setStage("wheel");
+      setRollNames(names);
+      // Every eligible name flashes past, about six seconds whatever the crowd.
+      setStage("roll");
     });
   }
 
-  function onWheelDone() {
+  function reset() {
+    return resetRaffle().then((result) => {
+      if (!result.ok) {
+        flash(result.error, "error");
+        return false;
+      }
+      clock.stop();
+      setDraws([]);
+      setActive(null);
+      setStage("idle");
+      flash(
+        result.removed === 0
+          ? "No winners to reset."
+          : `Reset done: ${result.removed} draw${result.removed === 1 ? "" : "s"} cleared.`,
+      );
+      return true;
+    });
+  }
+
+  function onRollDone() {
     setStage("revealed");
     if (!active) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -114,6 +147,7 @@ export function RaffleProjector({
             onToggleIncludeExtraEntrants={setIncludeExtraEntrants}
             includeFaculty={includeFaculty}
             onToggleIncludeFaculty={setIncludeFaculty}
+            onReset={reset}
             countdown={countdown}
             onCountdownChange={setCountdown}
             ticketsSold={ticketsSold}
@@ -136,11 +170,12 @@ export function RaffleProjector({
             </div>
           ) : null}
 
-          {stage === "wheel" && active ? (
-            <RaffleWheel
-              finalists={active.finalists}
+          {stage === "roll" && active ? (
+            <RaffleNameRoll
+              key={active.id}
+              names={rollNames}
               winner={active.winner}
-              onDone={onWheelDone}
+              onDone={onRollDone}
             />
           ) : null}
 
@@ -200,8 +235,10 @@ export function RaffleProjector({
                   disabled={pending || effectivePool.length === 0}
                   onClick={() => {
                     setLastAction("draw");
-                    run(() =>
-                      drawNext({ excludePreviousWinners, includeExtraEntrants, includeFaculty }),
+                    run(
+                      () =>
+                        drawNext({ excludePreviousWinners, includeExtraEntrants, includeFaculty }),
+                      candidatesFor(null),
                     );
                   }}
                   className="rounded-full bg-accent-2 px-8 py-3 font-semibold uppercase tracking-wide text-deep transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-ground disabled:opacity-50"
@@ -220,13 +257,15 @@ export function RaffleProjector({
                         )
                       ) {
                         setLastAction("redraw");
-                        run(() =>
-                          redrawLast({
-                            supersedesDrawId: standing.id,
-                            excludePreviousWinners,
-                            includeExtraEntrants,
-                            includeFaculty,
-                          }),
+                        run(
+                          () =>
+                            redrawLast({
+                              supersedesDrawId: standing.id,
+                              excludePreviousWinners,
+                              includeExtraEntrants,
+                              includeFaculty,
+                            }),
+                          candidatesFor(standing),
                         );
                       }
                     }}

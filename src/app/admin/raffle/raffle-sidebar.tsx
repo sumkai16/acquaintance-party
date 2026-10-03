@@ -12,6 +12,7 @@ import {
 } from "./countdown-settings";
 import { EntrantManager } from "./entrant-manager";
 import { Modal } from "../modal";
+import { useFlash } from "../flash";
 
 const PRESET_LABEL: Record<number, string> = { 0: "Off", 10: "10s", 30: "30s", 60: "1 min", 120: "2 min" };
 
@@ -101,7 +102,7 @@ function CountdownControls({
  * The left column: everyone's eligibility (the count, the two toggles,
  * Setup) plus a running history of who's won so far. There's no prize list
  * here — the MC announces what's being raffled off verbally, so the app's
- * only job is names, in order. The show itself (the wheel, the reveal, the
+ * only job is names, in order. The show itself (the name roll, the reveal, the
  * Draw/Redraw action) lives in the main panel in raffle-projector.tsx.
  */
 export function RaffleSidebar({
@@ -114,6 +115,7 @@ export function RaffleSidebar({
   onToggleIncludeExtraEntrants,
   includeFaculty,
   onToggleIncludeFaculty,
+  onReset,
   countdown,
   onCountdownChange,
   ticketsSold,
@@ -127,12 +129,18 @@ export function RaffleSidebar({
   onToggleIncludeExtraEntrants: (next: boolean) => void;
   includeFaculty: boolean;
   onToggleIncludeFaculty: (next: boolean) => void;
+  /** Clears every winner. Resolves true once they are gone. */
+  onReset: () => Promise<boolean>;
   countdown: CountdownSettings;
   onCountdownChange: (next: CountdownSettings) => void;
   ticketsSold: number;
 }) {
   const [setupOpen, setSetupOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetText, setResetText] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const flash = useFlash();
   const extras = pool.filter((entrant) => entrant.source === "extra");
   const facultyCount = pool.filter((entrant) => entrant.source === "faculty").length;
   const effectivePool = drawablePool(pool, {
@@ -144,6 +152,31 @@ export function RaffleSidebar({
   const supersededIds = new Set(
     draws.map((row) => row.supersedes).filter((id): id is string => id !== null),
   );
+
+  // One line per standing winner, in the order drawn. This is what gets copied
+  // before a reset, since a reset cannot be undone.
+  const winnerLines = draws
+    .filter((row) => !supersededIds.has(row.id))
+    .map((row, i) => `${i + 1}. ${row.winner.fullName} (${entrantDetail(row.winner)})`);
+
+  async function copyWinners() {
+    try {
+      await navigator.clipboard.writeText(winnerLines.join("\n"));
+      flash("Winners copied.");
+    } catch {
+      flash("Couldn't copy. Select the names and copy them by hand.", "error");
+    }
+  }
+
+  async function confirmReset() {
+    setResetting(true);
+    const done = await onReset();
+    setResetting(false);
+    if (done) {
+      setResetOpen(false);
+      setResetText("");
+    }
+  }
 
   if (collapsed) {
     return (
@@ -254,6 +287,15 @@ export function RaffleSidebar({
 
       <button
         type="button"
+        onClick={() => setResetOpen(true)}
+        disabled={draws.length === 0}
+        className="self-start rounded border border-accent-4/60 px-3 py-1.5 text-xs uppercase tracking-wide text-accent-4 hover:bg-accent-4/10 disabled:opacity-40 focus:outline-2 focus:outline-offset-2 focus:outline-accent-4"
+      >
+        Reset winners
+      </button>
+
+      <button
+        type="button"
         onClick={() => setSetupOpen(true)}
         className="self-start rounded border border-ground/25 px-3 py-1.5 text-xs uppercase tracking-wide hover:border-ground/50"
       >
@@ -267,6 +309,55 @@ export function RaffleSidebar({
         Manage that list under Faculty. A scanner that has not synced yet is
         missing from the count above.
       </p>
+
+      {resetOpen ? (
+        <Modal
+          title="Reset all winners?"
+          onClose={() => {
+            if (!resetting) setResetOpen(false);
+          }}
+        >
+          <p className="text-sm text-ground/70">
+            This clears all {draws.length} draw{draws.length === 1 ? "" : "s"} from the
+            list, replaced no-shows included. It cannot be undone, and everyone is
+            eligible again. Copy the winners first if you need the list.
+          </p>
+          <button
+            type="button"
+            onClick={copyWinners}
+            className="self-start rounded border border-ground/25 px-3 py-1.5 text-xs uppercase tracking-wide hover:border-ground/50"
+          >
+            Copy winners
+          </button>
+          <label className="flex flex-col gap-1 text-sm">
+            Type RESET to confirm
+            <input
+              value={resetText}
+              onChange={(event) => setResetText(event.target.value)}
+              autoComplete="off"
+              className="rounded border border-ground/25 bg-deep px-3 py-2 uppercase"
+            />
+          </label>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={confirmReset}
+              disabled={resetting || resetText.trim().toUpperCase() !== "RESET"}
+              className="rounded-full bg-accent-4 px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
+            >
+              {resetting ? "Resetting…" : "Reset winners"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setResetOpen(false)}
+              disabled={resetting}
+              className="text-sm text-ground/70 hover:text-ground"
+            >
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      ) : null}
 
       {setupOpen ? (
         <Modal title="Setup" onClose={() => setSetupOpen(false)}>

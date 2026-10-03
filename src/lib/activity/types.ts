@@ -29,6 +29,7 @@ export const ACTIVITY_TYPES = [
   "partial_qr_issued",
   "voting_toggled",
   "votes_revealed",
+  "raffle_reset",
 ] as const;
 
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
@@ -59,6 +60,7 @@ const LABELS: Record<ActivityType, string> = {
   partial_qr_issued: "QR Sent Before Balance Paid",
   voting_toggled: "Crowd's Choice Voting Toggled",
   votes_revealed: "Crowd's Choice Result Revealed",
+  raffle_reset: "Raffle Winners Reset",
 };
 
 export function describeActivity(type: ActivityType): string {
