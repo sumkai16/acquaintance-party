@@ -1,10 +1,7 @@
-import {
-  evaluationSummary,
-  pendingInviteRecipients,
-  type QuestionSummary,
-} from "@/lib/evaluation/queries";
-import { RATING_LABELS, RATING_SCALE } from "@/lib/evaluation/questions";
+import { evaluationSummary, pendingInviteRecipients } from "@/lib/evaluation/queries";
 import Link from "next/link";
+import { Bar } from "./bar";
+import { Results } from "./results";
 import { SendInvites } from "./send-invites";
 
 export const dynamic = "force-dynamic";
@@ -80,98 +77,10 @@ export default async function EvaluationsPage() {
               total={summary.responses}
             />
           </section>
-          {summary.sections.map((section) => (
-            <section key={section.id} className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-ground/10 pb-2">
-                <h2 className="text-xl font-semibold">{section.title}</h2>
-                {section.average !== null ? (
-                  <span className="text-sm text-ground/60">
-                    Section average{" "}
-                    <span className="text-lg font-bold tabular-nums text-ground">
-                      {section.average.toFixed(1)}
-                    </span>{" "}
-                    / 5
-                  </span>
-                ) : null}
-              </div>
-              {section.questions.map((question) => (
-                <QuestionCard
-                  key={question.id}
-                  question={question}
-                  responses={summary.responses}
-                />
-              ))}
-            </section>
-          ))}
+          <Results sections={summary.sections} responses={summary.responses} />
         </div>
       )}
     </main>
-  );
-}
-
-function QuestionCard({
-  question,
-  responses,
-}: {
-  question: QuestionSummary;
-  responses: number;
-}) {
-  return (
-    <section className="rounded-lg border border-ground/10 bg-ground/5 p-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-semibold">{question.prompt}</h3>
-        {question.kind === "rating" && question.average !== null ? (
-          <span className="text-2xl font-bold tabular-nums">
-            {question.average.toFixed(1)}
-            <span className="text-sm font-normal text-ground/50"> / 5</span>
-          </span>
-        ) : question.kind === "multi" ? (
-          <span className="text-sm text-ground/50">Tick all that apply</span>
-        ) : null}
-      </div>
-
-      {question.kind === "rating" ? (
-        <div className="mt-3 flex flex-col gap-1.5">
-          {[...RATING_SCALE].reverse().map((point) => (
-            <Bar
-              key={point}
-              label={`${point} · ${RATING_LABELS[point]}`}
-              count={question.counts[point - 1]}
-              total={responses}
-            />
-          ))}
-          {question.notApplicable !== null ? (
-            <Bar label="N/A" count={question.notApplicable} total={responses} />
-          ) : null}
-        </div>
-      ) : question.kind !== "text" ? (
-        <div className="mt-3 flex flex-col gap-1.5">
-          {question.counts.map((row) => (
-            <Bar
-              key={row.option}
-              label={row.option}
-              count={row.count}
-              total={responses}
-            />
-          ))}
-        </div>
-      ) : (
-        <ul className="mt-3 flex flex-col gap-2">
-          {question.responses.length === 0 ? (
-            <li className="text-sm text-ground/50">Nobody answered this one.</li>
-          ) : (
-            question.responses.map((response, index) => (
-              <li
-                key={index}
-                className="rounded border border-ground/10 bg-ground/5 px-3 py-2 text-sm text-ground/90"
-              >
-                {response}
-              </li>
-            ))
-          )}
-        </ul>
-      )}
-    </section>
   );
 }
 
@@ -192,30 +101,6 @@ function Tally({
           <Bar key={row.option} label={row.option} count={row.count} total={total} />
         ))}
       </div>
-    </div>
-  );
-}
-
-function Bar({
-  label,
-  count,
-  total,
-}: {
-  label: string;
-  count: number;
-  total: number;
-}) {
-  const share = total === 0 ? 0 : (count / total) * 100;
-
-  return (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="w-44 shrink-0 truncate text-ground/70" title={label}>{label}</span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-ground/10">
-        <div className="h-full bg-accent" style={{ width: `${share}%` }} />
-      </div>
-      <span className="w-10 shrink-0 text-right tabular-nums text-ground/70">
-        {count}
-      </span>
     </div>
   );
 }
