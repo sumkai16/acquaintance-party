@@ -23,11 +23,13 @@ export default async function CertificatePage({
           {EVENT.host}
         </p>
         <h1 className="mt-2 font-display text-4xl uppercase text-accent sm:text-5xl">
-          Your certificate
+          Thanks, {certificate.fullName.split(" ")[0]}.
+          <br />
+          Here&rsquo;s your certificate.
         </h1>
         <p className="mt-3 text-ink/70">
-          Thanks for the evaluation, {certificate.fullName.split(" ")[0]}. Save
-          a copy below — this page stays at the same link.
+          Download it below. This page keeps the same link, so you can come back
+          any time.
         </p>
       </header>
 
@@ -40,21 +42,21 @@ export default async function CertificatePage({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <a
-          href={`/certificate/${id}/image?download=1`}
+          href={`/certificate/${id}/pdf`}
           className="rounded-full bg-accent px-6 py-3.5 text-center font-semibold uppercase tracking-wide text-white transition-opacity hover:opacity-90 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
         >
-          Download image
+          Download PDF
         </a>
         <a
-          href={`/certificate/${id}/pdf`}
+          href={`/certificate/${id}/image?download=1`}
           className="rounded-full border border-ink/25 px-6 py-3.5 text-center font-semibold uppercase tracking-wide text-ink transition-colors hover:bg-ink/5 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2"
         >
-          Download PDF
+          Download image
         </a>
       </div>
 
       <p className="text-center text-sm text-ink/60">
-        We also emailed you a copy. {EVENT.contact}
+        Bookmark this page so you can find it again. {EVENT.contact}
       </p>
     </main>
   );
