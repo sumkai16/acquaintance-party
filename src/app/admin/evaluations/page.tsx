@@ -65,18 +65,11 @@ export default async function EvaluationsPage() {
         </p>
       ) : (
         <div className="mt-8 flex flex-col gap-10">
-          <section className="grid gap-4 md:grid-cols-2">
-            <Tally
-              title="Responses by year level"
-              rows={summary.byYearLevel}
-              total={summary.responses}
-            />
-            <Tally
-              title="Responses by section"
-              rows={summary.bySection}
-              total={summary.responses}
-            />
-          </section>
+          <Respondents
+            years={summary.byYearLevel}
+            sections={summary.bySection}
+            total={summary.responses}
+          />
           <Results sections={summary.sections} responses={summary.responses} />
         </div>
       )}
@@ -84,24 +77,47 @@ export default async function EvaluationsPage() {
   );
 }
 
-function Tally({
-  title,
-  rows,
+/**
+ * Who answered, in one card: a bar per year level, with that year's sections as
+ * chips underneath. Two separate bar lists left a short card beside a
+ * two-dozen-row one; this is as tall as the year levels, not the sections.
+ * `sections` options are "<year level> · <section>" (built in evaluationSummary).
+ */
+function Respondents({
+  years,
+  sections,
   total,
 }: {
-  title: string;
-  rows: { option: string; count: number }[];
+  years: { option: string; count: number }[];
+  sections: { option: string; count: number }[];
   total: number;
 }) {
   return (
-    <div className="rounded-lg border border-ground/10 bg-ground/5 p-4">
-      <h2 className="font-semibold">{title}</h2>
-      <div className="mt-3 flex flex-col gap-1.5">
-        {rows.map((row) => (
-          <Bar key={row.option} label={row.option} count={row.count} total={total} />
-        ))}
+    <section className="rounded-lg border border-ground/10 bg-ground/5 p-4">
+      <h2 className="font-semibold">Who responded</h2>
+      <div className="mt-3 grid gap-x-8 gap-y-4 md:grid-cols-2">
+        {years.map((year) => {
+          const prefix = `${year.option} · `;
+          const inYear = sections.filter((row) => row.option.startsWith(prefix));
+          return (
+            <div key={year.option} className="flex flex-col gap-2">
+              <Bar label={year.option} count={year.count} total={total} />
+              <ul className="flex flex-wrap gap-1.5">
+                {inYear.map((row) => (
+                  <li
+                    key={row.option}
+                    className="rounded-full border border-ground/10 bg-black/20 px-2.5 py-0.5 text-xs tabular-nums text-ground/80"
+                  >
+                    {row.option.slice(prefix.length)}{" "}
+                    <span className="font-semibold text-ground">{row.count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }
 
