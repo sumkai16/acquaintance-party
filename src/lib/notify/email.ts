@@ -2,7 +2,6 @@ import "server-only";
 import { Resend } from "resend";
 import { qrPngBuffer } from "@/lib/tickets/qr";
 import {
-  buildCertificateEmail,
   buildEvaluationInviteEmail,
   buildHelpReplyEmail,
   buildPartialPaymentEmail,
@@ -375,23 +374,5 @@ export async function sendTicketQrBatch(
         ],
       };
     }),
-  );
-}
-
-export async function sendCertificateEmail(input: {
-  to: string;
-  fullName: string;
-  registrationId: string;
-  pdf: Buffer;
-  filename: string;
-}): Promise<void> {
-  await send(
-    {
-      to: input.to,
-      fullName: input.fullName,
-      path: `/certificate/${input.registrationId}`,
-      attachments: [{ filename: input.filename, content: input.pdf }],
-    },
-    buildCertificateEmail,
   );
 }

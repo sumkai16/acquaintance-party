@@ -275,7 +275,3 @@ export const SECTIONS: readonly Section[] = [
 export const QUESTIONS: readonly Question[] = SECTIONS.flatMap(
   (section) => section.questions,
 );
-
-export function questionById(id: string): Question | undefined {
-  return QUESTIONS.find((question) => question.id === id);
-}

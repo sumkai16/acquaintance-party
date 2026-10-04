@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildCertificateEmail,
   buildEvaluationInviteEmail,
   buildHelpReplyEmail,
   buildPartialPaymentEmail,
@@ -243,24 +242,6 @@ describe("buildReceiptBacklogEmail", () => {
   it("escapes HTML-significant characters in the name", () => {
     const email = buildReceiptBacklogEmail({ ...base, fullName: "A & B <script>" });
     expect(email.html).not.toContain("<script>");
-  });
-});
-
-describe("buildCertificateEmail", () => {
-  it("links the certificate page and mentions the attachment", () => {
-    const email = buildCertificateEmail(base);
-    expect(email.subject.toLowerCase()).toContain("certificate");
-    expect(email.html).toContain(base.url);
-    expect(email.text.toLowerCase()).toContain("attached");
-  });
-
-  it("escapes HTML-significant characters in the name", () => {
-    const email = buildCertificateEmail({
-      ...base,
-      fullName: "A & B <script>",
-    });
-    expect(email.html).not.toContain("<script>");
-    expect(email.html).toContain("A &amp; B &lt;script&gt;");
   });
 });
 

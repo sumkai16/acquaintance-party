@@ -340,30 +340,6 @@ export function buildPartialPaymentEmail(input: EmailInput): BuiltEmail {
   };
 }
 
-/** Sent once the evaluation is in, with the certificate PDF attached. */
-export function buildCertificateEmail(input: EmailInput): BuiltEmail {
-  const name = escapeHtml(input.fullName);
-
-  return {
-    subject: `Your ${EVENT.name} certificate of attendance`,
-    html: wrap(
-      `<p style="margin:0 0 16px">Hi ${name},</p>` +
-        `<p style="margin:0 0 16px">Thanks for the evaluation. Your certificate ` +
-        `of attendance is attached to this email as a PDF.</p>` +
-        `<p style="margin:0">You can also view it, or download it as an image, ` +
-        `at the link below — it stays put, so come back any time.</p>`,
-      "View your certificate",
-      input.url,
-    ),
-    text:
-      `Hi ${input.fullName},\n\n` +
-      `Thanks for the evaluation. Your certificate of attendance is attached ` +
-      `to this email as a PDF. You can also view it, or download it as an ` +
-      `image, at the link below.\n\n` +
-      `${input.url}`,
-  };
-}
-
 /**
  * An admin's written answer to a "Report a QR problem" request from /find.
  * The same text is on the student's ticket page, which the button opens —
