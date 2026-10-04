@@ -1,6 +1,5 @@
 import { evaluationSummary, pendingInviteRecipients } from "@/lib/evaluation/queries";
 import Link from "next/link";
-import { Bar } from "./bar";
 import { Results } from "./results";
 import { SendInvites } from "./send-invites";
 
@@ -78,9 +77,9 @@ export default async function EvaluationsPage() {
 }
 
 /**
- * Who answered, in one card: a bar per year level, with that year's sections as
- * chips underneath. Two separate bar lists left a short card beside a
- * two-dozen-row one; this is as tall as the year levels, not the sections.
+ * Who answered, as a grid: year levels down the side, sections across the top,
+ * each cell shaded by its count. The two flat lists it replaces were as tall as
+ * the number of year-and-section pairs; this is as tall as the year levels.
  * `sections` options are "<year level> · <section>" (built in evaluationSummary).
  */
 function Respondents({
@@ -92,30 +91,81 @@ function Respondents({
   sections: { option: string; count: number }[];
   total: number;
 }) {
+  const cell = new Map<string, number>();
+  const columns = new Set<string>();
+  for (const row of sections) {
+    const [year, section] = row.option.split(" · ");
+    if (!year || !section) continue;
+    cell.set(`${year}|${section}`, row.count);
+    columns.add(section);
+  }
+  const letters = [...columns].sort();
+  // "1st year", "2nd year"… in order, not busiest-first like the other lists.
+  const rows = [...years].sort(
+    (a, b) => parseInt(a.option, 10) - parseInt(b.option, 10),
+  );
+  const busiest = Math.max(1, ...cell.values());
+
   return (
     <section className="rounded-lg border border-ground/10 bg-ground/5 p-4">
-      <h2 className="font-semibold">Who responded</h2>
-      <div className="mt-3 grid gap-x-8 gap-y-4 md:grid-cols-2">
-        {years.map((year) => {
-          const prefix = `${year.option} · `;
-          const inYear = sections.filter((row) => row.option.startsWith(prefix));
-          return (
-            <div key={year.option} className="flex flex-col gap-2">
-              <Bar label={year.option} count={year.count} total={total} />
-              <ul className="flex flex-wrap gap-1.5">
-                {inYear.map((row) => (
-                  <li
-                    key={row.option}
-                    className="rounded-full border border-ground/10 bg-black/20 px-2.5 py-0.5 text-xs tabular-nums text-ground/80"
-                  >
-                    {row.option.slice(prefix.length)}{" "}
-                    <span className="font-semibold text-ground">{row.count}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+      <h2 className="font-semibold">
+        Who responded{" "}
+        <span className="text-sm font-normal text-ground/50">
+          {total} responses
+        </span>
+      </h2>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full border-separate border-spacing-1 text-sm tabular-nums">
+          <thead>
+            <tr className="text-xs uppercase tracking-wide text-ground/60">
+              <th scope="col" className="px-2 py-1 text-left font-medium">
+                Year
+              </th>
+              {letters.map((letter) => (
+                <th key={letter} scope="col" className="px-2 py-1 font-medium">
+                  {letter}
+                </th>
+              ))}
+              <th scope="col" className="px-2 py-1 font-medium">
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((year) => (
+              <tr key={year.option}>
+                <th scope="row" className="px-2 py-2 text-left font-medium">
+                  {year.option}
+                </th>
+                {letters.map((letter) => {
+                  const count = cell.get(`${year.option}|${letter}`);
+                  return count ? (
+                    <td key={letter} className="relative rounded px-2 py-2 text-center">
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 rounded bg-accent"
+                        style={{ opacity: 0.18 + (0.82 * count) / busiest }}
+                      />
+                      <span className="relative font-semibold text-white">
+                        {count}
+                      </span>
+                    </td>
+                  ) : (
+                    <td
+                      key={letter}
+                      className="rounded bg-ground/5 px-2 py-2 text-center text-ground/25"
+                    >
+                      ·
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-2 text-center font-bold text-accent-2">
+                  {year.count}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </section>
   );
