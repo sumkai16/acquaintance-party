@@ -62,6 +62,10 @@ export async function sendEvaluationInvites(): Promise<SendResult> {
  * database, never taken from the browser, so the button can only ever send
  * what the evaluation already holds. Nothing is stored: a click costs a few
  * cents and the result lives on the page until it is refreshed.
+ *
+ * Which model answered is private to whoever runs the site locally: the name is
+ * dropped here, on the server, unless SHOW_AI_MODEL=1, so on the deployed site
+ * it is never sent to anyone's browser, admins included.
  */
 export async function summarizeQuestion(questionId: string): Promise<AiSummaryResult> {
   if (!(await requireAdmin())) return { ok: false, error: ADMIN_ONLY_ERROR };
@@ -70,7 +74,11 @@ export async function summarizeQuestion(questionId: string): Promise<AiSummaryRe
   for (const section of summary.sections) {
     for (const question of section.questions) {
       if (question.id === questionId && question.kind === "text") {
-        return summarizeWrittenAnswers(question.prompt, question.responses);
+        const result = await summarizeWrittenAnswers(question.prompt, question.responses);
+        if (result.ok && process.env.SHOW_AI_MODEL !== "1") {
+          return { ok: true, summary: { ...result.summary, model: null } };
+        }
+        return result;
       }
     }
   }

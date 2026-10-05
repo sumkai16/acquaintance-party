@@ -72,7 +72,7 @@ export type AiSummaryResult =
   | { ok: false; error: string };
 
 type Reply =
-  | { ok: true; reading: z.infer<typeof Reading> }
+  | { ok: true; reading: z.infer<typeof Reading>; model: string }
   | { ok: false; error: string };
 
 const SYSTEM = `You read anonymous written answers from a post-event survey for an IT students' society party at a Philippine university.
@@ -112,7 +112,7 @@ export async function summarizeWrittenAnswers(
     : await askAnthropic(anthropicKey as string, content);
   if (!reply.ok) return reply;
 
-  return { ok: true, summary: tallyThemes(reply.reading, answers.length) };
+  return { ok: true, summary: tallyThemes(reply.reading, answers.length, reply.model) };
 }
 
 /** Total time the free models get before the button gives up. */
@@ -195,9 +195,15 @@ async function tryOpenRouterModel(
     }
 
     const body = (await response.json()) as {
+      model?: string;
       choices?: { message?: { content?: string | null } }[];
     };
-    const reply = parseReading(body.choices?.[0]?.message?.content);
+    // `body.model` is the model that actually answered, which for the router
+    // model (openrouter/free) is not the one we asked for.
+    const reply = parseReading(
+      body.choices?.[0]?.message?.content,
+      body.model ?? model,
+    );
     return reply.ok ? { kind: "done", reply } : { kind: "next" };
   } catch (error) {
     console.error("OpenRouter", model, error);
@@ -221,7 +227,7 @@ async function askAnthropic(apiKey: string, content: string): Promise<Reply> {
     if (!response.parsed_output) {
       return { ok: false, error: "The AI's reply could not be read. Try again." };
     }
-    return { ok: true, reading: response.parsed_output };
+    return { ok: true, reading: response.parsed_output, model: response.model };
   } catch (error) {
     console.error("askAnthropic failed", error);
     if (error instanceof Anthropic.AuthenticationError) {
@@ -241,10 +247,10 @@ async function askAnthropic(apiKey: string, content: string): Promise<Reply> {
 }
 
 /** The model's reply text as a checked Reading, or a plain error. */
-function parseReading(text: string | null | undefined): Reply {
+function parseReading(text: string | null | undefined, model: string): Reply {
   try {
     const parsed = Reading.safeParse(JSON.parse(text ?? ""));
-    if (parsed.success) return { ok: true, reading: parsed.data };
+    if (parsed.success) return { ok: true, reading: parsed.data, model };
   } catch {
     // Not JSON: fall through to the same message.
   }

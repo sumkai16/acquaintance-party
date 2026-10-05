@@ -12,13 +12,14 @@ describe("tallyThemes", () => {
         { label: "Band battle", answer_numbers: [1, 2, 3] },
       ],
     };
-    const result = tallyThemes(reading, 5);
+    const result = tallyThemes(reading, 5, "test-model");
     expect(result.themes).toEqual([
       { label: "Band battle", count: 3 },
       { label: "Raffle", count: 2 },
     ]);
     expect(result.summary).toBe("Most liked the band.");
     expect(result.answers).toBe(5);
+    expect(result.model).toBe("test-model");
   });
 
   it("counts an answer only once if two themes claim it", () => {
@@ -31,6 +32,7 @@ describe("tallyThemes", () => {
         ],
       },
       3,
+      "test-model",
     );
     expect(result.themes).toEqual([
       { label: "A", count: 2 },
@@ -42,6 +44,7 @@ describe("tallyThemes", () => {
     const result = tallyThemes(
       { ...base, themes: [{ label: "A", answer_numbers: [1, 99, 0, 1.5] }] },
       3,
+      "test-model",
     );
     expect(result.themes).toEqual([
       { label: "Other", count: 2 },
@@ -54,6 +57,7 @@ describe("tallyThemes", () => {
     const result = tallyThemes(
       { ...base, themes: [{ label: "Ghost", answer_numbers: [] }] },
       2,
+      "test-model",
     );
     expect(result.themes).toEqual([{ label: "Other", count: 2 }]);
   });

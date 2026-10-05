@@ -14,10 +14,19 @@ export type AiSummary = {
   /** Biggest first. Counts add up to the number of answers read. */
   themes: { label: string; count: number }[];
   answers: number;
+  /**
+   * Which model wrote this. Null unless SHOW_AI_MODEL is set on the server, so
+   * the name never reaches a browser on the live site (see summarizeQuestion).
+   */
+  model: string | null;
 };
 
 /** Counts from the model's lists, ignoring bad or repeated numbers. */
-export function tallyThemes(reading: AiReading, answerCount: number): AiSummary {
+export function tallyThemes(
+  reading: AiReading,
+  answerCount: number,
+  model: string,
+): AiSummary {
   const claimed = new Set<number>();
   const themes = reading.themes
     .map((theme) => {
@@ -43,5 +52,6 @@ export function tallyThemes(reading: AiReading, answerCount: number): AiSummary 
     mood: reading.mood,
     themes,
     answers: answerCount,
+    model,
   };
 }

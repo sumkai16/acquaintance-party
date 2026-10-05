@@ -303,7 +303,10 @@ function AiReading({ questionId }: { questionId: string }) {
             ))}
           </ul>
           <p className="mt-2 text-xs text-ground/50">
-            Written by AI from these answers. Counts are exact; the wording is a summary.
+            {result.summary.model
+              ? `Written by ${result.summary.model}.`
+              : "Written by AI from these answers."}{" "}
+            Counts are exact; the wording is a summary.
           </p>
         </div>
       ) : null}
