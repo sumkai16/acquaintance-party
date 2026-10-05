@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { markInvited, pendingInviteRecipients } from "@/lib/evaluation/queries";
+import { summarizeWrittenAnswers, type AiSummaryResult } from "@/lib/evaluation/ai-summary";
+import {
+  evaluationSummary,
+  markInvited,
+  pendingInviteRecipients,
+} from "@/lib/evaluation/queries";
 import {
   EMAIL_BATCH_LIMIT,
   sendEvaluationInviteBatch,
@@ -50,4 +55,24 @@ export async function sendEvaluationInvites(): Promise<SendResult> {
 
   revalidatePath("/admin/evaluations");
   return { ok: true, sent, failed };
+}
+
+/**
+ * An AI reading of one written question. The answers are read here, from the
+ * database, never taken from the browser, so the button can only ever send
+ * what the evaluation already holds. Nothing is stored: a click costs a few
+ * cents and the result lives on the page until it is refreshed.
+ */
+export async function summarizeQuestion(questionId: string): Promise<AiSummaryResult> {
+  if (!(await requireAdmin())) return { ok: false, error: ADMIN_ONLY_ERROR };
+
+  const summary = await evaluationSummary();
+  for (const section of summary.sections) {
+    for (const question of section.questions) {
+      if (question.id === questionId && question.kind === "text") {
+        return summarizeWrittenAnswers(question.prompt, question.responses);
+      }
+    }
+  }
+  return { ok: false, error: "That question has no written answers." };
 }

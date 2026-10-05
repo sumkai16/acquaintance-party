@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import type { QuestionSummary, SectionSummary } from "@/lib/evaluation/queries";
 import { RATING_LABELS, RATING_SCALE } from "@/lib/evaluation/questions";
+import type { AiSummary } from "@/lib/evaluation/theme-tally";
+import { analyzeText } from "@/lib/evaluation/text-analysis";
+import { summarizeQuestion } from "./actions";
 import { Bar } from "./bar";
 
 /**
@@ -184,9 +187,31 @@ function WrittenAnswers({ id, answers }: { id: string; answers: string[] }) {
   const shown = needle
     ? answers.filter((answer) => answer.toLowerCase().includes(needle))
     : answers;
+  const stats = analyzeText(answers);
 
   return (
     <div className="mt-3 flex flex-col gap-2">
+      <p className="text-sm text-ground/80">
+        <span className="font-semibold text-ground">
+          {Math.round((stats.noAnswer / stats.total) * 100)}%
+        </span>{" "}
+        gave no answer ({stats.noAnswer} of {stats.total}).
+        {stats.topTerms.length > 0 ? (
+          <>
+            {" "}
+            Most mentioned:{" "}
+            {stats.topTerms.map((item, index) => (
+              <span key={item.term}>
+                {index > 0 ? ", " : ""}
+                <span className="font-semibold text-ground">{item.term}</span>{" "}
+                <span className="tabular-nums text-ground/60">{item.count}</span>
+              </span>
+            ))}
+            .
+          </>
+        ) : null}
+      </p>
+      <AiReading questionId={id} />
       {answers.length > 8 ? (
         <input
           id={`search-${id}`}
@@ -217,6 +242,71 @@ function WrittenAnswers({ id, answers }: { id: string; answers: string[] }) {
           ))
         )}
       </ul>
+    </div>
+  );
+}
+
+const MOOD_LABEL: Record<AiSummary["mood"], string> = {
+  positive: "Positive",
+  mixed: "Mixed",
+  negative: "Negative",
+  neutral: "Neutral",
+};
+
+/** The AI summary for one question: a button, then the summary and its themes. */
+function AiReading({ questionId }: { questionId: string }) {
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<
+    { ok: true; summary: AiSummary } | { ok: false; error: string } | null
+  >(null);
+
+  function run() {
+    start(async () => {
+      setResult(await summarizeQuestion(questionId));
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        className="self-start rounded-full border border-accent-2/60 px-3.5 py-1.5 text-sm font-semibold text-accent-2 hover:bg-accent-2/10 focus:outline-2 focus:outline-offset-2 focus:outline-accent-2 disabled:opacity-60"
+      >
+        {pending ? "Reading the answers…" : result?.ok ? "Summarize again" : "Summarize with AI"}
+      </button>
+
+      {result && !result.ok ? (
+        <p role="alert" className="text-sm text-accent-4">
+          {result.error}
+        </p>
+      ) : null}
+
+      {result?.ok ? (
+        <div className="rounded-lg border border-accent-2/30 bg-black/20 p-3">
+          <p className="text-sm text-ground/90">
+            <span className="mr-2 rounded-full bg-ground/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
+              {MOOD_LABEL[result.summary.mood]}
+            </span>
+            {result.summary.summary}
+          </p>
+          <ul className="mt-3 flex flex-col gap-1.5">
+            {result.summary.themes.map((theme) => (
+              <li key={theme.label}>
+                <Bar
+                  label={theme.label}
+                  count={theme.count}
+                  total={result.summary.answers}
+                />
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-ground/50">
+            Written by AI from these answers. Counts are exact; the wording is a summary.
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

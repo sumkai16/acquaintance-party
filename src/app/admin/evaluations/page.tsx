@@ -4,6 +4,9 @@ import { Results } from "./results";
 import { SendInvites } from "./send-invites";
 
 export const dynamic = "force-dynamic";
+// The AI summary button runs as a server action on this page; a busy free
+// model can take a while.
+export const maxDuration = 60;
 export const metadata = { title: "Evaluation" };
 
 export default async function EvaluationsPage() {
